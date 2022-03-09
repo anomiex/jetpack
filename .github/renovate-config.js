@@ -7,7 +7,7 @@ module.exports = {
 	allowScripts: true,
 	gitAuthor: 'Renovate Bot <bot@renovateapp.com>',
 	platform: 'github',
-	repositories: [ 'Automattic/jetpack' ],
+	repositories: [ 'anomiex/jetpack' ],
 
 	// We're including configuration in this file.
 	onboarding: false,
