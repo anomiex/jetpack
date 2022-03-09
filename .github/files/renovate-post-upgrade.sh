@@ -17,7 +17,7 @@ function die {
 pnpm config set --location=user store-dir /tmp/renovate/cache/others/pnpm
 composer config --global cache-dir /tmp/renovate/cache/others/composer
 
-# Add a change file for every project touched in the PR, if any.
+# Do the pnpm and changelogger installs.
 cd "$BASE"
 pnpm --quiet install
 cd projects/packages/changelogger
@@ -25,8 +25,11 @@ composer --quiet update
 cd "$BASE"
 CL="$BASE/projects/packages/changelogger/bin/changelogger"
 
+# Add change files for anything that changed. But ignore .npmrc, renovate mangles those.
+echo "Changed files:"
+git -c core.quotepath=off diff --name-only HEAD | grep -E -v '(^|/)\.npmrc'
 ANY=false
-for DIR in $(git -c core.quotepath=off diff --name-only HEAD | sed -nE 's!^(projects/[^/]+/[^/]+)/.*!\1!p' | sort -u); do
+for DIR in $(git -c core.quotepath=off diff --name-only HEAD | grep -E -v '(^|/)\.npmrc' | sed -nE 's!^(projects/[^/]+/[^/]+)/.*!\1!p' | sort -u); do
 	ANY=true
 	SLUG="${DIR#projects/}"
 	echo "Adding change file for $SLUG"
