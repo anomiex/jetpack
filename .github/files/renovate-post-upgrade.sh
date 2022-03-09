@@ -2,7 +2,10 @@
 
 set -eo pipefail
 
-BASE=$PWD
+BASE="$PWD"
+BRANCH="$1"
+CHANGEFILE="$(sed 's/[<>:"/\\|?*]/-/g' <<<"$BRANCH")"
+
 . "$BASE/tools/includes/alpha-tag.sh"
 
 function die {
@@ -10,7 +13,12 @@ function die {
 	exit 1
 }
 
+# Renovate puts some cache dirs in different places.
+pnpm config set --location=user store-dir /tmp/renovate/cache/others/pnpm
+composer config --global cache-dir /tmp/renovate/cache/others/composer
+
 # Add a change file for every project touched in the PR, if any.
+cd "$BASE"
 pnpm --quiet install
 cd projects/packages/changelogger
 composer --quiet update
@@ -18,14 +26,14 @@ cd "$BASE"
 CL="$BASE/projects/packages/changelogger/bin/changelogger"
 
 ANY=false
-for DIR in $(git -c core.quotepath=off diff --name-only "$BASE_REF"..."$HEAD_REF" | sed -nE 's!^(projects/[^/]+/[^/]+)/.*!\1!p' | sort -u); do
+for DIR in $(git -c core.quotepath=off diff --name-only HEAD | sed -nE 's!^(projects/[^/]+/[^/]+)/.*!\1!p' | sort -u); do
 	ANY=true
 	SLUG="${DIR#projects/}"
 	echo "Adding change file for $SLUG"
 	cd "$DIR"
 
 	ARGS=()
-	ARGS=( add --no-interaction --filename-auto-suffix --significance=patch )
+	ARGS=( add --filename="${CHANGEFILE}" --no-interaction --filename-auto-suffix --significance=patch )
 
 	CLTYPE="$(jq -r '.extra["changelogger-default-type"] // "changed"' composer.json)"
 	if [[ -n "$CLTYPE" ]]; then
