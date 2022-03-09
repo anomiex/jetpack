@@ -14,6 +14,10 @@ function die {
 }
 
 # Renovate puts some cache dirs in different places.
+if [[ "$HOME" == "/" ]]; then
+    mkdir /var/tmp/home
+    export HOME=/var/tmp/home
+fi
 pnpm config set --location=user store-dir /tmp/renovate/cache/others/pnpm
 composer config --global cache-dir /tmp/renovate/cache/others/composer
 
