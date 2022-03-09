@@ -62,4 +62,4 @@ fi
 
 # Update deps and lock files.
 echo "Updating dependencies on changed projects"
-tools/check-intra-monorepo-deps.sh -ua
+tools/check-intra-monorepo-deps.sh -ua -n "${CHANGEFILE}"
