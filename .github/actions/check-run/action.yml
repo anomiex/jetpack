@@ -65,6 +65,7 @@ runs:
           DATA="$(jq --arg v "$SUMMARY" '.output.summary |= $v' <<<"$DATA")"
         fi
 
+        echo "Data: $DATA"
         JSON="$(curl -v -X "$METHOD" --header "authorization: token $TOKEN" --url "$URL" --data "$DATA")"
         echo "$JSON"
         echo "::set-output name=id::$(jq -r .id <<<"$JSON")"
