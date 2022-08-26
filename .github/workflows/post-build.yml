@@ -170,4 +170,4 @@ jobs:
         with:
           id: ${{ steps.create_run.outputs.id }}
           conclusion: ${{ job.status }}
-          title: ${{ job.status == 'success' && 'Tests passed' || job.status === 'cancelled' && 'Cancelled' || 'Tests failed' }}
+          title: ${{ job.status == 'success' && 'Tests passed' || job.status == 'cancelled' && 'Cancelled' || 'Tests failed' }}
