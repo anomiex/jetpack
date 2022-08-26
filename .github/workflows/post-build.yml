@@ -169,5 +169,5 @@ jobs:
         uses: ./monorepo/.github/actions/check-run
         with:
           id: ${{ steps.create_run.outputs.id }}
-          conclusion: ${{ success() && 'success' || cancelled() && 'cancelled' || 'failure' }}
-          title: ${{ success() && 'Tests passed' || cancelled() && 'Cancelled' || 'Tests failed' }}
+          conclusion: ${{ job.status }}
+          title: ${{ job.status == 'success' && 'Tests passed' || job.status === 'cancelled' && 'Cancelled' || 'Tests failed' }}
