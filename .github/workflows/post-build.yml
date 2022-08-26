@@ -11,7 +11,7 @@ concurrency:
 
 env:
   COMPOSER_ROOT_VERSION: "dev-trunk"
-  SUMMARY: Post-Build run [#${{ github.run_id }}](${{ github.api_url }}/repos/${{ github.repository }}/actions/runs/${{ github.run_id }}) for Build run [#${{ github.event.workflow_run.id }}](${{ github.event.workflow_run.html_url }})
+  SUMMARY: Post-Build run [#${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for Build run [#${{ github.event.workflow_run.id }}](${{ github.event.workflow_run.html_url }})
 
 jobs:
   build_failed:
@@ -64,16 +64,20 @@ jobs:
             fi
           done
           [[ -z "$ZIPURL" ]] && { echo "::error::Failed to find artifact."; exit 1; }
+          echo "Zip URL: $ZIPURL"
           echo "::set-output name=zip_url::${ZIPURL}"
           if [[ -z "$PLUGINS" ]]; then
+            echo "Any plugins? No"
             echo "::set-output name=any_plugins::false"
           else
+            echo "Any plugins? Yes"
             echo "::set-output name=any_plugins::true"
           fi
 
   no_plugins:
     name: Handle no-plugins
     runs-on: ubuntu-latest
+    needs: find_artifact
     if: needs.find_artifact.outputs.any_plugins == 'false'
     timeout-minutes: 2  # 2022-08-26: Seems like it should be fast.
     steps:
@@ -169,5 +173,5 @@ jobs:
         uses: ./monorepo/.github/actions/check-run
         with:
           id: ${{ steps.create_run.outputs.id }}
-          conclusion: ${{ success() && 'success' || cancelled() && 'cancelled' || 'failure' }}
-          title: ${{ success() && 'Tests passed' || cancelled() && 'Cancelled' || 'Tests failed' }}
+          conclusion: ${{ job.status }}
+          title: ${{ job.status == 'success' && 'Tests passed' || job.status == 'cancelled' && 'Cancelled' || 'Tests failed' }}
