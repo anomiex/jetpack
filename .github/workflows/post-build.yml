@@ -56,7 +56,7 @@ jobs:
               --url "$URL"
             )"
             echo "$JSON"
-            echo "::endgroup"
+            echo "::endgroup::"
             ZIPURL="$(jq -r '.artifacts[] | select( .name == "jetpack-build" ) | .archive_download_url' <<<"$JSON")"
             PLUGINS="$(jq -r '.artifacts[] | select( .name == "jetpack" )' <<<"$JSON")"
             if [[ -n "$ZIPURL" ]]; then
@@ -150,7 +150,7 @@ jobs:
               --header "Authorization: token $TOKEN" \
               --url "$ZIPURL" \
               --remove-on-error --output "artifact.zip"
-            echo "::endgroup"
+            echo "::endgroup::"
             if [[ -e "artifact.zip" ]]; then
               break
             fi
