@@ -153,9 +153,9 @@ jobs:
             curl -v -L --get \
               --header "Authorization: token $TOKEN" \
               --url "$ZIPURL" \
-              --remove-on-error --output "artifact.zip"
+              --output "artifact.zip"
             echo "::endgroup::"
-            if [[ -e "artifact.zip" ]]; then
+            if [[ -e "artifact.zip" ]] && zipinfo artifact.zip &>/dev/null; then
               break
             fi
           done
