@@ -39,10 +39,10 @@ runs:
       run: |
         if [[ -n "$ID" ]]; then
           METHOD=PATCH
-          URL="${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/testing/check-runs/$ID"
+          URL="${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/check-runs/$ID"
         else
           METHOD=POST
-          URL="${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/testing/check-runs"
+          URL="${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/check-runs"
         fi
 
         DATA="{}"
