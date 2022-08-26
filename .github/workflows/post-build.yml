@@ -64,16 +64,20 @@ jobs:
             fi
           done
           [[ -z "$ZIPURL" ]] && { echo "::error::Failed to find artifact."; exit 1; }
+          echo "Zip URL: $ZIPURL"
           echo "::set-output name=zip_url::${ZIPURL}"
           if [[ -z "$PLUGINS" ]]; then
+            echo "Any plugins? No"
             echo "::set-output name=any_plugins::false"
           else
+            echo "Any plugins? Yes"
             echo "::set-output name=any_plugins::true"
           fi
 
   no_plugins:
     name: Handle no-plugins
     runs-on: ubuntu-latest
+    needs: find_artifact
     if: needs.find_artifact.outputs.any_plugins == 'false'
     timeout-minutes: 2  # 2022-08-26: Seems like it should be fast.
     steps:
