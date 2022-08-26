@@ -15,7 +15,9 @@
 	"require-dev": {
 		"automattic/jetpack-changelogger": "3.2.x-dev"
 	},
-	"scripts": {},
+	"scripts": {
+		"build-production": "echo 'Nope!'; exit 1"
+	},
 	"autoload": {
 		"classmap": [
 			"src/"
