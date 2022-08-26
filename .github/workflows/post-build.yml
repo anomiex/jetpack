@@ -136,7 +136,10 @@ jobs:
           sha: ${{ github.event.workflow_run.head_sha }}
           status: in_progress
           title: Test started...
-          summary: ${{ env.SUMMARY }}
+          summary: |
+            ${{ env.SUMMARY }}
+
+            See run [#${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details.
 
       - name: Download build artifact
         env:
@@ -175,3 +178,7 @@ jobs:
           id: ${{ steps.create_run.outputs.id }}
           conclusion: ${{ job.status }}
           title: ${{ job.status == 'success' && 'Tests passed' || job.status == 'cancelled' && 'Cancelled' || 'Tests failed' }}
+          summary: |
+            ${{ env.SUMMARY }}
+
+            See run [#${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details.
