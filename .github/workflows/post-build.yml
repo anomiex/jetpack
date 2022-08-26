@@ -58,7 +58,7 @@ jobs:
             echo "$JSON"
             echo "::endgroup::"
             ZIPURL="$(jq -r '.artifacts[] | select( .name == "jetpack-build" ) | .archive_download_url' <<<"$JSON")"
-            PLUGINS="$(jq -r '.artifacts[] | select( .name == "jetpack" )' <<<"$JSON")"
+            PLUGINS="$(jq -r '.artifacts[] | select( .name == "plugins" )' <<<"$JSON")"
             if [[ -n "$ZIPURL" ]]; then
               break
             fi
