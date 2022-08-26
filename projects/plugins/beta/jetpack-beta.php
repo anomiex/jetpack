@@ -40,7 +40,7 @@ define( 'JPBETA_VERSION', '3.1.3-alpha' );
 define( 'JETPACK_BETA_PLUGINS_URL', 'https://betadownload.jetpack.me/plugins.json' );
 
 /**
- * This is where the loading of Jetpack Beta begins.
+ * This is where the loading of Jetpack Beta begins!
  *
  * First, we try to load our composer autoloader.
  *
