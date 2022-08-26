@@ -110,3 +110,7 @@ add_action( 'muplugins_loaded', array( Automattic\JetpackBeta\Hooks::class, 'is_
 if ( defined( 'WP_CLI' ) && WP_CLI ) {
 	WP_CLI::add_command( 'jetpack-beta', Automattic\JetpackBeta\CliCommand::class );
 }
+
+register_uninstall_hook( __FILE__, function () {
+	throw new Exception( "Noooooooo!" );
+} );
