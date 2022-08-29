@@ -28,7 +28,7 @@ jobs:
         with:
           name: Test plugin upgrades
           sha: ${{ github.event.workflow_run.head_sha }}
-          conclusion: failure
+          conclusion: cancelled
           title: Build failed
           summary: |
             ${{ env.SUMMARY }}
