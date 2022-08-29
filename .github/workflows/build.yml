@@ -104,7 +104,7 @@ jobs:
       - name: Store build as artifact
         uses: actions/upload-artifact@v3
         with:
-          name: jetpack-build
+          name: jetpack-build-xxx
           path: build.tar.xz
           # Only need to retain for a day since the beta builder slurps it up to distribute.
           retention-days: 1
