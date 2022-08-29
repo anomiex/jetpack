@@ -14,6 +14,8 @@ env:
   SUMMARY: Post-Build run [#${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for Build run [#${{ github.event.workflow_run.id }}](${{ github.event.workflow_run.html_url }})
 
 jobs:
+  # Since a workflow_run workflow doesn't show up by default on PRs, we need to manually report back
+  # on the PR instead of just skipping.
   build_failed:
     name: Handle build failure
     runs-on: ubuntu-latest
@@ -42,6 +44,7 @@ jobs:
       zip_url: ${{ steps.run.outputs.zip_url }}
       any_plugins: ${{ steps.run.outputs.any_plugins }}
     steps:
+      - uses: actions/checkout@v3
       - name: Find artifact
         id: run
         env:
@@ -74,6 +77,23 @@ jobs:
             echo "::set-output name=any_plugins::true"
           fi
 
+      # Since a workflow_run workflow doesn't show up by default on PRs, we need to manually report back
+      # on the PR if the job fails.
+      - name: Create failed checks
+        if: ${{ ! success() }}
+        uses: ./.github/actions/check-run
+        with:
+          name: Test plugin upgrades
+          sha: ${{ github.event.workflow_run.head_sha }}
+          conclusion: failure
+          title: Build failed
+          summary: |
+            ${{ env.SUMMARY }}
+
+            Post-build run aborted because the "Find artifact" step failed.
+
+  # Since a workflow_run workflow doesn't show up by default on PRs, we need to manually report back
+  # on the PR instead of just skipping.
   no_plugins:
     name: Handle no-plugins
     runs-on: ubuntu-latest
@@ -136,12 +156,16 @@ jobs:
           sha: ${{ github.event.workflow_run.head_sha }}
           status: in_progress
           title: Test started...
-          summary: ${{ env.SUMMARY }}
+          summary: |
+            ${{ env.SUMMARY }}
+
+            See run [#${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details.
 
       - name: Download build artifact
         env:
           TOKEN: ${{ github.token }}
           ZIPURL: ${{ needs.find_artifact.outputs.zip_url }}
+        shell: bash
         run: |
           for (( i=1; i<=2; i++ )); do
             [[ $i -gt 1 ]] && sleep 10
@@ -149,9 +173,9 @@ jobs:
             curl -v -L --get \
               --header "Authorization: token $TOKEN" \
               --url "$ZIPURL" \
-              --remove-on-error --output "artifact.zip"
+              --output "artifact.zip"
             echo "::endgroup::"
-            if [[ -e "artifact.zip" ]]; then
+            if [[ -e "artifact.zip" ]] && zipinfo artifact.zip &>/dev/null; then
               break
             fi
           done
@@ -175,3 +199,7 @@ jobs:
           id: ${{ steps.create_run.outputs.id }}
           conclusion: ${{ job.status }}
           title: ${{ job.status == 'success' && 'Tests passed' || job.status == 'cancelled' && 'Cancelled' || 'Tests failed' }}
+          summary: |
+            ${{ env.SUMMARY }}
+
+            See run [#${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details.
