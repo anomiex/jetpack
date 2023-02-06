@@ -31,7 +31,9 @@ jobs:
         with:
           path: monorepo
       - name: Move monorepo checkout to /tmp
-        run: mv monorepo /tmp/monorepo
+        run: |
+          mv monorepo /tmp/monorepo
+          ln -s /tmp/monorepo
 
       - name: Determine cache key date
         id: cachedir
@@ -46,11 +48,11 @@ jobs:
 
       - name: Populate composer/pnpm caches on miss (setup tools)
         if: steps.cache.outputs.cache-hit != 'true'
-        uses: /tmp/monorepo/.github/actions/tool-setup
+        uses: ./monorepo/.github/actions/tool-setup
       - name: Populate composer/pnpm caches on miss
         if: steps.cache.outputs.cache-hit != 'true'
         run: |
-          cd /tmp/monorepo
+          cd monorepo
           pnpm config set --location=user store-dir /tmp/renovate-basedir/cache/others/pnpm
           composer config --global cache-dir /tmp/renovate-basedir/cache/others/composer
           pnpm install
