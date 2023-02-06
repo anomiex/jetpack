@@ -44,6 +44,9 @@ jobs:
           key: renovate-${{ runner.os }}-${{ steps.cachedir.outputs.date }}
           restore-keys: renovate-${{ runner.os }}
 
+      - name: Populate composer/pnpm caches on miss (setup tools)
+        if: steps.cache.outputs.cache-hit != 'true'
+        uses: /tmp/monorepo/.github/actions/tool-setup
       - name: Populate composer/pnpm caches on miss
         if: steps.cache.outputs.cache-hit != 'true'
         run: |
