@@ -36,6 +36,7 @@ module.exports = {
 	ignoreScripts: false,
 	gitAuthor: 'Renovate Bot (self-hosted) <bot@renovateapp.com>',
 	platform: 'github',
+	binarySource: 'install',
 	repositories: [ 'anomiex/jetpack' ],
 	includeForks: true,
 
