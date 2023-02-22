@@ -52,7 +52,7 @@ jobs:
       - name: Populate composer/pnpm caches on miss
         if: steps.cache.outputs.cache-hit != 'true'
         run: |
-          pnpm config set --location=user store-dir /tmp/renovate-basedir/cache/others/pnpm
+          pnpm config set --location=user store-dir "/tmp/renovate-basedir/repos/github/$GITHUB_REPOSITORY/.pnpm-store"
           composer config --global cache-dir /tmp/renovate-basedir/cache/others/composer
           pnpm install
           cd projects/packages/changelogger
