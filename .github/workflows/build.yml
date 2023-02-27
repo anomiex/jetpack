@@ -10,7 +10,9 @@ jobs:
       - uses: actions/checkout@v3
       - name: Create archive
         run: |
-          tar cfJ build.tar.xz trunk/.github/files/test-plugin-update/setup.sh
+          mkdir -p trunk/.github/files/test-plugin-update/
+          cp .github/files/test-plugin-update/setup.sh trunk/.github/files/test-plugin-update/
+          tar cfJ build.tar.xz trunk/
           mkdir -p zips
           touch zips/hop
       - name: Store build as artifact
