@@ -37,7 +37,7 @@ module.exports = {
 	ignoreScripts: false,
 	gitAuthor: 'Renovate Bot (self-hosted) <bot@renovateapp.com>',
 	platform: 'github',
-	repositories: [ 'Automattic/jetpack' ],
+	repositories: [ 'anomiex/jetpack' ],
 
 	// Extra code to run before creating a commit.
 	allowedPostUpgradeCommands: [ monorepoBase + '.github/files/renovate-post-upgrade-run.sh' ],
