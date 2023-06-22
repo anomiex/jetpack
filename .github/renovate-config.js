@@ -52,7 +52,7 @@ module.exports = {
 	ignoreScripts: false,
 	gitAuthor: 'Renovate Bot (self-hosted) <bot@renovateapp.com>',
 	platform: 'github',
-	repositories: [ 'Automattic/jetpack' ],
+	repositories: [ 'anomiex/jetpack' ],
 	minimumReleaseAge: `${ minimumReleaseAge } minutes`,
 	osvVulnerabilityAlerts: fs.readFileSync( '/tmp/.do-osv', 'utf8' ) !== 'false',
 
