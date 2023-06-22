@@ -3562,8 +3562,8 @@ importers:
         specifier: 1.0.0-rc.12
         version: 1.0.0-rc.12
       dotenv:
-        specifier: 16.0.2
-        version: 16.0.2
+        specifier: 16.3.1
+        version: 16.3.1
       jest:
         specifier: ^29.0.0
         version: 29.5.0
@@ -12521,7 +12521,6 @@ packages:
     resolution: {integrity: sha512-R5iJ5lkuHybztUfuOAznmboyjWq8O6sqNqtK7CLOqdydi54VNbORp49mb14KbWgG1QD3JFO9hJdZ+y4KutfdOQ==}
     dependencies:
       deep-equal: 2.2.1
-      dequal: 2.0.3
     dev: true
 
   /array-buffer-byte-length@1.0.0:
@@ -14441,8 +14440,8 @@ packages:
     engines: {node: '>=12'}
     dev: true
 
-  /dotenv@16.0.2:
-    resolution: {integrity: sha512-JvpYKUmzQhYoIFgK2MOnF3bciIZoItIIoryihy0rIA+H4Jy0FmgyKYAHCTN98P5ybGSJcIFbh6QKeJdtZd1qhA==}
+  /dotenv@16.3.1:
+    resolution: {integrity: sha512-IPzF4w4/Rd94bA9imS68tZBaYyBWSCE47V1RGuMrB94iyTOIEwRmVL2x/4An+6mETpLrKJ5hQkB8W4kFAadeIQ==}
     engines: {node: '>=12'}
     dev: true
 
@@ -17825,7 +17824,7 @@ packages:
     engines: {node: '>=14.0.0'}
     dependencies:
       app-root-dir: 1.0.2
-      dotenv: 16.0.2
+      dotenv: 16.3.1
       dotenv-expand: 10.0.0
     dev: true
 
