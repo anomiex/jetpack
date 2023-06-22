@@ -36,7 +36,7 @@ module.exports = {
 	ignoreScripts: false,
 	gitAuthor: 'Renovate Bot (self-hosted) <bot@renovateapp.com>',
 	platform: 'github',
-	repositories: [ 'Automattic/jetpack' ],
+	repositories: [ 'anomiex/jetpack' ],
 
 	// Extra code to run before creating a commit.
 	allowPostUpgradeCommandTemplating: true,
