@@ -21,8 +21,6 @@ on:
       doOSV:
         description: 'Do OSV database lookups (slow)'
         type: boolean
-  schedule:
-    - cron: '17 0/2 * * *'
 concurrency:
   group: renovate-${{ github.ref }}
 
