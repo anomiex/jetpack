@@ -18,8 +18,6 @@ on:
           - full
           - lookup
           - extract
-  schedule:
-    - cron: '0 0/2 * * *'
 concurrency:
   group: renovate-${{ github.ref }}
 
