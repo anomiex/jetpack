@@ -1,20 +1,6 @@
 name: Build Docker
 on:
-  push:
-    branches: [ 'trunk' ]
-    paths:
-      - 'tools/docker/Dockerfile'
-      - 'tools/docker/bin/run.sh'
-      - 'tools/docker/config/*'
-      - '.github/versions.sh'
-      - '.github/workflows/build-docker.yml'
-  pull_request:
-    paths:
-      - 'tools/docker/Dockerfile'
-      - 'tools/docker/bin/run.sh'
-      - 'tools/docker/config/*'
-      - '.github/versions.sh'
-      - '.github/workflows/build-docker.yml'
+  workflow_dispatch:
 concurrency:
   group: build-docker-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
