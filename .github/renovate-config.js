@@ -81,5 +81,13 @@ module.exports = {
 			} )(),
 			enabled: false,
 		},
+		// PHP non-dev deps need to work with the oldest PHP versions we support.
+		{
+			matchDatasources: [ 'packagist' ],
+			matchDepTypes: [ 'require' ],
+			constraints: {
+				php: `~${ versions.MIN_PHP_VERSION }.0`,
+			},
+		},
 	],
 };
