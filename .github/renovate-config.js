@@ -88,6 +88,7 @@ module.exports = {
 			constraints: {
 				php: `~${ versions.MIN_PHP_VERSION }.0`,
 			},
+			constraintsFiltering: 'strict',
 		},
 	],
 };
