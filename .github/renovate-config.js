@@ -90,7 +90,6 @@ module.exports = {
 			constraints: {
 				php: `>=${ versions.MIN_PHP_VERSION }.0`,
 			},
-			constraintsFiltering: 'strict',
 			rangeStrategy: 'widen',
 		},
 		{
@@ -100,6 +99,7 @@ module.exports = {
 			constraints: {
 				php: `~${ versions.MIN_PHP_VERSION }.0`,
 			},
+			constraintsFiltering: 'strict',
 			rangeStrategy: 'bump',
 		},
 	],
