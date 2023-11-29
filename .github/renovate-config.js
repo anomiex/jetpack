@@ -82,13 +82,25 @@ module.exports = {
 			enabled: false,
 		},
 		// PHP non-dev deps need to work with the oldest PHP versions we support.
+		// In plugins, we can't update at all. In other stuff, widening is ok.
+		// Here we apply config to everything first, then override it for plugins.
 		{
 			matchDatasources: [ 'packagist' ],
 			matchDepTypes: [ 'require' ],
 			constraints: {
-				php: `~${ versions.MIN_PHP_VERSION }.0`,
+				php: `>=${ versions.MIN_PHP_VERSION }.0`,
 			},
 			constraintsFiltering: 'strict',
+			rangeStrategy: 'widen',
+		},
+		{
+			matchDatasources: [ 'packagist' ],
+			matchDepTypes: [ 'require' ],
+			matchFileNames: [ 'projects/plugins/**' ],
+			constraints: {
+				php: `~${ versions.MIN_PHP_VERSION }.0`,
+			},
+			rangeStrategy: 'bump',
 		},
 	],
 };
