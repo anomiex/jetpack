@@ -3,6 +3,9 @@ All notable changes to this project will be documented in this file.
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.1.1] - 2024-01-24
+- Something.
+
 ## [4.1.0] - 2024-01-22
 ### Changed
 - Default for `--deduplicate` is now 0, as 1 caused unexpected behavior for some cases and so should be opted in to. [#35138]
