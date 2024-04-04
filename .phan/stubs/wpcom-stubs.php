@@ -1,8 +1,8 @@
 <?php
 /**
- * Stubs automatically generated from WordPress.com commit 6607136aa17cb172aafbb6f0a4749f9bf6e8889c.
+ * Stubs automatically generated from WordPress.com commit 6607136aa17cb172aafbb6f0a4749f9bf6e8889cx.
  *
- * Do not edit this directly! Update the definition file in the wpcom repo
+ * Do not edit this directly! Update the definition file in the wpcom repox
  * at `bin/teamcity-builds/jetpack-stubs/stub-defs.php` and regenerate the
  * stubs from there.
  */
