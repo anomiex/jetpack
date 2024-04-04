@@ -1,19 +1,28 @@
 <?php
 /**
- * Stubs automatically generated from WordPress.com commit 6607136aa17cb172aafbb6f0a4749f9bf6e8889cx.
+ * Stubs automatically generated from WordPress.com commit db0627da188587d19c9bb2745df76df28eda7500.
  *
- * Do not edit this directly! Update the definition file in the wpcom repox
+ * Do not edit this directly! Update the definition file in the wpcom repo
  * at `bin/teamcity-builds/jetpack-stubs/stub-defs.php` and regenerate the
  * stubs from there.
  */
 
 namespace {
-    /**
-     * @param int $blog_id
-     * @return bool
-     */
-    function blaze_is_site_eligible($blog_id)
+    function is_automattician($user_id = \false)
     {
+    }
+    class Store_Product_List
+    {
+        /**
+         * @param int $blog_id
+         * @return array
+         */
+        public static function get_site_specific_features_data($blog_id = 0)
+        {
+        }
+        public static function api_only_get_active_plans_v1_4($blog_id = \false, $coupon_code = \null, $use_query_param_data = \false)
+        {
+        }
     }
     class Memberships_Product
     {
@@ -52,17 +61,15 @@ namespace {
         {
         }
     }
-    class WPCOM_Features
+    function wpcom_is_nav_redesign_enabled($blog_id = \null)
     {
-        public const LEGACY_CONTACT = 'legacy-contact';
-        public const LOCKED_MODE = 'locked-mode';
-        public const SUBSCRIPTION_GIFTING = 'subscription-gifting';
     }
-    class Jetpack_Fonts_Typekit
+    /**
+     * @param int $blog_id
+     * @return bool
+     */
+    function blaze_is_site_eligible($blog_id)
     {
-        public static function maybe_override_for_advanced_mode($wp_customize)
-        {
-        }
     }
     class Jetpack_Sync_WPCOM_Shadow_Replicastore extends \Automattic\Jetpack\Sync\Replicastore
     {
@@ -81,16 +88,15 @@ namespace {
         {
         }
     }
-    class Store_Product_List
+    class WPCOM_Features
     {
-        /**
-         * @param int $blog_id
-         * @return array
-         */
-        public static function get_site_specific_features_data($blog_id = 0)
-        {
-        }
-        public static function api_only_get_active_plans_v1_4($blog_id = \false, $coupon_code = \null, $use_query_param_data = \false)
+        public const LEGACY_CONTACT = 'legacy-contact';
+        public const LOCKED_MODE = 'locked-mode';
+        public const SUBSCRIPTION_GIFTING = 'subscription-gifting';
+    }
+    class Jetpack_Fonts_Typekit
+    {
+        public static function maybe_override_for_advanced_mode($wp_customize)
         {
         }
     }
