@@ -4,6 +4,12 @@ on:
 concurrency:
   group: update-phan-stubs-${{ github.ref }}
 
+env:
+  GIT_AUTHOR_NAME: matticbot
+  GIT_AUTHOR_EMAIL: matticbot@users.noreply.github.com
+  GIT_COMMITTER_NAME: matticbot
+  GIT_COMMITTER_EMAIL: matticbot@users.noreply.github.com
+
 jobs:
   update-stubs:
     name: Update stubs
