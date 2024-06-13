@@ -132,7 +132,7 @@
 		},
 	],
 	customDatasources: {
-		'custom.wordpress-plugin': {
+		'wordpress-plugin': {
 			defaultRegistryUrlTemplate: 'https://api.wordpress.org/plugins/info/1.0/{{packageName}}.json',
 			transformTemplates: [
 				'{ "releases": $each( versions, function($v, $k) { $match( $k, /^[0-9.]+$/ ) ? { "version": $k } } ) }',
