@@ -26,6 +26,15 @@
 		// Monorepo packages are excluded in renovate-config.js, where we can read
 		// the list of them in code.
 
+		// Disable the packagist 'wordpress/classic-editor-plugin'. We have a customManager for it below.
+		{
+			matchDatasources: [ 'packagist' ],
+			matchDepNames: [
+				'wordpress/classic-editor-plugin',
+			],
+			enabled: false,
+		},
+
 		// Widen PHP dev deps to maintain support for old PHP versions we still support.
 		// When we drop an old PHP version we'll manually go through and narrow any ranges.
 		// (non-dev deps are handled in renovate-config.js where we can read the correct value for `constraints.php`)
@@ -112,18 +121,19 @@
 			customType: 'regex',
 			fileMatch: [ '^projects/plugins/wpcomsh/composer\\.json$' ],
 			matchStrings: [
+				'"wordpress/classic-editor-plugin": "(?<currentValue>[0-9.]+)",',
 				'"name": "wordpress/classic-editor-plugin",\\s+"version": "(?<currentValue>[0-9.]+)",',
 				'"url": "https://downloads\\.wordpress\\.org/plugin/classic-editor\\.(?<currentValue>[0-9.]+)\\.zip",',
 				'"url": "https://plugins\\.svn\\.wordpress\\.org/classic-editor/",\s+"type": "svn",\s+"reference": "tags/(?<currentValue>[0-9.]+)/"',
 			],
 			depNameTemplate: 'wordpress/classic-editor-plugin',
-			packageNameTemplate: 'wordpress/classic-editor-plugin',
-			datasourceTemplate: 'custom.wordpress/classic-editor-plugin',
+			packageNameTemplate: 'classic-editor',
+			datasourceTemplate: 'custom.wordpress-plugin',
 		},
 	],
 	customDatasources: {
-		'custom.wordpress/classic-editor-plugin': {
-			defaultRegistryUrlTemplate: 'https://api.wordpress.org/plugins/info/1.0/classic-editor.json',
+		'custom.wordpress-plugin': {
+			defaultRegistryUrlTemplate: 'https://api.wordpress.org/plugins/info/1.0/{{packageName}}.json',
 			transformTemplates: [
 				'{ "releases": $each( versions, function($v, $k) { $match( $k, /^[0-9.]+$/ ) ? { "version": $k } } ) }',
 			],
