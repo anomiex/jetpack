@@ -29,9 +29,7 @@
 		// Disable the packagist 'wordpress/classic-editor-plugin'. We have a customManager for it below.
 		{
 			matchDatasources: [ 'packagist' ],
-			matchDepNames: [
-				'wordpress/classic-editor-plugin',
-			],
+			matchDepNames: [ 'wordpress/classic-editor-plugin' ],
 			enabled: false,
 		},
 
@@ -124,7 +122,7 @@
 				'"wordpress/classic-editor-plugin": "(?<currentValue>[0-9.]+)",',
 				'"name": "wordpress/classic-editor-plugin",\\s+"version": "(?<currentValue>[0-9.]+)",',
 				'"url": "https://downloads\\.wordpress\\.org/plugin/classic-editor\\.(?<currentValue>[0-9.]+)\\.zip",',
-				'"url": "https://plugins\\.svn\\.wordpress\\.org/classic-editor/",\s+"type": "svn",\s+"reference": "tags/(?<currentValue>[0-9.]+)/"',
+				'"url": "https://plugins\\.svn\\.wordpress\\.org/classic-editor/",\\s+"type": "svn",\\s+"reference": "tags/(?<currentValue>[0-9.]+)/"',
 			],
 			depNameTemplate: 'wordpress/classic-editor-plugin',
 			packageNameTemplate: 'classic-editor',
