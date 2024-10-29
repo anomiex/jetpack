@@ -44,7 +44,7 @@ jobs:
           gh_set_output pnpm-version "$PNPM_VERSION"
 
           # We're not git-tagging for the env. Just tag all trunk builds as latest.
-          gh_set_output tags "type=ref,event=pr"
+          gh_set_output tags "type=ref,event=branch"
           gh_set_output images "ghcr.io/automattic/jetpack-wordpress-dev"
 
       - name: Extract Docker metadata
