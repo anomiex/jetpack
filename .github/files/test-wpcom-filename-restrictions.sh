@@ -94,7 +94,7 @@ echo "Considering ${#REFS[@]} monorepo commits for Upstream-Ref matching."
 UPSTREAM_REGEXES=()
 NL=$'\n'
 for (( i=0; i<"${#REFS[@]}"; i+=3180 )); do
-	UPSTREAM_REGEXES+=( "${NL}Upstream-Ref: $GITHUB_REPOSITORY@($( IFS="|"; echo "${REFS[*]:$i:3180}" ))($|${NL})" )
+	UPSTREAM_REGEXES+=( "${NL}Upstream-Ref: Automattic/jetpack@($( IFS="|"; echo "${REFS[*]:$i:3180}" ))($|${NL})" )
 done
 cd "$GITHUB_WORKSPACE"
 echo "::endgroup::"
