@@ -17,3 +17,4 @@ vendor/sebastian/object-reflector
 vendor/sebastian/recursion-context
 vendor/sebastian/type
 vendor/sebastian/version
+vendor/ok

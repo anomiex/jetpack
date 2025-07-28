@@ -38,3 +38,4 @@ function gutenberg_dir_path()
 function gutenberg_override_script($scripts, $handle, $src, $deps = array(), $ver = \false, $in_footer = \false)
 {
 }
+// !!!

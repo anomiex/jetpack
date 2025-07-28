@@ -88,3 +88,4 @@ namespace Automattic\WooCommerce\Internal\DataStores\Orders {
         }
     }
 }
+// Woo!

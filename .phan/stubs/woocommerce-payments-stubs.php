@@ -32,3 +32,4 @@ class WC_Payments
     {
     }
 }
+// Woo!
