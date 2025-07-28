@@ -32603,3 +32603,4 @@ final class VoidType extends \SebastianBergmann\Type\Type
     {
     }
 }
+// Whew!

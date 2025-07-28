@@ -110,3 +110,5 @@ define( 'WP_DEFAULT_THEME', 'twentytwentywhenever' );
 
 // Constants used in PHPUnit tests.
 define( 'WP_TESTS_DOMAIN', 'example.org' );
+
+// End

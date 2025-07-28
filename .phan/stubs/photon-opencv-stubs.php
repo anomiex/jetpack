@@ -1,6 +1,6 @@
 <?php
 /**
- * Stubs for the photon-opencv extension v0.2.31
+ * Stubs for the photon-opencv extension v0.2.31!
  *
  * These were something of a pain to generate, because the reflection data is
  * incorrect for a few methods and causes PHP to segfault.
