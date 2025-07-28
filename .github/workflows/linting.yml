@@ -553,7 +553,8 @@ jobs:
           done < <( git -c core.quotepath=off diff --name-only "$BASE"...HEAD -- .phan/stubs/ ':!.phan/stubs/photon-opencv-stubs.php' ':!.phan/stubs/wordpress-constants.php' ':!.phan/stubs/wordpress-globals.jsonc' )
           if [[ "$COMMENTS" != "[]" ]]; then
             REQ=$( jq -n --arg commit_id "$HEAD" --argjson comments "$COMMENTS" '{ commit_id: $commit_id, body: "", event: "COMMENT", comments: $comments }' )
-            echo "REQUEST=$REW"
+            echo "POST /repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER/reviews"
+            echo "REQUEST=$REQ"
             gh api "/repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER/reviews" -X POST --input - <<<"$REQ"
             exit 1
           fi
