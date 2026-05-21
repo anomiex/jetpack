@@ -1,5 +1,10 @@
 # Changelog
 
+## 4.2.1 - 2026-05-21
+### Changed
+- Internal: No longer require automattic/jetpack-changelogger as a per-project dev dependency.
+- Update package dependencies.
+
 ## 4.2.0 - 2026-04-13
 ### Changed
 - Dependencies: Update lock file to keep root requirements in sync. [#47418]
