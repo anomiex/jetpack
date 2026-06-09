@@ -18,4 +18,6 @@ chmod 0644 "$TMPFILE"
 docker run --rm ghcr.io/automattic/jetpack-wordpress-dev:latest cat /etc/passwd > "$TMPFILE"
 getent passwd $EUID >> "$TMPFILE"
 
+getent passwd $EUID
+
 docker run --rm --workdir "$PWD" --user $EUID --volume "$TMPFILE":/etc/passwd --volume /tmp/:/tmp/ --volume /tmp/dummy-log:/var/log/php ghcr.io/automattic/jetpack-wordpress-dev:latest /tmp/monorepo/.github/files/renovate-post-upgrade.sh "$@"
