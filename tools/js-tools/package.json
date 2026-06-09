@@ -11,8 +11,6 @@
 		"validate-es": "validate-es"
 	},
 	"devDependencies": {
-		"@automattic/eslint-changed": "workspace:*",
-		"@automattic/eslint-config-target-es": "workspace:*",
 		"@babel/core": "7.29.0",
 		"@babel/preset-react": "7.28.5",
 		"@babel/preset-typescript": "7.28.5",
