@@ -5,6 +5,10 @@
  * @package automattic/jetpack
  */
 
+if ( ! defined( 'ABSPATH' ) ) {
+	exit( 0 );
+}
+
 require_once __DIR__ . '/class.json-api-platform.php';
 
 /**
@@ -23,6 +27,8 @@ class WPORG_Platform extends SAL_Platform {
 		return new Jetpack_Site( $blog_id, $this );
 	}
 }
+
+// phpcs:disable Universal.Files.SeparateFunctionsFromOO.Mixed -- TODO: Move these functions to some other file.
 
 /**
  * Given a token instance (with blog and user id related information), this function returns a new WPORG_Platform instance

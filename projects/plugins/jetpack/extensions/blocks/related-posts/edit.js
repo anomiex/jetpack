@@ -1,11 +1,23 @@
-import { BlockControls, InspectorControls } from '@wordpress/block-editor';
+import { useModuleStatus } from '@automattic/jetpack-shared-extension-utils';
+import {
+	BlockControls,
+	InspectorControls,
+	InnerBlocks,
+	useBlockProps,
+} from '@wordpress/block-editor';
 import { Path, SVG } from '@wordpress/components';
-import { compose, withInstanceId } from '@wordpress/compose';
-import { withSelect } from '@wordpress/data';
-import { Component, Fragment } from '@wordpress/element';
+import { useInstanceId } from '@wordpress/compose';
 import { __ } from '@wordpress/i18n';
-import { get, isEmpty } from 'lodash';
+import { LoadingPostsGrid } from '../../shared/components/loading-posts-grid';
+import { getEditorType, SITE_EDITOR } from '../../shared/get-editor-type';
+import metadata from './block.json';
 import { RelatedPostsBlockControls, RelatedPostsInspectorControls } from './controls';
+import { useRelatedPosts } from './hooks/use-related-posts';
+import { useRelatedPostsStatus } from './hooks/use-status-toggle';
+import { InactiveRelatedPostsPlaceholder } from './inactive-placeholder';
+import './editor.scss';
+
+const featureName = metadata.name.replace( 'jetpack/', '' );
 
 export const MAX_POSTS_TO_SHOW = 6;
 
@@ -18,7 +30,10 @@ function PlaceholderPostEdit( props ) {
 		>
 			<strong id={ props.id + '-heading' } className="jp-related-posts-i2__post-link">
 				{ props.isInSiteEditor
-					? __( 'Preview unavailable in site editor.', 'jetpack' )
+					? __(
+							'Preview unavailable in site editor. The post title will appear normally on your site.',
+							'jetpack'
+					  )
 					: __(
 							"Preview unavailable: you haven't published enough posts with similar content.",
 							'jetpack'
@@ -37,7 +52,7 @@ function PlaceholderPostEdit( props ) {
 						viewBox="0 0 350 200"
 					>
 						<title>{ __( 'Grey square', 'jetpack' ) }</title>
-						<Path d="M0 0h350v200H0z" fill="#8B8B96" fill-opacity=".1" />
+						<Path d="M0 0h350v200H0z" fill="#8B8B96" fillOpacity=".1" />
 					</SVG>
 					<SVG
 						className="jp-related-posts-i2__post-image-placeholder-icon"
@@ -55,7 +70,12 @@ function PlaceholderPostEdit( props ) {
 
 			{ props.displayDate && (
 				<div className="jp-related-posts-i2__post-date has-small-font-size">
-					{ __( 'August 3, 2018', 'jetpack' ) }
+					{ __( 'August 3, 2025', 'jetpack' ) }
+				</div>
+			) }
+			{ props.displayAuthor && (
+				<div className="jp-related-posts-i2__post-author has-small-font-size">
+					{ __( 'by John Doe', 'jetpack' ) }
 				</div>
 			) }
 			{ props.displayContext && (
@@ -68,6 +88,10 @@ function PlaceholderPostEdit( props ) {
 }
 
 function RelatedPostsEditItem( props ) {
+	const contextText = props.post?.block_context?.text || '';
+	const contextLink = props.post?.block_context?.link || '';
+	const contextHasText = contextText !== '';
+	const contextHasLink = contextLink !== '';
 	return (
 		<div
 			className="jp-related-posts-i2__post"
@@ -84,13 +108,16 @@ function RelatedPostsEditItem( props ) {
 				{ props.post.title }
 			</a>
 			{ props.displayThumbnails && props.post.img && props.post.img.src && (
-				<a className="jp-related-posts-i2__post-img-link" href={ props.post.url }>
+				<a
+					className="jp-related-posts-i2__post-img-link"
+					href={ props.post.url }
+					target="_blank"
+					rel="nofollow noopener noreferrer"
+				>
 					<img
 						className="jp-related-posts-i2__post-img"
 						src={ props.post.img.src }
 						alt={ props.post.title }
-						rel="nofollow noopener noreferrer"
-						target="_blank"
 					/>
 				</a>
 			) }
@@ -99,9 +126,15 @@ function RelatedPostsEditItem( props ) {
 					{ props.post.date }
 				</div>
 			) }
-			{ props.displayContext && (
+			{ props.displayAuthor && (
+				<div className="jp-related-posts-i2__post-author has-small-font-size">
+					{ props.post.author }
+				</div>
+			) }
+			{ props.displayContext && contextHasText && (
 				<div className="jp-related-posts-i2__post-context has-small-font-size">
-					{ props.post.context }
+					{ contextHasLink && <a href={ contextLink }>{ contextText }</a> }
+					{ contextHasLink === false && contextText }
 				</div>
 			) }
 		</div>
@@ -111,7 +144,7 @@ function RelatedPostsEditItem( props ) {
 function RelatedPostsPreviewRows( props ) {
 	const className = 'jp-related-posts-i2__row';
 
-	let topRowEnd = 0;
+	let topRowEnd;
 	const displayLowerRow = props.posts.length > 3;
 
 	switch ( props.posts.length ) {
@@ -139,11 +172,38 @@ function RelatedPostsPreviewRows( props ) {
 	);
 }
 
-export class RelatedPostsEdit extends Component {
-	render() {
-		const { attributes, className, posts, setAttributes, instanceId, isInSiteEditor } = this.props;
-		const { displayContext, displayDate, displayThumbnails, postLayout, postsToShow } = attributes;
+export default function RelatedPostsEdit( { attributes, setAttributes } ) {
+	const { displayAuthor, displayContext, displayDate, displayThumbnails, postLayout, postsToShow } =
+		attributes;
 
+	const blockProps = useBlockProps();
+	// Related Posts can be controlled by a module on self-hosted sites.
+	const { isLoadingModules, isChangingStatus, isModuleActive, changeStatus } =
+		useModuleStatus( featureName );
+	// They can also be toggled via an option on WordPress.com Simple.
+	const { isEnabled, enable, isFetchingStatus, isUpdatingStatus } = useRelatedPostsStatus();
+
+	const isChangingRelatedPostsStatus = isChangingStatus || isUpdatingStatus;
+
+	const { posts, isLoading: isLoadingRelatedPosts } = useRelatedPosts( isEnabled );
+
+	const isInSiteEditor = SITE_EDITOR === getEditorType();
+
+	const { instanceId } = useInstanceId( RelatedPostsEdit );
+
+	let content;
+
+	if ( isLoadingModules || isFetchingStatus || isLoadingRelatedPosts ) {
+		content = <LoadingPostsGrid />;
+	} else if ( ! isModuleActive || ! isEnabled ) {
+		content = (
+			<InactiveRelatedPostsPlaceholder
+				changeStatus={ changeStatus }
+				isLoading={ isChangingRelatedPostsStatus }
+				enable={ enable }
+			/>
+		);
+	} else {
 		// To prevent the block from crashing, we need to limit ourselves to the
 		// posts returned by the backend - so if we want 6 posts, but only 3 are
 		// returned, we need to limit ourselves to those 3 and fill in the rest
@@ -164,6 +224,7 @@ export class RelatedPostsEdit extends Component {
 						displayThumbnails={ displayThumbnails }
 						displayDate={ displayDate }
 						displayContext={ displayContext }
+						displayAuthor={ displayAuthor }
 					/>
 				);
 			} else {
@@ -175,13 +236,14 @@ export class RelatedPostsEdit extends Component {
 						displayDate={ displayDate }
 						displayContext={ displayContext }
 						isInSiteEditor={ isInSiteEditor }
+						displayAuthor={ displayAuthor }
 					/>
 				);
 			}
 		}
 
-		return (
-			<Fragment>
+		content = (
+			<>
 				<InspectorControls>
 					<RelatedPostsInspectorControls
 						attributes={ attributes }
@@ -193,26 +255,18 @@ export class RelatedPostsEdit extends Component {
 					<RelatedPostsBlockControls attributes={ attributes } setAttributes={ setAttributes } />
 				</BlockControls>
 
-				<div className={ className } id={ `related-posts-${ instanceId }` }>
+				<div id={ `related-posts-${ instanceId }` }>
+					<InnerBlocks
+						allowedBlocks={ [ 'core/heading' ] }
+						template={ [ [ 'core/heading', { placeholder: __( 'Add a headline', 'jetpack' ) } ] ] }
+					/>
 					<div className={ previewClassName } data-layout={ postLayout }>
 						<RelatedPostsPreviewRows posts={ displayPosts } />
 					</div>
 				</div>
-			</Fragment>
+			</>
 		);
 	}
+
+	return <div { ...blockProps }>{ content }</div>;
 }
-
-export default compose(
-	withInstanceId,
-	withSelect( select => {
-		const { getCurrentPost } = select( 'core/editor' );
-		const currentPost = getCurrentPost();
-		const posts = get( currentPost, 'jetpack-related-posts', [] );
-
-		return {
-			posts,
-			isInSiteEditor: isEmpty( currentPost ),
-		};
-	} )
-)( RelatedPostsEdit );

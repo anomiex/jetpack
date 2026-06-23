@@ -22,6 +22,7 @@ div.jx-slider {
 	overflow: hidden;
 	cursor: pointer;
 	color: #f3f3f3;
+	z-index: 1;
 }
 
 div.jx-handle {
@@ -29,7 +30,7 @@ div.jx-handle {
 	height: 100%;
 	width: 40px;
 	cursor: col-resize;
-	z-index: 15;
+	z-index: 9;
 	margin-left: -20px;
 }
 
@@ -85,7 +86,7 @@ div.jx-arrow {
 	bottom: 0;
 	width: 0;
 	height: 0;
-	transition: all .2s ease;
+	transition: all 0.2s ease;
 }
 
 .vertical div.jx-arrow {
@@ -95,7 +96,7 @@ div.jx-arrow {
 	right: 0;
 	width: 0;
 	height: 0;
-	transition: all .2s ease;
+	transition: all 0.2s ease;
 }
 
 div.jx-arrow.jx-left {
@@ -113,15 +114,15 @@ div.jx-arrow.jx-right {
 }
 
 .vertical div.jx-arrow.jx-left {
-	left: 0px;
+	left: 0;
 	top: 2px;
 	border-style: solid;
-	border-width: 0px 8px 8px 8px;
+	border-width: 0 8px 8px 8px;
 	border-color: transparent transparent currentColor transparent;
 }
 
 .vertical div.jx-arrow.jx-right {
-	right: 0px;
+	right: 0;
 	top: auto;
 	bottom: 2px;
 	border-style: solid;
@@ -141,14 +142,14 @@ div.jx-handle:active div.jx-arrow.jx-right {
 
 .vertical div.jx-handle:hover div.jx-arrow.jx-left,
 .vertical div.jx-handle:active div.jx-arrow.jx-left {
-	left: 0px;
-	top: 0px;
+	left: 0;
+	top: 0;
 }
 
 .vertical div.jx-handle:hover div.jx-arrow.jx-right,
 .vertical div.jx-handle:active div.jx-arrow.jx-right {
-	right: 0px;
-	bottom: 0px;
+	right: 0;
+	bottom: 0;
 }
 
 div.jx-image {
@@ -220,13 +221,13 @@ div.jx-image.jx-right img {
 
 div.jx-image div.jx-label {
 	font-size: 1em;
-	padding: .25em .75em;
+	padding: 0.25em 0.75em;
 	position: relative;
 	display: inline-block;
 	top: 0;
 	background-color: #000; /* IE 8 */
-	background-color: rgba(0,0,0,.7);
-	color: white;
+	background-color: rgba(0, 0, 0, 0.7);
+	color: #fff;
 	z-index: 10;
 	white-space: nowrap;
 	line-height: 18px;
@@ -256,26 +257,25 @@ div.jx-image.jx-right div.jx-label {
 
 /* Animation */
 div.jx-image.transition {
-	transition: width .5s ease;
+	transition: width 0.5s ease;
 }
 
 div.jx-handle.transition {
-	transition: left .5s ease;
+	transition: left 0.5s ease;
 }
 
 .vertical div.jx-image.transition {
-	transition: height .5s ease;
+	transition: height 0.5s ease;
 }
 
 .vertical div.jx-handle.transition {
-	transition: top .5s ease;
+	transition: top 0.5s ease;
 }
 
 /* keyboard accessibility */
 div.jx-controller:focus,
 div.jx-image.jx-left div.jx-label:focus,
 div.jx-image.jx-right div.jx-label:focus,
-
 figure.wp-block-jetpack-image-compare figcaption {
 	text-align: center;
 	font-size: 85%;
@@ -285,9 +285,9 @@ figure.wp-block-jetpack-image-compare figcaption {
 /**
  * Custom styling for handle.
  */
-
+// stylelint-disable no-duplicate-selectors -- Keep sectional changes together.
 div.jx-control {
-	color: white;
+	color: #fff;
 }
 
 div.jx-controller,
@@ -302,6 +302,7 @@ div.jx-controller {
 }
 
 .vertical div.jx-controller {
+
 	/*top: -22.5px; */
 	transform: translateY(-19.5px);
 }
@@ -319,12 +320,12 @@ div.jx-arrow.jx-right,
 }
 
 div.jx-arrow.jx-left {
-	background-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZD0iTTEzLjQgMThMOCAxMmw1LjQtNiAxLjIgMS00LjYgNSA0LjYgNXoiLz48L3N2Zz4=');
+	background-image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZD0iTTEzLjQgMThMOCAxMmw1LjQtNiAxLjIgMS00LjYgNSA0LjYgNXoiLz48L3N2Zz4=);
 	left: 0;
 }
 
 div.jx-arrow.jx-right {
-	background-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZD0iTTEwLjYgNkw5LjQgN2w0LjYgNS00LjYgNSAxLjIgMSA1LjQtNnoiLz48L3N2Zz4=');
+	background-image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZD0iTTEwLjYgNkw5LjQgN2w0LjYgNS00LjYgNSAxLjIgMSA1LjQtNnoiLz48L3N2Zz4=);
 	right: 0;
 }
 
@@ -332,3 +333,4 @@ div.vertical div.jx-arrow.jx-left,
 div.vertical div.jx-arrow.jx-right {
 	transform: rotate(90deg);
 }
+// stylelint-enable no-duplicate-selectors

@@ -1,6 +1,9 @@
 import { getRedirectUrl } from '@automattic/jetpack-components';
 import { __, _x } from '@wordpress/i18n';
-import classNames from 'classnames';
+import clsx from 'clsx';
+import PropTypes from 'prop-types';
+import { Component } from 'react';
+import { connect } from 'react-redux';
 import Button from 'components/button';
 import Card from 'components/card';
 import { withModuleSettingsFormHelpers } from 'components/module-settings/with-module-settings-form-helpers';
@@ -9,11 +12,7 @@ import SimpleNotice from 'components/notice';
 import SectionHeader from 'components/section-header';
 import SupportInfo from 'components/support-info';
 import analytics from 'lib/analytics';
-import { includes } from 'lodash';
 import ProStatus from 'pro-status';
-import PropTypes from 'prop-types';
-import React, { Component } from 'react';
-import { connect } from 'react-redux';
 import { isOfflineMode } from 'state/connection';
 import { getSiteRawUrl, getSiteAdminUrl, userCanManageModules } from 'state/initial-state';
 import { getModule as _getModule } from 'state/modules';
@@ -60,7 +59,7 @@ export class DashItem extends Component {
 			toggle,
 			proButton = '';
 
-		const classes = classNames(
+		const classes = clsx(
 			this.props.className,
 			'jp-dash-item',
 			this.props.disabled ? 'jp-dash-item__disabled' : ''
@@ -68,10 +67,17 @@ export class DashItem extends Component {
 
 		if ( '' !== this.props.module ) {
 			toggle =
-				( includes(
-					[ 'monitor', 'protect', 'photon', 'vaultpress', 'scan', 'backups', 'akismet', 'search' ],
-					this.props.module
-				) &&
+				( [
+					'monitor',
+					'protect',
+					'photon',
+					'vaultpress',
+					'scan',
+					'backups',
+					'akismet',
+					'search',
+					'videopress',
+				].includes( this.props.module ) &&
 					this.props.isOfflineMode ) ||
 				this.props.noToggle ||
 				// Avoid toggle for manage as it's no longer a module
@@ -81,7 +87,7 @@ export class DashItem extends Component {
 					<ModuleToggle
 						slug={ this.props.module }
 						activated={ this.props.getOptionValue( this.props.module ) }
-						toggling={ this.props.isUpdating( this.props.module ) }
+						disabled={ this.props.isUpdating( this.props.module ) }
 						toggleModule={ this.toggleModule }
 						compact={ true }
 					/>
@@ -147,7 +153,7 @@ export class DashItem extends Component {
 				) : (
 					<Card className="jp-dash-item__card" href={ this.props.href }>
 						<div className="jp-dash-item__content">
-							{ this.props.support.link && (
+							{ this.props.support.text && (
 								<SupportInfo module={ module } { ...this.props.support } />
 							) }
 							{ this.props.children }

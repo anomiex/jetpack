@@ -5,7 +5,112 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.1.3] - 2026-05-19
+### Changed
+- Internal updates.
+
+## [3.1.2] - 2026-05-04
+### Changed
+- Internal: No longer require automattic/jetpack-changelogger as a per-project dev dependency. [#48225]
+
+## [3.1.1] - 2025-06-19
+### Changed
+- Internal updates.
+
+## [3.1.0] - 2025-03-26
+### Added
+- Adds Account Protection initialization [#40925]
+
+## [3.0.1] - 2025-02-24
+### Changed
+- Update dependencies.
+
+## [3.0.0] - 2024-11-14
+### Removed
+- General: Update minimum PHP version to 7.2. [#40147]
+
+## [2.0.4] - 2024-06-24
+### Changed
+- Internal updates.
+
+## [2.0.3] - 2024-06-03
+### Removed
+- Remove the Identity Crisis package dev dependency. [#37654]
+
+## [2.0.2] - 2024-05-06
+### Changed
+- Internal updates.
+
+## [2.0.1] - 2024-03-14
+### Changed
+- Internal updates.
+
+## [2.0.0] - 2023-11-20
+### Changed
+- Updated required PHP version to >= 7.0. [#34192]
+
+## [1.15.4] - 2023-09-19
+
+- Minor internal updates.
+
+## [1.15.3] - 2023-06-26
+### Changed
+- Blaze can now be loaded as a module, instead of relying on the Config package. [#31479]
+
+## [1.15.2] - 2023-04-10
+### Added
+- Add Jetpack Autoloader package suggestion. [#29988]
+
+## [1.15.1] - 2023-03-28
+### Changed
+- Minor internal updates.
+
+## [1.15.0] - 2023-03-27
+### Added
+- Initialize yoast promo package in jetpack plugin [#29641]
+
+## [1.14.0] - 2023-02-20
+### Added
+- Added the Import package. [#28824]
+
+## [1.13.0] - 2023-01-02
+### Added
+- Blaze package: Add config initialization, initialization checks for loading. [#28077]
+
+## [1.12.0] - 2022-12-12
+### Added
+- Config: add option to init stats-admin [#27565]
+
+## [1.11.1] - 2022-11-22
+### Changed
+- Updated package dependencies. [#27043]
+
+## [1.11.0] - 2022-10-11
+### Changed
+- Integrate Stats package in Jetpack plugin [#26640]
+
+## [1.10.0] - 2022-09-27
+### Added
+- Social: Added the option to configure if the plan information should be refreshed as the package is enabled. [#26294]
+
+## [1.9.6] - 2022-08-26
+### Changed
+- Call ensure_options_$feature methods before the initialization
+
+## [1.9.5] - 2022-08-23
+### Changed
+- Initialize VideoPress admin UI from the package [#25692]
+
+## [1.9.4] - 2022-08-09
+### Changed
+- Initialize VideoPress package from the Config pkg [#25385]
+
+## [1.9.3] - 2022-07-26
+### Changed
+- Updated package dependencies. [#25158]
+
 ## [1.9.2] - 2022-06-29
+
 - Updated package dependencies.
 
 ## [1.9.1] - 2022-06-21
@@ -127,6 +232,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Trying to add deterministic initialization.
 
+[3.1.3]: https://github.com/Automattic/jetpack-config/compare/v3.1.2...v3.1.3
+[3.1.2]: https://github.com/Automattic/jetpack-config/compare/v3.1.1...v3.1.2
+[3.1.1]: https://github.com/Automattic/jetpack-config/compare/v3.1.0...v3.1.1
+[3.1.0]: https://github.com/Automattic/jetpack-config/compare/v3.0.1...v3.1.0
+[3.0.1]: https://github.com/Automattic/jetpack-config/compare/v3.0.0...v3.0.1
+[3.0.0]: https://github.com/Automattic/jetpack-config/compare/v2.0.4...v3.0.0
+[2.0.4]: https://github.com/Automattic/jetpack-config/compare/v2.0.3...v2.0.4
+[2.0.3]: https://github.com/Automattic/jetpack-config/compare/v2.0.2...v2.0.3
+[2.0.2]: https://github.com/Automattic/jetpack-config/compare/v2.0.1...v2.0.2
+[2.0.1]: https://github.com/Automattic/jetpack-config/compare/v2.0.0...v2.0.1
+[2.0.0]: https://github.com/Automattic/jetpack-config/compare/v1.15.4...v2.0.0
+[1.15.4]: https://github.com/Automattic/jetpack-config/compare/v1.15.3...v1.15.4
+[1.15.3]: https://github.com/Automattic/jetpack-config/compare/v1.15.2...v1.15.3
+[1.15.2]: https://github.com/Automattic/jetpack-config/compare/v1.15.1...v1.15.2
+[1.15.1]: https://github.com/Automattic/jetpack-config/compare/v1.15.0...v1.15.1
+[1.15.0]: https://github.com/Automattic/jetpack-config/compare/v1.14.0...v1.15.0
+[1.14.0]: https://github.com/Automattic/jetpack-config/compare/v1.13.0...v1.14.0
+[1.13.0]: https://github.com/Automattic/jetpack-config/compare/v1.12.0...v1.13.0
+[1.12.0]: https://github.com/Automattic/jetpack-config/compare/v1.11.1...v1.12.0
+[1.11.1]: https://github.com/Automattic/jetpack-config/compare/v1.11.0...v1.11.1
+[1.11.0]: https://github.com/Automattic/jetpack-config/compare/v1.10.0...v1.11.0
+[1.10.0]: https://github.com/Automattic/jetpack-config/compare/v1.9.6...v1.10.0
+[1.9.6]: https://github.com/Automattic/jetpack-config/compare/v1.9.5...v1.9.6
+[1.9.5]: https://github.com/Automattic/jetpack-config/compare/v1.9.4...v1.9.5
+[1.9.4]: https://github.com/Automattic/jetpack-config/compare/v1.9.3...v1.9.4
+[1.9.3]: https://github.com/Automattic/jetpack-config/compare/v1.9.2...v1.9.3
 [1.9.2]: https://github.com/Automattic/jetpack-config/compare/v1.9.1...v1.9.2
 [1.9.1]: https://github.com/Automattic/jetpack-config/compare/v1.9.0...v1.9.1
 [1.9.0]: https://github.com/Automattic/jetpack-config/compare/v1.8.0...v1.9.0

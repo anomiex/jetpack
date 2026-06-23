@@ -8,10 +8,14 @@
 
 namespace Automattic\Jetpack\Extensions\Premium_Content;
 
-use \DateTime;
-use \DomainException;
-use \InvalidArgumentException;
-use \UnexpectedValueException;
+use DateTime;
+use DomainException;
+use InvalidArgumentException;
+use UnexpectedValueException;
+
+if ( ! defined( 'ABSPATH' ) ) {
+	exit( 0 );
+}
 
 /**
  * JSON Web Token implementation, based on this spec:
@@ -193,12 +197,12 @@ class JWT {
 		}
 
 		$segments      = array();
-		$segments[]    = static::urlsafe_b64_decode( static::json_encode( $header ) );
-		$segments[]    = static::urlsafe_b64_decode( static::json_encode( $payload ) );
+		$segments[]    = static::urlsafe_b64_encode( static::json_encode( $header ) );
+		$segments[]    = static::urlsafe_b64_encode( static::json_encode( $payload ) );
 		$signing_input = implode( '.', $segments );
 
 		$signature  = static::sign( $signing_input, $key, $alg );
-		$segments[] = static::urlsafe_b64_decode( $signature );
+		$segments[] = static::urlsafe_b64_encode( $signature );
 
 		return implode( '.', $segments );
 	}
@@ -299,25 +303,10 @@ class JWT {
 	 * @throws DomainException Provided string was invalid JSON.
 	 */
 	public static function json_decode( $input ) {
-		if ( version_compare( PHP_VERSION, '5.4.0', '>=' ) && ! ( defined( 'JSON_C_VERSION' ) && PHP_INT_SIZE > 4 ) ) {
-			/** In PHP >=5.4.0, json_decode() accepts an options parameter, that allows you
-			 * to specify that large ints (like Steam Transaction IDs) should be treated as
-			 * strings, rather than the PHP default behaviour of converting them to floats.
-			 */
-			$obj = json_decode( $input, false, 512, JSON_BIGINT_AS_STRING );
-		} else {
-			/** Not all servers will support that, however, so for older versions we must
-			 * manually detect large ints in the JSON string and quote them (thus converting
-			 *them to strings) before decoding, hence the preg_replace() call.
-			 */
-			$max_int_length       = strlen( (string) PHP_INT_MAX ) - 1;
-			$json_without_bigints = preg_replace( '/:\s*(-?\d{' . $max_int_length . ',})/', ': "$1"', $input );
-			$obj                  = json_decode( $json_without_bigints );
-		}
-
+		$obj   = json_decode( $input, false, 512, JSON_BIGINT_AS_STRING );
 		$errno = json_last_error();
 
-		if ( $errno && function_exists( 'json_last_error' ) ) {
+		if ( $errno ) {
 			static::handle_json_error( $errno );
 		} elseif ( null === $obj && 'null' !== $input ) {
 			throw new DomainException( 'Null result with non-null input' );
@@ -335,10 +324,10 @@ class JWT {
 	 * @throws DomainException Provided object could not be encoded to valid JSON.
 	 */
 	public static function json_encode( $input ) {
-		$json  = wp_json_encode( $input );
+		$json  = wp_json_encode( $input, JSON_UNESCAPED_SLASHES );
 		$errno = json_last_error();
 
-		if ( $errno && function_exists( 'json_last_error' ) ) {
+		if ( $errno ) {
 			static::handle_json_error( $errno );
 		} elseif ( 'null' === $json && null !== $input ) {
 			throw new DomainException( 'Null result with non-null input' );
@@ -381,7 +370,7 @@ class JWT {
 	 * @param int $errno An error number from json_last_error().
 	 * @throws DomainException .
 	 *
-	 * @return void
+	 * @return never
 	 */
 	private static function handle_json_error( $errno ) {
 		$messages = array(
@@ -392,9 +381,7 @@ class JWT {
 			JSON_ERROR_UTF8           => 'Malformed UTF-8 characters',
 		);
 		throw new DomainException(
-			isset( $messages[ $errno ] )
-			? $messages[ $errno ]
-			: 'Unknown JSON error: ' . $errno
+			$messages[ $errno ] ?? 'Unknown JSON error: ' . $errno
 		);
 	}
 

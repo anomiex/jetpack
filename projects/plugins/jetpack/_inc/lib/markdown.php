@@ -7,8 +7,12 @@
  * @package automattic/jetpack
  */
 
-if ( ! class_exists( 'MarkdownExtra_Parser' ) ) {
-	jetpack_require_lib( 'markdown/extra' );
+if ( ! defined( 'ABSPATH' ) ) {
+	exit( 0 );
 }
 
-jetpack_require_lib( 'markdown/gfm' );
+if ( ! class_exists( 'MarkdownExtra_Parser' ) ) {
+	require_once JETPACK__PLUGIN_DIR . '/_inc/lib/markdown/extra.php';
+}
+
+require_once JETPACK__PLUGIN_DIR . '/_inc/lib/markdown/gfm.php';

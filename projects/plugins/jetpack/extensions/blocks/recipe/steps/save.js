@@ -1,10 +1,11 @@
 /**
  * External dependencies
  */
-import { InnerBlocks } from '@wordpress/block-editor';
+import { InnerBlocks, useBlockProps } from '@wordpress/block-editor';
 
 const RecipeStepsSave = ( { attributes } ) => {
 	const { stepHighlightColor, stepTextColor } = attributes;
+	const blockProps = useBlockProps.save();
 
 	const styles = {
 		'--step-highlight-color': stepHighlightColor,
@@ -14,9 +15,10 @@ const RecipeStepsSave = ( { attributes } ) => {
 	return (
 		<ol
 			style={ styles }
-			itemscope=""
-			itemprop="recipeInstructions"
-			itemtype="https://schema.org/HowTo"
+			itemScope=""
+			itemProp="recipeInstructions"
+			itemType="https://schema.org/HowTo"
+			{ ...blockProps }
 		>
 			<InnerBlocks.Content />
 		</ol>

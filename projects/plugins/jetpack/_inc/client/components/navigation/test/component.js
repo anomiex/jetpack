@@ -1,4 +1,3 @@
-import React from 'react';
 import { render, screen } from 'test/test-utils';
 import { Navigation } from '../index';
 
@@ -17,9 +16,7 @@ describe( 'Navigation', () => {
 		it( 'renders 1 NavItem component', () => {
 			render( <Navigation { ...testProps } /> );
 
-			// eslint-disable-next-line jest-dom/prefer-in-document -- No, we really want to assert there's exactly 1.
 			expect( screen.getAllByRole( 'menuitem' ) ).toHaveLength( 1 );
-			// eslint-disable-next-line jest-dom/prefer-in-document -- No, we really want to assert there's exactly 1.
 			expect( screen.getAllByRole( 'option' ) ).toHaveLength( 1 );
 
 			expect( screen.getByRole( 'menuitem', { name: 'At a Glance' } ) ).toBeInTheDocument();
@@ -35,9 +32,7 @@ describe( 'Navigation', () => {
 
 		it( 'renders 1 NavItem components', () => {
 			render( <Navigation { ...currentTestProps } /> );
-			// eslint-disable-next-line jest-dom/prefer-in-document -- No, we really want to assert there's exactly 1.
 			expect( screen.getAllByRole( 'menuitem' ) ).toHaveLength( 1 );
-			// eslint-disable-next-line jest-dom/prefer-in-document -- No, we really want to assert there's exactly 1.
 			expect( screen.getAllByRole( 'option' ) ).toHaveLength( 1 );
 		} );
 
@@ -65,13 +60,17 @@ describe( 'Navigation', () => {
 			render( <Navigation { ...currentTestProps } /> );
 			expect( screen.getByRole( 'menuitem', { name: 'At a Glance' } ) ).toBeInTheDocument();
 			expect( screen.getByRole( 'option', { name: 'At a Glance' } ) ).toBeInTheDocument();
-			expect( screen.getByRole( 'menuitem', { name: 'Plans' } ) ).toBeInTheDocument();
+			expect(
+				screen.getByRole( 'menuitem', { name: 'Plans(opens in a new tab)' } )
+			).toBeInTheDocument();
 			expect( screen.getByRole( 'option', { name: 'Plans' } ) ).toBeInTheDocument();
 		} );
 
 		it( 'does not render Plans tab when offline', () => {
 			render( <Navigation { ...currentTestProps } isOfflineMode={ true } /> );
-			expect( screen.queryByRole( 'menuitem', { name: 'Plans' } ) ).not.toBeInTheDocument();
+			expect(
+				screen.queryByRole( 'menuitem', { name: 'Plans (opens in a new tab)' } )
+			).not.toBeInTheDocument();
 			expect( screen.queryByRole( 'option', { name: 'Plans' } ) ).not.toBeInTheDocument();
 		} );
 	} );
@@ -96,7 +95,9 @@ describe( 'Navigation', () => {
 			expect( screen.getByRole( 'option', { name: 'At a Glance' } ) ).toBeInTheDocument();
 			expect( screen.getByRole( 'menuitem', { name: 'My Plan' } ) ).toBeInTheDocument();
 			expect( screen.getByRole( 'option', { name: 'My Plan' } ) ).toBeInTheDocument();
-			expect( screen.getByRole( 'menuitem', { name: 'Plans' } ) ).toBeInTheDocument();
+			expect(
+				screen.getByRole( 'menuitem', { name: 'Plans(opens in a new tab)' } )
+			).toBeInTheDocument();
 			expect( screen.getByRole( 'option', { name: 'Plans' } ) ).toBeInTheDocument();
 		} );
 	} );
@@ -118,12 +119,6 @@ describe( 'Navigation', () => {
 			);
 			expect( screen.getByRole( 'menuitem', { name: 'Recommendations 1' } ) ).toBeInTheDocument();
 			expect( screen.getByRole( 'option', { name: 'Recommendations 1' } ) ).toBeInTheDocument();
-		} );
-
-		it( 'renders My Jetpack tab', () => {
-			render( <Navigation { ...currentTestProps } showMyJetpack={ true } /> );
-			expect( screen.getByRole( 'menuitem', { name: 'My Jetpack' } ) ).toBeInTheDocument();
-			expect( screen.getByRole( 'option', { name: 'My Jetpack' } ) ).toBeInTheDocument();
 		} );
 	} );
 } );

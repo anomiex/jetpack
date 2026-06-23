@@ -1,4 +1,4 @@
-import formatCurrency from '@automattic/format-currency';
+import { formatCurrency } from '@automattic/number-formatters';
 import apiFetch from '@wordpress/api-fetch';
 import { __, sprintf } from '@wordpress/i18n';
 import { PRODUCT_TYPE_PAYMENT_PLAN } from '../../shared/components/product-management-controls/constants';
@@ -17,14 +17,14 @@ export const setConnectUrl = connectUrl => ( {
 	connectUrl,
 } );
 
+export const setConnectedAccountDefaultCurrency = connectedAccountDefaultCurrency => ( {
+	type: 'SET_CONNECTED_ACCOUNT_DEFAULT_CURRENCY',
+	connectedAccountDefaultCurrency,
+} );
+
 export const setApiState = apiState => ( {
 	type: 'SET_API_STATE',
 	apiState,
-} );
-
-export const setShouldUpgrade = shouldUpgrade => ( {
-	type: 'SET_SHOULD_UPGRADE',
-	shouldUpgrade,
 } );
 
 export const setSiteSlug = siteSlug => ( {
@@ -32,71 +32,106 @@ export const setSiteSlug = siteSlug => ( {
 	siteSlug,
 } );
 
-export const setUpgradeUrl = upgradeUrl => ( {
-	type: 'SET_UPGRADE_URL',
-	upgradeUrl,
+export const saveProduct =
+	(
+		product,
+		productType = PRODUCT_TYPE_PAYMENT_PLAN,
+		setSelectedProductIds = () => {},
+		callback = () => {},
+		shouldDisplayProductCreationNotice = true
+	) =>
+	async ( { dispatch, registry } ) => {
+		const { title, price, currency } = product;
+
+		if ( ! title || 0 === title.length ) {
+			onError( getMessageByProductType( 'product requires a name', productType ), registry );
+			callback( false );
+			return;
+		}
+
+		const parsedPrice = parseFloat( price );
+		const minPrice = minimumTransactionAmountForCurrency( currency );
+		if ( parsedPrice < minPrice ) {
+			onError(
+				sprintf(
+					// translators: %s: Price
+					__( 'Minimum allowed price is %s.', 'jetpack' ),
+					formatCurrency( minPrice, currency )
+				),
+				registry
+			);
+			callback( false );
+			return;
+		}
+		if ( ! isPriceValid( currency, parsedPrice ) ) {
+			onError( getMessageByProductType( 'product requires a valid price', productType ), registry );
+			callback( false );
+			return;
+		}
+
+		try {
+			const response = await apiFetch( {
+				path: '/wpcom/v2/memberships/product',
+				method: 'POST',
+				data: product,
+			} );
+
+			const newProduct = {
+				id: response.id,
+				title: response.title,
+				interval: response.interval,
+				price: response.price,
+				currency: response.currency,
+			};
+
+			const products = registry.select( STORE_NAME ).getProducts();
+
+			dispatch( setProducts( products.concat( [ newProduct ] ) ) );
+			// TODO: Should we check the current selected product ids and add the new product id if it's not there?
+			setSelectedProductIds( [ newProduct.id ] );
+			if ( shouldDisplayProductCreationNotice ) {
+				onSuccess(
+					getMessageByProductType( 'successfully created product', productType ),
+					registry
+				);
+			}
+			callback( true );
+		} catch {
+			onError(
+				getMessageByProductType( 'there was an error when adding the product', productType ),
+				registry
+			);
+			callback( false );
+		}
+	};
+
+export const setSubscriberCounts = subscriberCounts => ( {
+	type: 'SET_SUBSCRIBER_COUNTS',
+	subscriberCounts,
 } );
 
-export const saveProduct = (
-	product,
-	productType = PRODUCT_TYPE_PAYMENT_PLAN,
-	setSelectedProductId = () => {},
-	callback = () => {}
-) => async ( { dispatch, registry } ) => {
-	const { title, price, currency } = product;
+export const setTotalEmailsSentCount = totalEmailsSentCount => ( {
+	type: 'SET_TOTAL_EMAILS_SENT_COUNT',
+	totalEmailsSentCount,
+} );
 
-	if ( ! title || 0 === title.length ) {
-		onError( getMessageByProductType( 'product requires a name', productType ), registry );
-		callback( false );
-		return;
-	}
+export const setNewsletterCategories = newsletterCategories => ( {
+	type: 'SET_NEWSLETTER_CATEGORIES',
+	newsletterCategories,
+} );
 
-	const parsedPrice = parseFloat( price );
-	const minPrice = minimumTransactionAmountForCurrency( currency );
-	if ( parsedPrice < minPrice ) {
-		onError(
-			sprintf(
-				// translators: %s: Price
-				__( 'Minimum allowed price is %s.', 'jetpack' ),
-				formatCurrency( minPrice, currency )
-			),
-			registry
-		);
-		callback( false );
-		return;
-	}
-	if ( ! isPriceValid( currency, parsedPrice ) ) {
-		onError( getMessageByProductType( 'product requires a valid price', productType ), registry );
-		callback( false );
-		return;
-	}
+export const setPostEmailSentState = ( postId, { email_sent_at, stats_on_send } ) => ( {
+	type: 'SET_POST_EMAIL_SENT_STATE',
+	postId,
+	payload: { email_sent_at, stats_on_send },
+} );
 
-	try {
-		const response = await apiFetch( {
-			path: '/wpcom/v2/memberships/product',
-			method: 'POST',
-			data: product,
-		} );
+export const setAlreadySentPostModifiedInSession = postId => ( {
+	type: 'SET_ALREADY_SENT_POST_MODIFIED_IN_SESSION',
+	postId,
+} );
 
-		const newProduct = {
-			id: response.id,
-			title: response.title,
-			interval: response.interval,
-			price: response.price,
-			currency: response.currency,
-		};
-
-		const products = registry.select( STORE_NAME ).getProducts();
-
-		dispatch( setProducts( products.concat( [ newProduct ] ) ) );
-		setSelectedProductId( newProduct.id );
-		onSuccess( getMessageByProductType( 'successfully created product', productType ), registry );
-		callback( true );
-	} catch ( error ) {
-		onError(
-			getMessageByProductType( 'there was an error when adding the product', productType ),
-			registry
-		);
-		callback( false );
-	}
-};
+export const setPublishedWithEmailEnabledInSession = postId => ( {
+	type: 'SET_PUBLISHED_WITH_EMAIL_ENABLED_IN_SESSION',
+	postId,
+} );

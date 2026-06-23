@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 ## Environment used by this script:
 #
@@ -8,9 +8,10 @@
 #
 # Required:
 # - WP_BRANCH: Version of WordPress to check out.
+# - TEST_SCRIPT: Which test script will be run.
 #
 # Other:
-# - GITHUB_PATH: File written to if set to propagate composer path.
+# - GITHUB_ENV: File written to to set environment variables for later steps.
 
 set -eo pipefail
 
@@ -24,40 +25,77 @@ password=root
 EOF
 chmod 0600 ~/.my.cnf
 mysql -e "set global wait_timeout = 3600;"
-mysql -e "DROP DATABASE IF EXISTS wordpress_tests;"
-mysql -e "CREATE DATABASE wordpress_tests;"
 echo "::endgroup::"
 
 echo "::group::Preparing WordPress from \"$WP_BRANCH\" branch";
-case "$WP_BRANCH" in
-	trunk)
-		git clone --depth=1 --branch trunk git://develop.git.wordpress.org/ /tmp/wordpress-trunk
-		;;
-	latest)
-		LATEST=$(php ./tools/get-wp-version.php)
-		git clone --depth=1 --branch "$LATEST" git://develop.git.wordpress.org/ /tmp/wordpress-latest
-		;;
-	previous)
-		# We hard-code the version here because there's a time near WP releases where
-		# we've dropped the old 'previous' but WP hasn't actually released the new 'latest'
-		git clone --depth=1 --branch 5.9 git://develop.git.wordpress.org/ /tmp/wordpress-previous
-		;;
-	*)
-		echo "Unrecognized value for WP_BRANCH: $WP_BRANCH" >&2
-		exit 1
-		;;
-esac
+source .github/files/select-wordpress-tag.sh
+git clone --depth=1 --branch "$WORDPRESS_TAG" git://develop.git.wordpress.org/ "/tmp/wordpress-$WP_BRANCH"
+# We need a built version of WordPress to test against, so download that into the src directory instead of what's in wordpress-develop.
+rm -rf "/tmp/wordpress-$WP_BRANCH/src"
+git clone --depth=1 --branch "$WORDPRESS_TAG" git://core.git.wordpress.org/ "/tmp/wordpress-$WP_BRANCH/src"
+
+echo "::group::Setting up WordPress uploads directory"
+mkdir -p "/tmp/wordpress-$WP_BRANCH/src/wp-content/uploads"
+chmod -R 777 "/tmp/wordpress-$WP_BRANCH/src/wp-content/uploads"
 echo "::endgroup::"
+
+if [[ -n "$GITHUB_ENV" ]]; then
+	echo "WORDPRESS_DEVELOP_DIR=/tmp/wordpress-$WP_BRANCH" >> "$GITHUB_ENV"
+	echo "WORDPRESS_DIR=/tmp/wordpress-$WP_BRANCH/src" >> "$GITHUB_ENV"
+fi
+
+# When running WITH_WPCOMSH, always ensure wpcomsh is installed even if it wasn't actually changed.
+if [[ "$WITH_WPCOMSH" == true && -n "$CHANGED" ]]; then
+	CHANGED=$( jq -c '.["plugins/wpcomsh"] |= true' <<<"$CHANGED" )
+fi
 
 # Don't symlink, it breaks when copied later.
 export COMPOSER_MIRROR_PATH_REPOS=true
 
 BASE="$(pwd)"
 PKGVERSIONS="$(jq -nc 'reduce inputs as $in ({}; .[$in.name] |= ( $in.extra["branch-alias"]["dev-trunk"] // "dev-trunk" ) )' projects/packages/*/composer.json)"
-for PLUGIN in projects/plugins/*/composer.json; do
-	DIR="${PLUGIN%/composer.json}"
+
+# Capture default Composer cache so we can pre-seed each plugin's cache from packages already downloaded by earlier steps (e.g. tools/php-test-env).
+DEFAULT_COMPOSER_CACHE_DIR="$(composer config cache-dir)"
+
+function _install_plugin {
+	local CODE DBNAME DEPS DIR JSON NAME TMP WP_TEST_CONFIG
+	DIR="${1%/composer.json}"
 	NAME="$(basename "$DIR")"
+
+	# Isolate composer cache per plugin, as a shared composer cache breaks during parallel writes.
+	export COMPOSER_CACHE_DIR="/tmp/composer-cache-$NAME"
+
 	echo "::group::Installing plugin $NAME into WordPress"
+
+	if [[ -n "$CHANGED" ]] && ! jq --argjson changed "$CHANGED" --arg p "plugins/$NAME" -ne '$changed[$p] // false' > /dev/null; then
+		echo "::endgroup::"
+		echo "Skipping install of plugin $NAME, not in CHANGED"
+		return 0
+	fi
+
+	if php -r 'exit( preg_match( "/^>=\\s*(\\d+\\.\\d+)$/", $argv[1], $m ) && version_compare( PHP_VERSION, $m[1], "<" ) ? 0 : 1 );' "$( jq -r '.require.php // ""' "$DIR/composer.json" )"; then
+		echo "::endgroup::"
+		echo "Skipping install of plugin $NAME, requires PHP $( jq -r '.require.php // ""' "$DIR/composer.json" )"
+		return 0
+	fi
+
+	if jq --arg script "skip-$TEST_SCRIPT" -e '.scripts[$script] // false' "$DIR/composer.json" > /dev/null; then
+		{ composer --working-dir="$DIR" run "skip-$TEST_SCRIPT"; CODE=$?; } || true
+		if [[ $CODE -eq 3 ]]; then
+			echo "::endgroup::"
+			echo "Skipping install of plugin $NAME due to skip-$TEST_SCRIPT script"
+			return 0
+		elif [[ $CODE -ne 0 ]]; then
+			echo "::endgroup::"
+			echo "::error::Script skip-$TEST_SCRIPT for plugin $NAME failed to run! ($CODE)"
+			return 1
+		fi
+	fi
+
+	# Pre-seed the per-plugin cache with packages already downloaded by earlier steps (e.g. tools/php-test-env).
+	cp -a "$DEFAULT_COMPOSER_CACHE_DIR" "$COMPOSER_CACHE_DIR"
+
 	cd "$DIR"
 	if [[ ! -f "composer.lock" ]]; then
 		echo 'No composer.lock, running `composer update`'
@@ -65,9 +103,29 @@ for PLUGIN in projects/plugins/*/composer.json; do
 	elif composer check-platform-reqs --lock; then
 		echo 'Platform reqs pass, running `composer install`'
 		composer install
+		if [[ "$TEST_SCRIPT" == 'test-php' ]] && composer info --locked phpunit/phpunit &>/dev/null; then
+			echo 'Updating PHPUnit in case a newer version than locked is usable'
+			composer update -W phpunit/phpunit
+		fi
 	else
-		echo 'Platform reqs failed, running `composer update`'
-		composer update
+		# Composer can't directly tell us which packages are dev deps, but we can get lists of all deps and just the non-dev deps.
+		# So we use `diff` to find which aren't in the non-dev list, and `sed` to extract just the `> ` lines with the actual package names (and remove the `> ` too).
+		# Adding `|| true` makes sure the exit code stays 0 so `-eo pipefail` doesn't trigger.
+		TMP=$(diff <(composer info --locked --no-dev --format=json | jq -r '.locked[].name' | sort) <(composer info --locked --format=json | jq -r '.locked[].name' | sort) | sed -n 's/^> //p' || true)
+		if [[ -n "$TMP" ]]; then
+			echo 'Platform reqs failed, running `composer update` for dev dependencies'
+			DEPS=()
+			mapfile -t DEPS <<<"$TMP"
+			if ! composer update "${DEPS[@]}"; then
+				echo "::endgroup::"
+				echo "::error::plugins/$NAME: Platform reqs failed for PHP $(php -r 'echo PHP_VERSION;') and updating dev deps didn't help. The plugin is likely broken for that PHP version."
+				return 1
+			fi
+		else
+			echo "::endgroup::"
+			echo "::error::plugins/$NAME: Platform reqs failed for PHP $(php -r 'echo PHP_VERSION;'). The plugin is likely broken for that PHP version."
+			return 1
+		fi
 	fi
 	cd "$BASE"
 
@@ -79,15 +137,84 @@ for PLUGIN in projects/plugins/*/composer.json; do
 	JSON="$(jq --tab --arg dir "$BASE/$DIR" --argjson pkgversions "$PKGVERSIONS" '( .repositories // empty | .[] | select( .options.monorepo ) ) |= ( .url |= "\($dir)/\(.)" | .options.symlink |= false | .options.versions |= $pkgversions )' "/tmp/wordpress-$WP_BRANCH/src/wp-content/plugins/$NAME/composer.json")"
 	echo "$JSON" > "/tmp/wordpress-$WP_BRANCH/src/wp-content/plugins/$NAME/composer.json"
 
+	# Set up a wp test config for each plugin.
+	WP_TEST_CONFIG="/tmp/wordpress-$WP_BRANCH/wp-tests-config.$NAME.php"
+	DBNAME="wptests_${NAME//-/_}"
+
+	mysql -e "DROP DATABASE IF EXISTS $DBNAME;"
+	mysql -e "CREATE DATABASE $DBNAME;"
+
+	cp "/tmp/wordpress-$WP_BRANCH/wp-tests-config-sample.php" "$WP_TEST_CONFIG"
+	sed -i "s/youremptytestdbnamehere/$DBNAME/" "$WP_TEST_CONFIG"
+	sed -i "s/yourusernamehere/root/" "$WP_TEST_CONFIG"
+	sed -i "s/yourpasswordhere/root/" "$WP_TEST_CONFIG"
+	sed -i "s/localhost/127.0.0.1/" "$WP_TEST_CONFIG"
+
+	# If WooCommerce is installed, be sure we get the monorepo versions rather than the versions distributed with that.
+	echo "define( 'JETPACK_AUTOLOAD_DEV', true );" >> "$WP_TEST_CONFIG"
+
 	echo "::endgroup::"
+}
+
+EXIT=0
+PIDS=()
+TMPFILES=()
+for PLUGIN in projects/plugins/*/composer.json; do
+	TMPOUT=$(mktemp)
+	TMPFILES+=("$TMPOUT")
+	_install_plugin "$PLUGIN" &>"$TMPOUT" &
+	PIDS+=($!)
 done
 
-cd "/tmp/wordpress-$WP_BRANCH"
+for i in "${!PIDS[@]}"; do
+	wait -f "${PIDS[$i]}" || EXIT=1
+	cat "${TMPFILES[$i]}"
+	rm "${TMPFILES[$i]}"
+done
 
-cp wp-tests-config-sample.php wp-tests-config.php
-sed -i "s/youremptytestdbnamehere/wordpress_tests/" wp-tests-config.php
-sed -i "s/yourusernamehere/root/" wp-tests-config.php
-sed -i "s/yourpasswordhere/root/" wp-tests-config.php
-sed -i "s/localhost/127.0.0.1/" wp-tests-config.php
+# Install WooCommerce plugin used for some Jetpack integration tests.
+if [[ "$WITH_WOOCOMMERCE" == true ]]; then
+	echo "::group::Installing plugin WooCommerce into WordPress"
 
-exit 0;
+	WOO_REPO_URL="https://github.com/woocommerce/woocommerce"
+	WOO_GH_API_URL="https://api.github.com/repos/woocommerce/woocommerce/releases/latest"
+
+	RESPONSE=$(curl -sSL --fail --header "Authorization: Bearer $API_TOKEN_GITHUB" "$WOO_GH_API_URL")
+	WOO_LATEST_TAG=$(jq -r '.tag_name' <<< "$RESPONSE")
+	WOO_DL_URL=$(jq -r '.assets[0].browser_download_url' <<< "$RESPONSE")
+
+	if [[ -n "$WOO_LATEST_TAG" && -n "$WOO_DL_URL" ]]; then
+		cd "/tmp"
+		echo "Fetching latest WooCommerce tag: $WOO_LATEST_TAG"
+
+		# Download the built Woo plugin.
+		curl -sS -L --fail "$WOO_DL_URL" -o "woocommerce.zip"
+		unzip -q "woocommerce.zip"
+		mv woocommerce "wordpress-$WP_BRANCH/src/wp-content/plugins"
+
+		# Add the '/tests' directory not present in the built Woo download.
+		git clone --depth 1 --branch "$WOO_LATEST_TAG" "$WOO_REPO_URL" &> /dev/null
+		cp -r "woocommerce/plugins/woocommerce/tests" "wordpress-$WP_BRANCH/src/wp-content/plugins/woocommerce"
+	else
+		echo "::error::Error fetching latest WooCommerce plugin for Jetpack integration tests."
+		EXIT=1
+	fi
+
+	cd "$BASE"
+	echo "::endgroup::"
+fi
+
+# Install the wpcomsh plugin used for some Jetpack integration tests.
+if [[ "$WITH_WPCOMSH" == true ]]; then
+	echo "::group::Installing wpcomsh into WordPress"
+
+	mkdir "/tmp/wordpress-$WP_BRANCH/src/wp-content/mu-plugins"
+	cp -r "/tmp/wordpress-$WP_BRANCH/src/wp-content/plugins/wpcomsh" "/tmp/wordpress-$WP_BRANCH/src/wp-content/mu-plugins/wpcomsh"
+
+	echo "::endgroup::"
+fi
+
+# Catch anything that doesn't use the WP_TESTS_CONFIG_FILE_PATH env variable.
+echo '<?php throw new \Exception( "Use the WP_TESTS_CONFIG_FILE_PATH environment variable to locate a customized config." );' > "/tmp/wordpress-$WP_BRANCH/wp-tests-config.php"
+
+exit $EXIT

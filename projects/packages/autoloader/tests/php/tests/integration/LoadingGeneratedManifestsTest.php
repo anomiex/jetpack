@@ -1,4 +1,4 @@
-<?php // phpcs:ignore WordPress.Files.FileName
+<?php
 /**
  * Integration test suite for the manifest reading.
  *
@@ -7,8 +7,6 @@
 
 // We live in the namespace of the test autoloader to avoid many use statements.
 namespace Automattic\Jetpack\Autoloader\jpCurrent;
-
-// phpcs:disable WordPress.WP.AlternativeFunctions.file_system_read_file_put_contents
 
 use Automattic\Jetpack\Autoloader\ManifestGenerator;
 use PHPUnit\Framework\TestCase;
@@ -32,19 +30,17 @@ class LoadingGeneratedManifestsTest extends TestCase {
 
 	/**
 	 * Setup runs before each test.
-	 *
-	 * @before
 	 */
-	public function set_up() {
+	public function setUp(): void {
+		parent::setUp();
 		$this->manifest_handler = new Manifest_Reader( new Version_Selector() );
 	}
 
 	/**
 	 * Teardown runs after each test.
-	 *
-	 * @after
 	 */
-	public function tear_down() {
+	public function tearDown(): void {
+		parent::tearDown();
 		unlink( TEST_PLUGIN_DIR . '/' . self::TEST_MANIFEST_PATH );
 	}
 

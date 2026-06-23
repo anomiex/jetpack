@@ -1,13 +1,12 @@
 import { getRedirectUrl } from '@automattic/jetpack-components';
+import { ToggleControl } from '@wordpress/components';
 import { __ } from '@wordpress/i18n';
-import CompactFormToggle from 'components/form/form-toggle/compact';
+import { connect } from 'react-redux';
 import { FormFieldset, FormLegend, FormLabel, FormSelect } from 'components/forms';
 import { withModuleSettingsFormHelpers } from 'components/module-settings/with-module-settings-form-helpers';
 import { ModuleToggle } from 'components/module-toggle';
 import SettingsCard from 'components/settings-card';
 import SettingsGroup from 'components/settings-group';
-import React from 'react';
-import { connect } from 'react-redux';
 import { getModule } from 'state/modules';
 import { isModuleFound as _isModuleFound } from 'state/search';
 
@@ -15,7 +14,7 @@ import { isModuleFound as _isModuleFound } from 'state/search';
  * Renders controls to activate the carousel and additional settings.
  *
  * @param {object} props - Component properties.
- * @returns {object} - Controls for carousel.
+ * @return {object} - Controls for carousel.
  */
 function WritingMedia( props ) {
 	const foundCarousel = props.isModuleFound( 'carousel' );
@@ -39,20 +38,20 @@ function WritingMedia( props ) {
 	/**
 	 * Render a toggle. For example the toggle for EXIF data.
 	 *
-	 * @param {string} checked - Current state of the toggle.
-	 * @param {string} optionName - Name of the option that the toggle state will be saved to.
+	 * @param {string}   checked         - Current state of the toggle.
+	 * @param {string}   optionName      - Name of the option that the toggle state will be saved to.
 	 * @param {Function} onChangeHandler - Method to call when the toggle is clicked.
-	 * @param {string} label - Description for the toggle.
-	 * @returns {object} A compact toggle component.
+	 * @param {string}   label           - Description for the toggle.
+	 * @return {object} A compact toggle component.
 	 */
 	const renderToggle = ( checked, optionName, onChangeHandler, label ) => (
-		<CompactFormToggle
+		<ToggleControl
+			__nextHasNoMarginBottom={ true }
 			checked={ checked }
-			disabled={ ! isCarouselActive || props.isSavingAnyOption( [ 'carousel', optionName ] ) }
-			onChange={ onChangeHandler /* eslint-disable-line */ }
-		>
-			<span className="jp-form-toggle-explanation">{ label }</span>
-		</CompactFormToggle>
+			disabled={ ! isCarouselActive || props.isSavingAnyOption( [ 'carousel' ] ) }
+			onChange={ onChangeHandler }
+			label={ label }
+		/>
 	);
 
 	return (
@@ -78,8 +77,8 @@ function WritingMedia( props ) {
 				</p>
 				<ModuleToggle
 					slug="carousel"
+					disabled={ props.isSavingAnyOption( 'carousel' ) }
 					activated={ isCarouselActive }
-					toggling={ props.isSavingAnyOption( 'carousel' ) }
 					toggleModule={ props.toggleModuleNow }
 				>
 					<span className="jp-form-toggle-explanation">
@@ -91,13 +90,17 @@ function WritingMedia( props ) {
 						displayExif,
 						'carousel_display_exif',
 						handleCarouselDisplayExifChange,
-						__( 'Show photo Exif metadata in carousel (when available)', 'jetpack' )
+						<span className="jp-form-toggle-explanation">
+							{ __( 'Show photo Exif metadata in carousel (when available)', 'jetpack' ) }
+						</span>
 					) }
 					{ renderToggle(
 						displayComments,
 						'carousel_display_comments',
 						handleCarouselDisplayCommentsChange,
-						__( 'Show comments area in carousel', 'jetpack' )
+						<span className="jp-form-toggle-explanation">
+							{ __( 'Show comments area in carousel', 'jetpack' ) }
+						</span>
 					) }
 					<FormFieldset>
 						<p className="jp-form-setting-explanation">
@@ -120,6 +123,7 @@ function WritingMedia( props ) {
 							}
 							{ ...props }
 							validValues={ props.validValues( 'carousel_background_color', 'carousel' ) }
+							rna
 						/>
 					</FormLabel>
 				</FormFieldset>

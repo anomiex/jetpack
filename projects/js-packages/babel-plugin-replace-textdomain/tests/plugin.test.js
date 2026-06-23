@@ -1,9 +1,12 @@
-/* eslint-disable import/order */
-const pluginTester = require( 'babel-plugin-tester' ).default;
-
+const mockOrigDebug = jest.requireActual( 'debug' );
 const mockDebug = jest.fn();
 jest.mock( 'debug', () => {
-	return () => mockDebug;
+	return name => {
+		if ( name.startsWith( '@automattic/babel-plugin-replace-textdomain' ) ) {
+			return mockDebug;
+		}
+		return mockOrigDebug( name );
+	};
 } );
 const setup = () => {
 	mockDebug.mockClear();
@@ -12,6 +15,7 @@ const setup = () => {
 	};
 };
 
+const { pluginTester } = require( 'babel-plugin-tester' );
 const plugin = require( '../src/index.js' );
 
 pluginTester( {
@@ -147,6 +151,73 @@ pluginTester( {
 			title: "Doesn't try to handle `toString()` or the like",
 			setup,
 			code: `x.toString();`,
+			snapshot: false,
+			pluginOptions: {
+				textdomain: 'new-domain',
+			},
+		},
+
+		{
+			title: 'Import alias: replaces domain',
+			setup,
+			code: `import { __ as __alias } from '@wordpress/i18n';\n__alias( 'Hello', 'old-domain' );`,
+			pluginOptions: {
+				textdomain: 'new-domain',
+			},
+		},
+		{
+			title: 'Import alias: injects missing domain',
+			setup,
+			code: `import { __ as __alias } from '@wordpress/i18n';\n__alias( 'Hello' );`,
+			pluginOptions: {
+				textdomain: 'new-domain',
+			},
+		},
+		{
+			title: 'Import alias: custom i18nModule',
+			setup,
+			code: `import { __ as __alias } from 'my-i18n';\n__alias( 'Hello', 'old-domain' );`,
+			pluginOptions: {
+				textdomain: 'new-domain',
+				i18nModule: 'my-i18n',
+			},
+		},
+		{
+			title: 'Import alias: ignores non-i18n imports',
+			setup,
+			code: `import { __ as __alias } from 'other-module';\n__alias( 'Hello', 'old-domain' );`,
+			output: `import { __ as __alias } from 'other-module';\n__alias('Hello', 'old-domain');`,
+			snapshot: false,
+			pluginOptions: {
+				textdomain: 'new-domain',
+			},
+		},
+		{
+			title: 'Import alias: ignores global variables with no binding',
+			setup,
+			code: `__alias( 'Hello', 'old-domain' );`,
+			output: `__alias('Hello', 'old-domain');`,
+			snapshot: false,
+			pluginOptions: {
+				textdomain: 'new-domain',
+			},
+		},
+		{
+			title: 'Import alias: ignores field accesses with same name',
+			setup,
+			code: `import { __ as __alias } from '@wordpress/i18n';\nfoo.__alias( 'Hello', 'old-domain' );`,
+			output: `import { __ as __alias } from '@wordpress/i18n';\nfoo.__alias('Hello', 'old-domain');`,
+			snapshot: false,
+			pluginOptions: {
+				textdomain: 'new-domain',
+			},
+		},
+		{
+			title: 'Import alias: ignores shadowed variables',
+			setup,
+			code: `import { __ as __alias } from '@wordpress/i18n';\nfunction f( __alias ) {\n\treturn __alias( 'Hello', 'old-domain' );\n}`,
+			output: `import { __ as __alias } from '@wordpress/i18n';\nfunction f(__alias) {\n\treturn __alias('Hello', 'old-domain');\n}`,
+			snapshot: false,
 			pluginOptions: {
 				textdomain: 'new-domain',
 			},
@@ -168,6 +239,16 @@ pluginTester( {
 			},
 			snapshot: false,
 			error: 'The `textdomain` option is set to an invalid value.',
+		},
+		{
+			title: 'Bad options: bad i18nModule',
+			fixture: 'fixtures/simple.js',
+			pluginOptions: {
+				textdomain: 'foo',
+				i18nModule: 123,
+			},
+			snapshot: false,
+			error: 'The `i18nModule` option must be a string.',
 		},
 		{
 			title: 'Bad options: bad functions',

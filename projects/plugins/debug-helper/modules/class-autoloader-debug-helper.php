@@ -1,4 +1,4 @@
-<?php // phpcs:disable WordPress.PHP.DevelopmentFunctions.error_log_print_r
+<?php
 /**
  * Plugin Name: Autoloader Debugger
  * Description: View current autoloader classmaps and cache settings.
@@ -11,6 +11,8 @@
 
 /**
  * Class Autoloader_Debug_Helper
+ *
+ * @phan-constructor-used-for-side-effects
  */
 class Autoloader_Debug_Helper {
 
@@ -155,7 +157,7 @@ class Autoloader_Debug_Helper {
 		$parts = explode( '\\', $classname );
 		array_pop( $parts );
 
-		return join( '\\', $parts );
+		return implode( '\\', $parts );
 	}
 
 	/**
@@ -252,7 +254,7 @@ class Autoloader_Debug_Helper {
 	 * Display a notice if necessary.
 	 */
 	public function display_notice() {
-		switch ( isset( $_GET['idc_notice'] ) ? $_GET['idc_notice'] : null ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		switch ( $_GET['idc_notice'] ?? null ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 			case self::STORED_SUCCESS_NOTICE_TYPE:
 				return $this->admin_notice__stored_success();
 
@@ -267,6 +269,8 @@ class Autoloader_Debug_Helper {
 		}
 	}
 }
+
+// phpcs:disable Universal.Files.SeparateFunctionsFromOO.Mixed -- TODO: Move these functions to some other file.
 
 add_action( 'plugins_loaded', 'register_autoloader_debug_helper', 1000 );
 
@@ -285,7 +289,12 @@ function register_autoloader_debug_helper() {
  * Notice for if Jetpack is not active.
  */
 function autoloader_debug_helper_jetpack_not_active() {
-	echo '<div class="notice info"><p>Jetpack Debug tools: Jetpack_Options package must be present for the Autoloader Debug Helper to work.</p></div>';
+	wp_admin_notice(
+		'Jetpack Debug tools: Jetpack_Options package must be present for the Autoloader Debug Helper to work.',
+		array(
+			'type' => 'info',
+		)
+	);
 }
 
 // phpcs:enable

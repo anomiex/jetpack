@@ -1,4 +1,4 @@
-<?php // phpcs:ignore WordPress.Files.FileName
+<?php
 /**
  * Class loader test suite.
  *
@@ -10,6 +10,8 @@ namespace Automattic\Jetpack\Autoloader\jpCurrent;
 
 use Automattic\Jetpack\AutoloaderTesting\Current\UniqueTestClass;
 use Automattic\Jetpack\AutoloaderTesting\SharedTestClass;
+use PHPUnit\Framework\Attributes\PreserveGlobalState;
+use PHPUnit\Framework\Attributes\RunInSeparateProcess;
 use PHPUnit\Framework\TestCase;
 use Test_Plugin_Factory;
 
@@ -22,7 +24,7 @@ class VersionLoaderTest extends TestCase {
 	 * The older version of the autoloader that we want to use. Note that
 	 * the version should support PSR-4 since this one does.
 	 */
-	const OLDER_VERSION = '2.4.0.0';
+	const OLDER_VERSION = '2.6.0.0';
 
 	/**
 	 * The directory of a plugin using the autoloader.
@@ -33,10 +35,9 @@ class VersionLoaderTest extends TestCase {
 
 	/**
 	 * Setup before class runs before the class.
-	 *
-	 * @beforeClass
 	 */
-	public static function set_up_before_class() {
+	public static function setUpBeforeClass(): void {
+		parent::setUpBeforeClass();
 		self::$older_plugin_dir = Test_Plugin_Factory::create_test_plugin( false, self::OLDER_VERSION )->make();
 	}
 
@@ -44,7 +45,7 @@ class VersionLoaderTest extends TestCase {
 	 * Tests that `find_class_file` returns null when the given class is not known.
 	 */
 	public function test_find_class_file_returns_null_for_unknown_class() {
-		$version_loader = new Version_Loader( new Version_Selector(), null, null, null );
+		$version_loader = new Version_Loader( new Version_Selector(), array(), array(), array() );
 
 		$file_path = $version_loader->find_class_file( UniqueTestClass::class );
 
@@ -63,8 +64,8 @@ class VersionLoaderTest extends TestCase {
 					'path'    => TEST_PLUGIN_DIR . '/src/SharedTestClass.php',
 				),
 			),
-			null,
-			null
+			array(),
+			array()
 		);
 
 		$file_path = $version_loader->find_class_file( SharedTestClass::class );
@@ -78,14 +79,14 @@ class VersionLoaderTest extends TestCase {
 	public function test_find_class_file_returns_path_for_psr4() {
 		$version_loader = new Version_Loader(
 			new Version_Selector(),
-			null,
+			array(),
 			array(
 				Test_Plugin_Factory::TESTING_NAMESPACE => array(
 					'version' => '1.0.0.0',
 					'path'    => array( TEST_PLUGIN_DIR . '/src' ),
 				),
 			),
-			null
+			array()
 		);
 
 		$file_path = $version_loader->find_class_file( SharedTestClass::class );
@@ -100,7 +101,7 @@ class VersionLoaderTest extends TestCase {
 	public function test_find_class_file_checks_returns_path_for_psr4_with_less_specific_namespace() {
 		$version_loader = new Version_Loader(
 			new Version_Selector(),
-			null,
+			array(),
 			array(
 				Test_Plugin_Factory::TESTING_NAMESPACE => array(
 					'version' => '1.0.0.0',
@@ -111,7 +112,7 @@ class VersionLoaderTest extends TestCase {
 					'path'    => array( TEST_PLUGIN_DIR . '/src/Current' ),
 				),
 			),
-			null
+			array()
 		);
 
 		$file_path = $version_loader->find_class_file( UniqueTestClass::class );
@@ -137,7 +138,7 @@ class VersionLoaderTest extends TestCase {
 					'path'    => array( self::$older_plugin_dir . '/src' ),
 				),
 			),
-			null
+			array()
 		);
 
 		$file_path = $version_loader->find_class_file( SharedTestClass::class );
@@ -163,7 +164,7 @@ class VersionLoaderTest extends TestCase {
 					'path'    => array( TEST_PLUGIN_DIR . '/src' ),
 				),
 			),
-			null
+			array()
 		);
 
 		$file_path = $version_loader->find_class_file( SharedTestClass::class );
@@ -177,13 +178,15 @@ class VersionLoaderTest extends TestCase {
 	 * @preserveGlobalState disabled
 	 * @runInSeparateProcess
 	 */
+	#[PreserveGlobalState( false )]
+	#[RunInSeparateProcess]
 	public function test_loads_filemap() {
 		$file_hash = md5( 'test-file' );
 
 		$version_loader = new Version_Loader(
 			new Version_Selector(),
-			null,
-			null,
+			array(),
+			array(),
 			array(
 				$file_hash => array(
 					'version' => '1.0.0.0',
@@ -205,13 +208,15 @@ class VersionLoaderTest extends TestCase {
 	 * @preserveGlobalState disabled
 	 * @runInSeparateProcess
 	 */
+	#[PreserveGlobalState( false )]
+	#[RunInSeparateProcess]
 	public function test_loads_filemap_skips_existing_files() {
 		$file_hash = md5( 'test-file' );
 
 		$version_loader = new Version_Loader(
 			new Version_Selector(),
-			null,
-			null,
+			array(),
+			array(),
 			array(
 				$file_hash => array(
 					'version' => '1.0.0.0',

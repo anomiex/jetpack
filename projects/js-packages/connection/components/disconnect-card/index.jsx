@@ -1,5 +1,4 @@
 import PropTypes from 'prop-types';
-import React from 'react';
 
 import './style.scss';
 
@@ -8,7 +7,7 @@ import './style.scss';
  * Used in the disconnection flow.
  *
  * @param {object} props - The Properties.
- * @returns {React.Component} DisconnectCard - The disconnect card component.
+ * @return {import('react').Component} DisconnectCard - The disconnect card component.
  */
 const DisconnectCard = props => {
 	const { title, value, description } = props;
@@ -34,7 +33,7 @@ DisconnectCard.propTypes = {
 	/** Optional value/ statistic to show. */
 	value: PropTypes.oneOfType( [ PropTypes.string, PropTypes.number ] ),
 	/** Description to go with the stat value. */
-	description: PropTypes.number,
+	description: PropTypes.string,
 };
 
 export default DisconnectCard;

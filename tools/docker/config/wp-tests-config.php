@@ -18,12 +18,10 @@ define( 'WP_DEFAULT_THEME', 'default' );
 
 // Test with multisite enabled.
 // Alternatively, use the tests/phpunit/multisite.xml configuration file.
-// phpcs:ignore Squiz.Commenting.InlineComment.InvalidEndChar
 // define( 'WP_TESTS_MULTISITE', true );
 
 // Force known bugs to be run.
 // Tests with an associated Trac ticket that is still open are normally skipped.
-// phpcs:ignore Squiz.Commenting.InlineComment.InvalidEndChar
 // define( 'WP_TESTS_FORCE_KNOWN_BUGS', true );
 
 // Test with WordPress debug mode (default).
@@ -73,7 +71,7 @@ define( 'SECURE_AUTH_SALT', 'put your unique phrase here' );
 define( 'LOGGED_IN_SALT', 'put your unique phrase here' );
 define( 'NONCE_SALT', 'put your unique phrase here' );
 
-// phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited, VariableAnalysis.CodeAnalysis.VariableAnalysis.UnusedVariable
+// phpcs:ignore VariableAnalysis.CodeAnalysis.VariableAnalysis.UnusedVariable
 $table_prefix = 'wptests_';   // Only numbers, letters, and underscores please!
 
 define( 'WP_TESTS_DOMAIN', 'example.org' );

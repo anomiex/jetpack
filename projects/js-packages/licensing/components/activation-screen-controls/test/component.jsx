@@ -1,11 +1,11 @@
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import ActivationScreenControls from '../index';
 
 describe( 'ActivationScreenControls', () => {
 	describe( 'Render the ActivationScreenControls with fresh props', () => {
 		const testProps = {
 			activateLicense: () => null,
+			availableLicenses: [],
 			disabled: false,
 			isActivating: false,
 			license: 'test',
@@ -22,6 +22,7 @@ describe( 'ActivationScreenControls', () => {
 	describe( 'Render the ActivationScreenControls with license error', () => {
 		const testProps = {
 			activateLicense: () => null,
+			availableLicenses: [],
 			disabled: true,
 			isActivating: false,
 			license: 'test',
@@ -45,7 +46,28 @@ describe( 'ActivationScreenControls', () => {
 			expect( node ).toBeInTheDocument();
 			expect(
 				// eslint-disable-next-line testing-library/no-node-access
-				node.closest( '.jp-license-activation-screen-controls--license-field-error' )
+				node.closest( '.activation-screen-error__message' )
+			).toBeInTheDocument();
+		} );
+	} );
+
+	describe( 'Render the ActivationScreenControls with the license key selector', () => {
+		const testProps = {
+			activateLicense: () => null,
+			availableLicenses: [ { product: 'jetpack-complete', license_key: 'key' } ],
+			disabled: true,
+			isActivating: false,
+			license: 'test',
+			onLicenseChange: () => null,
+			siteUrl: 'jetpack.com',
+		};
+
+		it( 'Select componet is shown', () => {
+			render( <ActivationScreenControls { ...testProps } /> );
+			const input = screen.getByText( 'jetpack-complete - key' );
+			expect(
+				// eslint-disable-next-line testing-library/no-node-access
+				input.closest( 'select' )
 			).toBeInTheDocument();
 		} );
 	} );

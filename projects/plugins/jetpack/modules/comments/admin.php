@@ -4,6 +4,11 @@
  *
  * @package automattic/jetpack
  */
+
+if ( ! defined( 'ABSPATH' ) ) {
+	exit( 0 );
+}
+
 /**
  * Class Jetpack_Comments_Settings
  * This class represents the comments settings functionality.
@@ -29,7 +34,7 @@ class Jetpack_Comments_Settings {
 	/**
 	 * The default comment form color scheme - an empty array to start with
 	 *
-	 * @var string
+	 * @var array
 	 */
 	public $color_schemes = array();
 
@@ -64,7 +69,7 @@ class Jetpack_Comments_Settings {
 	/**
 	 * Set any global variables or class variables
 	 *
-	 * @since JetpackComments (1.4)
+	 * @since 1.4
 	 */
 	protected function setup_globals() {
 		// Default option values.
@@ -83,7 +88,7 @@ class Jetpack_Comments_Settings {
 	/**
 	 * Add the Jetpack settings to WordPress's discussions page
 	 *
-	 * @since JetpackComments (1.4)
+	 * @since 1.4
 	 */
 	public function add_settings() {
 
@@ -133,7 +138,7 @@ class Jetpack_Comments_Settings {
 	/**
 	 * Discussions setting section blurb
 	 *
-	 * @since JetpackComments (1.4)
+	 * @since 1.4
 	 */
 	public function comment_form_settings_section() {
 		?>
@@ -146,7 +151,7 @@ class Jetpack_Comments_Settings {
 	/**
 	 * Custom Comment Greeting Text
 	 *
-	 * @since JetpackComments (1.4)
+	 * @since 1.4
 	 */
 	public function comment_form_greeting_setting() {
 
@@ -163,7 +168,7 @@ class Jetpack_Comments_Settings {
 	/**
 	 * Sanitize the clever comment greeting
 	 *
-	 * @since JetpackComments (1.4)
+	 * @since 1.4
 	 * @param string $val The contact form greeting string.
 	 * @return string
 	 */
@@ -181,7 +186,7 @@ class Jetpack_Comments_Settings {
 	/**
 	 * Comment Form Color Scheme Setting
 	 *
-	 * @since JetpackComments (1.4)
+	 * @since 1.4
 	 */
 	public function comment_form_color_scheme_setting() {
 
@@ -210,7 +215,7 @@ class Jetpack_Comments_Settings {
 	/**
 	 * Sanitize the color scheme
 	 *
-	 * @since JetpackComments (1.4)
+	 * @since 1.4
 	 * @param string $val The color scheme string.
 	 * @return string
 	 */

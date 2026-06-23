@@ -4,12 +4,16 @@
 	"type": "jetpack-library",
 	"license": "GPL-2.0-or-later",
 	"require": {
-		"automattic/jetpack-assets": "^1.17"
+		"php": ">=7.2",
+		"automattic/jetpack-assets": "@dev"
 	},
 	"require-dev": {
-		"automattic/wordbless": "@dev",
-		"automattic/jetpack-changelogger": "^3.1",
-		"yoast/phpunit-polyfills": "1.0.3"
+		"automattic/jetpack-test-environment": "@dev",
+		"yoast/phpunit-polyfills": "^4.0.0",
+		"automattic/phpunit-select-config": "@dev"
+	},
+	"suggest": {
+		"automattic/jetpack-autoloader": "Allow for better interoperability with other plugins that use this package."
 	},
 	"autoload": {
 		"classmap": [
@@ -27,15 +31,16 @@
 	],
 	"scripts": {
 		"phpunit": [
-			"./vendor/phpunit/phpunit/phpunit --colors=always"
+			"phpunit-select-config phpunit.#.xml.dist --colors=always"
 		],
-		"test-coverage": [
-			"php -dpcov.directory=. ./vendor/bin/phpunit --coverage-clover \"$COVERAGE_DIR/clover.xml\""
+		"test-php": "@composer phpunit",
+		"test-php-coverage": "php -dpcov.directory=. ./vendor/bin/phpunit-select-config phpunit.#.xml.dist --coverage-php \"$COVERAGE_DIR/php.cov\"",
+		"build-production": [
+			"pnpm run build-production"
 		],
-		"test-php": [
-			"@composer phpunit"
-		],
-		"post-update-cmd": "php -r \"copy('vendor/automattic/wordbless/src/dbless-wpdb.php', 'wordpress/wp-content/db.php');\""
+		"build-development": [
+			"pnpm run build"
+		]
 	},
 	"minimum-stability": "dev",
 	"prefer-stable": true,
@@ -50,7 +55,7 @@
 			"link-template": "https://github.com/automattic/jetpack-post-list/compare/v${old}...v${new}"
 		},
 		"branch-alias": {
-			"dev-trunk": "0.3.x-dev"
+			"dev-trunk": "0.9.x-dev"
 		}
 	},
 	"config": {

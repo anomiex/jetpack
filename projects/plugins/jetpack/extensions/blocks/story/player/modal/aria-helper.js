@@ -1,5 +1,3 @@
-import { forEach } from 'lodash';
-
 const LIVE_REGION_ARIA_ROLES = new Set( [ 'alert', 'status', 'log', 'marquee', 'timer' ] );
 
 let hiddenElements = [],
@@ -15,30 +13,30 @@ let hiddenElements = [],
  * we should consider removing these helper functions in favor of
  * `aria-modal="true"`.
  *
- * @param {Element} unhiddenElement  - The element that should not be hidden.
+ * @param {Element} unhiddenElement - The element that should not be hidden.
  */
 export function hideApp( unhiddenElement ) {
 	if ( isHidden ) {
 		return;
 	}
 	const elements = document.body.children;
-	forEach( elements, element => {
+	for ( const element of elements ) {
 		if ( element === unhiddenElement ) {
-			return;
+			continue;
 		}
 		if ( elementShouldBeHidden( element ) ) {
 			element.setAttribute( 'aria-hidden', 'true' );
 			hiddenElements.push( element );
 		}
-	} );
+	}
 	isHidden = true;
 }
 
 /**
  * Determines if the passed element should not be hidden from screen readers.
  *
- * @param {HTMLElement} element  - The element that should be checked.
- * @returns {boolean} Whether the element should not be hidden from screen-readers.
+ * @param {HTMLElement} element - The element that should be checked.
+ * @return {boolean} Whether the element should not be hidden from screen-readers.
  */
 export function elementShouldBeHidden( element ) {
 	const role = element.getAttribute( 'role' );
@@ -58,9 +56,9 @@ export function showApp() {
 	if ( ! isHidden ) {
 		return;
 	}
-	forEach( hiddenElements, element => {
+	for ( const element of hiddenElements ) {
 		element.removeAttribute( 'aria-hidden' );
-	} );
+	}
 	hiddenElements = [];
 	isHidden = false;
 }

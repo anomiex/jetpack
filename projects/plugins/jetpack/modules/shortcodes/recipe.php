@@ -2,6 +2,10 @@
 
 use Automattic\Jetpack\Assets;
 
+if ( ! defined( 'ABSPATH' ) ) {
+	exit( 0 );
+}
+
 /**
  * Embed recipe 'cards' in post, with basic styling and print functionality
  *
@@ -16,6 +20,8 @@ use Automattic\Jetpack\Assets;
 
 /**
  * Register and display Recipes in posts.
+ *
+ * @phan-constructor-used-for-side-effects
  */
 class Jetpack_Recipes {
 
@@ -91,7 +97,7 @@ class Jetpack_Recipes {
 		}
 
 		foreach ( $GLOBALS['posts'] as $p ) {
-			if ( has_shortcode( $p->post_content, 'recipe' ) ) {
+			if ( isset( $p->post_content ) && has_shortcode( $p->post_content, 'recipe' ) ) {
 				$this->scripts_and_style_included = true;
 				break;
 			}
@@ -111,18 +117,18 @@ class Jetpack_Recipes {
 			return;
 		}
 
-		wp_enqueue_script(
-			'jetpack-recipes-printthis',
-			Assets::get_file_url_for_environment( '_inc/build/shortcodes/js/recipes-printthis.min.js', 'modules/shortcodes/js/recipes-printthis.js' ),
+		wp_register_script(
+			'jetpack-shortcode-deps',
+			plugins_url( '_inc/build/shortcodes/js/dependencies.min.js', JETPACK__PLUGIN_FILE ),
 			array( 'jquery' ),
-			'20170202',
-			false
+			'20250905',
+			true
 		);
 
 		wp_enqueue_script(
 			'jetpack-recipes-js',
 			Assets::get_file_url_for_environment( '_inc/build/shortcodes/js/recipes.min.js', 'modules/shortcodes/js/recipes.js' ),
-			array( 'jquery', 'jetpack-recipes-printthis' ),
+			array( 'jquery', 'jetpack-shortcode-deps' ),
 			'20131230',
 			false
 		);
@@ -478,11 +484,6 @@ class Jetpack_Recipes {
 				$itemprop              = ' itemprop="nutrition"';
 				$listtype              = 'ul';
 				break;
-			case 'nutrition':
-				$list_item_replacement = '<li class="jetpack-recipe-nutrition nutrition">${1}</li>';
-				$itemprop              = ' itemprop="nutrition"';
-				$listtype              = 'ul';
-				break;
 			default:
 				$list_item_replacement = '<li class="jetpack-recipe-notes">${1}</li>';
 				$itemprop              = '';
@@ -491,13 +492,13 @@ class Jetpack_Recipes {
 
 		// Check to see if the user is trying to use shortened formatting.
 		if (
-			strpos( $content, '&#8211;' ) !== false ||
-			strpos( $content, '&#8212;' ) !== false ||
-			strpos( $content, '-' ) !== false ||
-			strpos( $content, '*' ) !== false ||
-			strpos( $content, '#' ) !== false ||
-			strpos( $content, '–' ) !== false || // ndash.
-			strpos( $content, '—' ) !== false || // mdash.
+			str_contains( $content, '&#8211;' ) ||
+			str_contains( $content, '&#8212;' ) ||
+			str_contains( $content, '-' ) ||
+			str_contains( $content, '*' ) ||
+			str_contains( $content, '#' ) ||
+			str_contains( $content, '–' ) || // ndash.
+			str_contains( $content, '—' ) || // mdash.
 			preg_match( '/\d+\.\s/', $content )
 		) {
 			// Remove breaks and extra whitespace.
@@ -510,9 +511,9 @@ class Jetpack_Recipes {
 			preg_match_all( $ul_pattern, $content, $ul_matches );
 			preg_match_all( $ol_pattern, $content, $ol_matches );
 
-			if ( 0 !== count( $ul_matches[0] ) || 0 !== count( $ol_matches[0] ) ) {
+			if ( ( is_countable( $ul_matches[0] ) && count( $ul_matches[0] ) > 0 ) || ( is_countable( $ol_matches[0] ) && count( $ol_matches[0] ) > 0 ) ) {
 
-				if ( 0 !== count( $ol_matches[0] ) ) {
+				if ( is_countable( $ol_matches[0] ) && count( $ol_matches[0] ) > 0 ) {
 					$listtype          = 'ol';
 					$list_item_pattern = $ol_pattern;
 				} else {
@@ -635,10 +636,7 @@ class Jetpack_Recipes {
 			'itemprop' => 'image',
 		);
 
-		if (
-			function_exists( 'wp_lazy_loading_enabled' )
-			&& wp_lazy_loading_enabled( 'img', 'wp_get_attachment_image' )
-		) {
+		if ( wp_lazy_loading_enabled( 'img', 'wp_get_attachment_image' ) ) {
 			$image_attrs['loading'] = 'lazy';
 		}
 
@@ -654,7 +652,7 @@ class Jetpack_Recipes {
 
 		// Check if it's an absolute or relative URL, and return if not.
 		if (
-			0 !== strpos( $src, '/' )
+			! str_starts_with( $src, '/' )
 			&& false === filter_var( $src, FILTER_VALIDATE_URL )
 		) {
 			return '';
@@ -686,14 +684,15 @@ class Jetpack_Recipes {
 		global $themecolors;
 		$style = '';
 
-		if ( isset( $themecolors ) ) {
+		if ( isset( $themecolors['border'] ) ) {
 			$style .= '.jetpack-recipe { border-color: #' . esc_attr( $themecolors['border'] ) . '; }';
+		}
+		if ( isset( $themecolors['link'] ) ) {
 			$style .= '.jetpack-recipe-title { border-bottom-color: #' . esc_attr( $themecolors['link'] ) . '; }';
 		}
 
 		return $style;
 	}
-
 }
 
 new Jetpack_Recipes();

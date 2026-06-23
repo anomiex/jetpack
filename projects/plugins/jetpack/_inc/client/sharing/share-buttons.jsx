@@ -1,12 +1,14 @@
 import { getRedirectUrl } from '@automattic/jetpack-components';
+import { isWpcomPlatformSite } from '@automattic/jetpack-script-data';
 import { __, _x } from '@wordpress/i18n';
+import { Component } from 'react';
+import BlockThemeNotice from 'components/block-theme-notice';
 import Card from 'components/card';
 import { withModuleSettingsFormHelpers } from 'components/module-settings/with-module-settings-form-helpers';
 import { ModuleToggle } from 'components/module-toggle';
 import SettingsCard from 'components/settings-card';
 import SettingsGroup from 'components/settings-group';
 import analytics from 'lib/analytics';
-import React, { Component } from 'react';
 
 export const ShareButtons = withModuleSettingsFormHelpers(
 	class extends Component {
@@ -14,40 +16,84 @@ export const ShareButtons = withModuleSettingsFormHelpers(
 			analytics.tracks.recordJetpackClick( {
 				target: 'configure-sharing',
 				page: 'sharing',
+				platform: isWpcomPlatformSite() ? 'wpcom' : 'jetpack',
 			} );
 		}
 
 		render() {
-			const isLinked = this.props.isLinked,
-				siteRawUrl = this.props.siteRawUrl,
-				siteAdminUrl = this.props.siteAdminUrl,
-				isOfflineMode = this.props.isOfflineMode,
+			const siteAdminUrl = this.props.siteAdminUrl,
+				hasSharingBlock = this.props.hasSharingBlock,
+				isBlockTheme = this.props.isBlockTheme,
 				isActive = this.props.getOptionValue( 'sharedaddy' );
 
+			const shouldShowSharingBlock = isBlockTheme && hasSharingBlock;
+
+			const sharingModuleSupportUrl = getRedirectUrl( 'jetpack-support-sharing' );
+
+			/**
+			 * Sharing configuration link.
+			 *
+			 * This link can be different depending on your site setup:
+			 * - Do you use a block-based theme and is the sharing block available?
+			 * - Is the site connected to WordPress.com?
+			 * - Is the site in offline mode?
+			 * - Is the site using the classic admin interface?
+			 *
+			 * @return {import('react').ReactNode} A card with the sharing configuration link.
+			 */
 			const configCard = () => {
-				if ( isOfflineMode || ! isLinked ) {
-					return (
-						<Card
-							compact
-							className="jp-settings-card__configure-link"
-							href={ siteAdminUrl + 'options-general.php?page=sharing' }
-						>
-							{ __( 'Configure your sharing buttons', 'jetpack' ) }
-						</Card>
-					);
+				const cardProps = {
+					compact: true,
+					className: 'jp-settings-card__configure-link',
+					href: `${ siteAdminUrl }options-general.php?page=sharing`,
+					onClick: this.trackClickConfigure,
+				};
+
+				if ( shouldShowSharingBlock ) {
+					cardProps.href = `${ siteAdminUrl }site-editor.php?path=%2Fwp_template`;
 				}
 
-				return (
-					<Card
-						compact
-						className="jp-settings-card__configure-link"
-						onClick={ this.trackClickConfigure }
-						target="_blank"
-						rel="noopener noreferrer"
-						href={ getRedirectUrl( 'calypso-marketing-sharing-buttons', { site: siteRawUrl } ) }
+				return <Card { ...cardProps }>{ __( 'Configure your sharing buttons', 'jetpack' ) }</Card>;
+			};
+
+			/**
+			 * Sharing module toggle, and suggestion to use the sharing block.
+			 *
+			 * If the sharing block is available,
+			 * we suggest to use it instead of the legacy module.
+			 *
+			 * @return {import('react').ReactNode} A module toggle.
+			 */
+			const moduleToggle = () => {
+				const toggle = (
+					<ModuleToggle
+						slug="sharedaddy"
+						disabled={ this.props.isSavingAnyOption( 'sharedaddy' ) }
+						activated={ isActive }
+						toggleModule={ this.props.toggleModuleNow }
 					>
-						{ __( 'Configure your sharing buttons', 'jetpack' ) }
-					</Card>
+						<span className="jp-form-toggle-explanation">
+							{ __( 'Add sharing buttons to your posts and pages', 'jetpack' ) }
+						</span>
+					</ModuleToggle>
+				);
+
+				// If the sharing block is not available,
+				// only display the legacy module toggle.
+				if ( ! shouldShowSharingBlock ) {
+					return toggle;
+				}
+
+				// If the sharing block is available,
+				// Let's suggest the sharing block as an alternative.
+				return (
+					<>
+						{ toggle }
+						<BlockThemeNotice
+							isModuleActive={ isActive }
+							redirectSlug="jetpack-support-sharing-block"
+						/>
+					</>
 				);
 			};
 
@@ -66,7 +112,9 @@ export const ShareButtons = withModuleSettingsFormHelpers(
 								'You can customize the sharing buttons and choose which services to display.',
 								'jetpack'
 							),
-							link: getRedirectUrl( 'jetpack-support-sharing' ),
+							link: shouldShowSharingBlock
+								? getRedirectUrl( 'jetpack-support-sharing-block' )
+								: sharingModuleSupportUrl,
 						} }
 					>
 						<p>
@@ -75,17 +123,10 @@ export const ShareButtons = withModuleSettingsFormHelpers(
 								'jetpack'
 							) }
 						</p>
-						<ModuleToggle
-							slug="sharedaddy"
-							activated={ isActive }
-							toggling={ this.props.isSavingAnyOption( 'sharedaddy' ) }
-							toggleModule={ this.props.toggleModuleNow }
-						>
-							{ __( 'Add sharing buttons to your posts and pages', 'jetpack' ) }
-						</ModuleToggle>
+						{ moduleToggle() }
 					</SettingsGroup>
 
-					{ isActive && configCard() }
+					{ ( isActive || shouldShowSharingBlock ) && configCard() }
 				</SettingsCard>
 			);
 		}

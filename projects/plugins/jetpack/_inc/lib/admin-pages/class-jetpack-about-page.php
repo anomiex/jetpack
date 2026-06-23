@@ -9,7 +9,7 @@
  * Disable direct access and execution.
  */
 if ( ! defined( 'ABSPATH' ) ) {
-	exit;
+	exit( 0 );
 }
 
 require_once __DIR__ . '/class.jetpack-admin-page.php';
@@ -41,7 +41,7 @@ class Jetpack_About_Page extends Jetpack_Admin_Page {
 	public function get_page_hook() {
 		// Add the main admin Jetpack menu.
 		return add_submenu_page(
-			null,
+			'',
 			esc_html__( 'About Jetpack', 'jetpack' ),
 			'',
 			'jetpack_admin_page',
@@ -94,12 +94,7 @@ class Jetpack_About_Page extends Jetpack_Admin_Page {
 	public function page_render() {
 		?>
 		<div class="jp-lower">
-			<div class="jetpack-about__link-back">
-				<a href="<?php echo esc_url( admin_url( 'admin.php?page=jetpack' ) ); ?>">
-					<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><rect x="0" fill="none" width="24" height="24"/><g><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></g></svg>
-					<?php esc_html_e( 'Back to Jetpack Dashboard', 'jetpack' ); ?>
-				</a>
-			</div>
+			<h1 class="screen-reader-text"><?php esc_html_e( 'About Jetpack', 'jetpack' ); ?></h1>
 			<div class="jetpack-about__main">
 				<div class="jetpack-about__logo">
 					<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" viewBox="0 0 800 96" style="enable-background:new 0 0 800 96;" xml:space="preserve">
@@ -136,6 +131,7 @@ class Jetpack_About_Page extends Jetpack_Admin_Page {
 						</ul>
 						<p class="meet-the-team">
 							<a href="https://automattic.com/about/" target="_blank" rel="noopener noreferrer" class="jptracks" data-jptracks-name="jetpack_about_meet_the_team"><?php esc_html_e( 'Meet the Automattic team', 'jetpack' ); ?></a>
+							<svg class="gridicons-external" height="24" width="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><g><path d="M19 13v6c0 1.105-.895 2-2 2H5c-1.105 0-2-.895-2-2V7c0-1.105.895-2 2-2h6v2H5v12h12v-6h2zM13 3v2h4.586l-7.793 7.793 1.414 1.414L19 6.414V11h2V3h-8z"></path></g></svg>
 						</p>
 					</div>
 
@@ -143,8 +139,9 @@ class Jetpack_About_Page extends Jetpack_Admin_Page {
 						<p>
 							<?php esc_html_e( 'We are the people behind WordPress.com, WooCommerce, Jetpack, Simplenote, Longreads, VaultPress, Akismet, Gravatar, Crowdsignal, Cloudup, and more. We believe in making the web a better place.', 'jetpack' ); ?>
 							<a href="https://automattic.com/" target="_blank" rel="noopener noreferrer" class="jptracks" data-jptracks-name="jetpack_about_learn_more">
-								<?php esc_html_e( 'Learn more about us.', 'jetpack' ); ?>
+								<?php esc_html_e( 'Learn more about us', 'jetpack' ); ?>
 							</a>
+							<svg class="gridicons-external" height="24" width="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><g><path d="M19 13v6c0 1.105-.895 2-2 2H5c-1.105 0-2-.895-2-2V7c0-1.105.895-2 2-2h6v2H5v12h12v-6h2zM13 3v2h4.586l-7.793 7.793 1.414 1.414L19 6.414V11h2V3h-8z"></path></g></svg>
 						</p>
 						<p>
 							<?php
@@ -166,23 +163,33 @@ class Jetpack_About_Page extends Jetpack_Admin_Page {
 							<?php
 								// Maybe use printf() because we'll want to escape the string but still allow for the link, so we can't use esc_html_e().
 								echo wp_kses(
-									__( 'We strive to live by the <a href="https://automattic.com/creed/" target="_blank" class="jptracks" data-jptracks-name="jetpack_about_creed" rel="noopener noreferrer">Automattic Creed</a>.', 'jetpack' ),
+									__( 'We strive to live by the <a href="https://automattic.com/creed/" target="_blank" class="jptracks" data-jptracks-name="jetpack_about_creed" rel="noopener noreferrer">Automattic Creed</a><svg class="gridicons-external" height="24" width="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><g><path d="M19 13v6c0 1.105-.895 2-2 2H5c-1.105 0-2-.895-2-2V7c0-1.105.895-2 2-2h6v2H5v12h12v-6h2zM13 3v2h4.586l-7.793 7.793 1.414 1.414L19 6.414V11h2V3h-8z"></path></g></svg>', 'jetpack' ),
 									array(
-										'a' => array(
+										'a'    => array(
 											'href'   => array(),
 											'class'  => array(),
 											'target' => array(),
 											'rel'    => array(),
 											'data-jptracks-name' => array(),
 										),
+										'svg'  => array(
+											'class'   => array(),
+											'height'  => array(),
+											'width'   => array(),
+											'xmlns'   => array(),
+											'viewbox' => array(),
+										),
+										'g'    => array(),
+										'path' => array(
+											'd' => array(),
+										),
 									)
 								);
 							?>
 						</p>
 						<p>
-							<a href="https://automattic.com/work-with-us" target="_blank" rel="noopener noreferrer" class="jptracks" data-jptracks-name="jetpack_about_work_with_us">
-								<?php esc_html_e( 'Come work with us', 'jetpack' ); ?>
-							</a>
+							<a href="https://automattic.com/work-with-us" target="_blank" rel="noopener noreferrer" class="jptracks" data-jptracks-name="jetpack_about_work_with_us"><?php esc_html_e( 'Come work with us', 'jetpack' ); ?>
+							</a><svg class="gridicons-external" height="24" width="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><g><path d="M19 13v6c0 1.105-.895 2-2 2H5c-1.105 0-2-.895-2-2V7c0-1.105.895-2 2-2h6v2H5v12h12v-6h2zM13 3v2h4.586l-7.793 7.793 1.414 1.414L19 6.414V11h2V3h-8z"></path></g></svg>
 						</p>
 					</div>
 				</div>
@@ -197,7 +204,7 @@ class Jetpack_About_Page extends Jetpack_Admin_Page {
 				<p class="jetpack-about__services-more">
 				<?php
 				echo wp_kses(
-					__( 'For even more of our WordPress plugins, please <a href="https://profiles.wordpress.org/automattic/#content-plugins" target="_blank" rel="noopener noreferrer" class="jptracks" data-jptracks-name="jetpack_about_wporg_profile">take a look at our WordPress.org profile</a>.', 'jetpack' ),
+					__( 'For even more of our WordPress plugins, please take a look at <a href="https://profiles.wordpress.org/automattic/#content-plugins" target="_blank" rel="noopener noreferrer" class="jptracks" data-jptracks-name="jetpack_about_wporg_profile">our WordPress.org profile</a>.', 'jetpack' ),
 					array(
 						'a' => array(
 							'href'               => array(),
@@ -311,7 +318,7 @@ class Jetpack_About_Page extends Jetpack_Admin_Page {
 						if ( $status['url'] ) {
 							if ( $compatible_php && $compatible_wp ) {
 								$action_links[] = sprintf(
-									'<a class="install-now button jptracks" data-slug="%1$s" href="%2$s" aria-label="%3$s" data-name="%4$s" data-jptracks-name="jetpack_about_install_button" data-jptracks-prop="%4$s">%5$s</a>',
+									'<a class="install-now button jptracks is-rna" data-slug="%1$s" href="%2$s" aria-label="%3$s" data-name="%4$s" data-jptracks-name="jetpack_about_install_button" data-jptracks-prop="%4$s">%5$s</a>',
 									esc_attr( $plugin['slug'] ),
 									esc_url( $status['url'] ),
 									/* translators: %s: plugin name and version */
@@ -519,7 +526,6 @@ class Jetpack_About_Page extends Jetpack_Admin_Page {
 			<?php
 
 		}
-
 	}
 
 	/**
@@ -548,9 +554,9 @@ class Jetpack_About_Page extends Jetpack_Admin_Page {
 					'languages'        => 83,
 					'featured_plugins' => array(
 						'woocommerce',
-						'wp-super-cache',
+						'activitypub',
 						'wp-job-manager',
-						'co-authors-plus',
+						'wp-super-cache',
 					),
 				);
 			}

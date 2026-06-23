@@ -1,4 +1,4 @@
-<?php // phpcs:ignore WordPress.Files.FileName
+<?php
 /**
  * PHP autoloader test suite.
  *
@@ -9,6 +9,8 @@
 namespace Automattic\Jetpack\Autoloader\jpCurrent;
 
 use Automattic\Jetpack\AutoloaderTesting\SharedTestClass;
+use PHPUnit\Framework\Attributes\PreserveGlobalState;
+use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -17,6 +19,8 @@ use PHPUnit\Framework\TestCase;
  * @runTestsInSeparateProcesses Ensure that each test loads class files new.
  * @preserveGlobalState disabled
  */
+#[RunTestsInSeparateProcesses]
+#[PreserveGlobalState( false )]
 class PHPAutoloaderTest extends TestCase {
 
 	/**
@@ -28,9 +32,7 @@ class PHPAutoloaderTest extends TestCase {
 
 		global $jetpack_autoloader_loader;
 
-		$loader = $this->getMockBuilder( Version_Loader::class )
-			->disableOriginalConstructor()
-			->getMock();
+		$loader = $this->createStub( Version_Loader::class );
 
 		( new PHP_Autoloader() )->register_autoloader( $loader );
 
@@ -72,7 +74,7 @@ class PHPAutoloaderTest extends TestCase {
 	public function test_load_class() {
 		$loader = $this->getMockBuilder( Version_Loader::class )
 			->disableOriginalConstructor()
-			->setMethods( array( 'find_class_file' ) )
+			->onlyMethods( array( 'find_class_file' ) )
 			->getMock();
 
 		global $jetpack_autoloader_loader;
@@ -92,7 +94,7 @@ class PHPAutoloaderTest extends TestCase {
 	public function test_load_class_does_nothing_without_class() {
 		$loader = $this->getMockBuilder( Version_Loader::class )
 			->disableOriginalConstructor()
-			->setMethods( array( 'find_class_file' ) )
+			->onlyMethods( array( 'find_class_file' ) )
 			->getMock();
 
 		global $jetpack_autoloader_loader;

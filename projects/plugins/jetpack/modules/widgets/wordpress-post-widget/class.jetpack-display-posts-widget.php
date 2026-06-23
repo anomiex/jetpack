@@ -2,6 +2,10 @@
 
 use Automattic\Jetpack\Status;
 
+if ( ! defined( 'ABSPATH' ) ) {
+	exit( 0 );
+}
+
 /**
  * Display a list of recent posts from a WordPress.com or Jetpack-enabled blog.
  */
@@ -46,7 +50,6 @@ class Jetpack_Display_Posts_Widget extends Jetpack_Display_Posts_Widget__Base {
 		}
 
 		return $cached_data;
-
 	}
 
 	/**
@@ -232,7 +235,6 @@ class Jetpack_Display_Posts_Widget extends Jetpack_Display_Posts_Widget__Base {
 		$urls = array_unique( $urls );
 
 		return $urls;
-
 	}
 
 	// MOCKABLES.

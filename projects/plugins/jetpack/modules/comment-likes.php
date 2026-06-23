@@ -1,7 +1,7 @@
 <?php //phpcs:ignore WordPress.Files.FileName.InvalidClassFileName
 /**
  * Module Name: Comment Likes
- * Module Description: Increase visitor engagement by adding a Like button to comments.
+ * Module Description: Enable visitors to like individual comments and boost engagement.
  * Sort Order: 39
  * Recommendation Order: 17
  * First Introduced: 5.1
@@ -15,6 +15,10 @@
 
 use Automattic\Jetpack\Assets;
 
+if ( ! defined( 'ABSPATH' ) ) {
+	exit( 0 );
+}
+
 Assets::add_resource_hint( '//widgets.wp.com', 'dns-prefetch' );
 
 require_once __DIR__ . '/likes/jetpack-likes-master-iframe.php';
@@ -24,6 +28,27 @@ require_once __DIR__ . '/likes/jetpack-likes-settings.php';
  * Jetpack Comment Like Class
  */
 class Jetpack_Comment_Likes {
+
+	/**
+	 * Jetpack_Likes_Settings object
+	 *
+	 * @var Jetpack_Likes_Settings
+	 */
+	public $settings;
+
+	/**
+	 * Blog ID
+	 *
+	 * @var int
+	 */
+	public $blog_id;
+
+	/**
+	 * Site home URL domain
+	 *
+	 * @var string
+	 */
+	public $domain;
 
 	/**
 	 * Initialize comment like module
@@ -42,22 +67,21 @@ class Jetpack_Comment_Likes {
 	 * Construct comment like module.
 	 */
 	private function __construct() {
-		$this->settings  = new Jetpack_Likes_Settings();
-		$this->blog_id   = Jetpack_Options::get_option( 'id' );
-		$this->url       = home_url();
-		$this->url_parts = wp_parse_url( $this->url );
-		$this->domain    = $this->url_parts['host'];
+		$this->settings = new Jetpack_Likes_Settings();
+		$this->blog_id  = Jetpack_Options::get_option( 'id' );
+		$url_parts      = wp_parse_url( home_url() );
+
+		// Abort if domain can't be determined.
+		if ( ! $url_parts || ! isset( $url_parts['host'] ) ) {
+			return;
+		}
+		$this->domain = $url_parts['host'];
 
 		add_action( 'template_redirect', array( $this, 'frontend_init' ) );
 		add_action( 'admin_init', array( $this, 'admin_init' ) );
 
 		if ( ! Jetpack::is_module_active( 'likes' ) ) {
 			$active = Jetpack::get_active_modules();
-
-			if ( ! in_array( 'sharedaddy', $active, true ) && ! in_array( 'publicize', $active, true ) ) {
-				// we don't have a sharing page yet.
-				add_action( 'admin_menu', array( $this->settings, 'sharing_menu' ) );
-			}
 
 			if ( in_array( 'publicize', $active, true ) && ! in_array( 'sharedaddy', $active, true ) ) {
 				// we have a sharing page but not the global options area.
@@ -147,7 +171,7 @@ class Jetpack_Comment_Likes {
 	 * Initialize front end
 	 */
 	public function frontend_init() {
-		if ( Jetpack_AMP_Support::is_amp_request() ) {
+		if ( class_exists( Jetpack_AMP_Support::class ) && Jetpack_AMP_Support::is_amp_request() ) {
 			return;
 		}
 
@@ -191,6 +215,10 @@ class Jetpack_Comment_Likes {
 		}
 
 		if ( empty( $content ) || empty( $comment_id ) ) {
+			return $content;
+		}
+
+		if ( empty( $comment->comment_approved ) ) {
 			return $content;
 		}
 

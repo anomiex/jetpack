@@ -1,15 +1,15 @@
 import { getRedirectUrl } from '@automattic/jetpack-components';
-import { ExternalLink } from '@wordpress/components';
 import { createInterpolateElement } from '@wordpress/element';
 import { __, _x } from '@wordpress/i18n';
+import { Link } from '@wordpress/ui';
+import PropTypes from 'prop-types';
+import { Component } from 'react';
+import { connect } from 'react-redux';
 import CompactFormToggle from 'components/form/form-toggle/compact';
 import { withModuleSettingsFormHelpers } from 'components/module-settings/with-module-settings-form-helpers';
 import SettingsCard from 'components/settings-card';
 import SettingsGroup from 'components/settings-group';
 import analytics from 'lib/analytics';
-import PropTypes from 'prop-types';
-import React from 'react';
-import { connect } from 'react-redux';
 import { getSettings } from 'state/settings';
 import { fetchTrackingSettings, updateTrackingSettings } from 'state/tracking/actions';
 import {
@@ -36,7 +36,7 @@ const trackPrivacyCenterView = () =>
 		feature: 'privacy',
 	} );
 
-class Privacy extends React.Component {
+class Privacy extends Component {
 	static displayName = 'PrivacySettings';
 
 	static propTypes = {
@@ -95,6 +95,7 @@ class Privacy extends React.Component {
 		return (
 			this.isPrivacyFound() && (
 				<div>
+					<h1 className="screen-reader-text">{ __( 'Jetpack Privacy Settings', 'jetpack' ) }</h1>
 					<SettingsCard
 						{ ...this.props }
 						header={ _x( 'Privacy Settings', 'Settings header', 'jetpack' ) }
@@ -119,7 +120,8 @@ class Privacy extends React.Component {
 										),
 										{
 											cookiePolicyLink: (
-												<ExternalLink
+												<Link
+													openInNewTab
 													href={ getRedirectUrl( 'a8c-cookies' ) }
 													onClick={ trackCookiePolicyView }
 													rel="noopener noreferrer"
@@ -137,7 +139,8 @@ class Privacy extends React.Component {
 									),
 									{
 										pp: (
-											<ExternalLink
+											<Link
+												openInNewTab
 												href={ getRedirectUrl( 'a8c-privacy' ) }
 												onClick={ trackPrivacyPolicyView }
 												rel="noopener noreferrer"
@@ -154,7 +157,8 @@ class Privacy extends React.Component {
 									),
 									{
 										cookiePolicyLink: (
-											<ExternalLink
+											<Link
+												openInNewTab
 												href={ getRedirectUrl( 'a8c-cookies' ) }
 												onClick={ trackCookiePolicyView }
 												rel="noopener noreferrer"
@@ -171,7 +175,8 @@ class Privacy extends React.Component {
 									),
 									{
 										privacyCenterLink: (
-											<ExternalLink
+											<Link
+												openInNewTab
 												href={ getRedirectUrl( 'jetpack-support-privacy' ) }
 												onClick={ trackPrivacyCenterView }
 												rel="noopener noreferrer"

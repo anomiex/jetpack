@@ -1,5 +1,4 @@
 import userEvent from '@testing-library/user-event';
-import React from 'react';
 import { render, screen } from 'test/test-utils';
 import SupportInfo from '../index';
 
@@ -15,7 +14,7 @@ describe( 'SupportInfo', () => {
 		render( <SupportInfo { ...testProps } /> );
 		await user.click( screen.getByRole( 'button', { name: 'Learn more' } ) );
 		expect(
-			screen.getByRole( 'link', { name: 'Learn more (opens in a new tab)' } )
+			screen.getByRole( 'link', { name: 'Learn more(opens in a new tab)' } )
 		).toHaveAttribute( 'href', 'https://foo.com/' );
 	} );
 
@@ -24,7 +23,7 @@ describe( 'SupportInfo', () => {
 		render( <SupportInfo { ...testProps } /> );
 		await user.click( screen.getByRole( 'button', { name: 'Learn more' } ) );
 		expect(
-			screen.getByRole( 'link', { name: 'Privacy information (opens in a new tab)' } )
+			screen.getByRole( 'link', { name: 'Privacy information(opens in a new tab)' } )
 		).toHaveAttribute( 'href', 'https://foo.com/privacy/' );
 	} );
 } );

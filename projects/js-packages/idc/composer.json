@@ -3,9 +3,6 @@
 	"description": "Jetpack IDC package.",
 	"license": "GPL-2.0-or-later",
 	"require": {},
-	"require-dev": {
-		"automattic/jetpack-changelogger": "3.1.x-dev"
-	},
 	"scripts": {},
 	"repositories": [
 		{
@@ -15,5 +12,8 @@
 				"monorepo": true
 			}
 		}
-	]
+	],
+	"extra": {
+		"textdomain": "jetpack-idc"
+	}
 }

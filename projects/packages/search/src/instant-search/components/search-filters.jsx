@@ -1,5 +1,6 @@
 import { __ } from '@wordpress/i18n';
-import React, { Component } from 'react';
+import * as React from 'react';
+import { Component } from 'react';
 import { connect } from 'react-redux';
 import { mapFilterToFilterKey, mapFilterToType, getAvailableStaticFilters } from '../lib/filters';
 import { recordStaticFilterSelect } from '../lib/tracks';
@@ -27,13 +28,8 @@ class SearchFilters extends Component {
 	onClearFilters = event => {
 		event.preventDefault();
 
-		if (
-			event.type === 'click' ||
-			( event.type === 'keydown' && ( event.key === 'Enter' || event.key === ' ' ) )
-		) {
-			this.props.clearFilters();
-			this.props.onChange && this.props.onChange();
-		}
+		this.props.clearFilters();
+		this.props.onChange && this.props.onChange();
 	};
 
 	hasActiveFilters() {
@@ -54,7 +50,7 @@ class SearchFilters extends Component {
 		);
 
 	renderStaticFilterComponent = configuration => {
-		if ( configuration.hasOwnProperty( 'visible' ) && ! configuration.visible ) {
+		if ( Object.hasOwn( configuration, 'visible' ) && ! configuration.visible ) {
 			return null;
 		}
 
@@ -76,7 +72,7 @@ class SearchFilters extends Component {
 			return null;
 		}
 
-		const availableStaticFilters = getAvailableStaticFilters();
+		const availableStaticFilters = getAvailableStaticFilters( 'sidebar' );
 		const aggregations = this.props.results?.aggregations;
 		return (
 			<div className="jetpack-instant-search__search-filters">
@@ -86,16 +82,12 @@ class SearchFilters extends Component {
 					</h2>
 				) }
 				{ this.props.showClearFiltersButton && this.hasActiveFilters() && (
-					<a
-						class="jetpack-instant-search__clear-filters-link"
-						href="#"
+					<button
+						className="jetpack-instant-search__clear-filters-link"
 						onClick={ this.onClearFilters }
-						onKeyDown={ this.onClearFilters }
-						role="button"
-						tabIndex="0"
 					>
 						{ __( 'Clear filters', 'jetpack-search-pkg' ) }
-					</a>
+					</button>
 				) }
 
 				{ this.props.widget?.filters &&

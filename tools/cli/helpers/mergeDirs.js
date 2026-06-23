@@ -6,7 +6,7 @@ import path from 'path';
  *
  * Originally from https://github.com/binocarlos/merge-dirs/blob/master/src/index.js
  *
- * @param {string} src - Source dir.
+ * @param {string} src  - Source dir.
  * @param {string} dest - Dest dir.
  * @param {string} name - Name of new project.
  */
@@ -28,7 +28,7 @@ export default function mergeDirs( src, dest, name ) {
 		if ( stats.isDirectory() ) {
 			mergeDirs( srcFile, destFile );
 		} else if ( stats.isSymbolicLink() ) {
-			return;
+			copySymlink( destFile, srcFile );
 		} else if ( ! fs.existsSync( destFile ) ) {
 			copyFile( destFile, srcFile );
 		} else {
@@ -51,10 +51,21 @@ export default function mergeDirs( src, dest, name ) {
  *
  * Originally from https://github.com/binocarlos/merge-dirs/blob/master/src/index.js
  *
- * @param {string} file - Destination file path
+ * @param {string} file     - Destination file path
  * @param {string} location - Current location.
  */
 export function copyFile( file, location ) {
 	fs.mkdirSync( file.split( '/' ).slice( 0, -1 ).join( '/' ), { mode: 0x1ed, recursive: true } );
 	fs.writeFileSync( file, fs.readFileSync( location ) );
+}
+
+/**
+ * Copy a symlink.
+ *
+ * @param {string} file     - Destination file path
+ * @param {string} location - Current location.
+ */
+export function copySymlink( file, location ) {
+	fs.mkdirSync( file.split( '/' ).slice( 0, -1 ).join( '/' ), { mode: 0x1ed, recursive: true } );
+	fs.symlinkSync( fs.readlinkSync( location ), file );
 }

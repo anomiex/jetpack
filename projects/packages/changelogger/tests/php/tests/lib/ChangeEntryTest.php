@@ -10,6 +10,8 @@ namespace Automattic\Jetpack\Changelog\Tests;
 use Automattic\Jetpack\Changelog\ChangeEntry;
 use DateTime;
 use InvalidArgumentException;
+use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -17,8 +19,8 @@ use PHPUnit\Framework\TestCase;
  *
  * @covers \Automattic\Jetpack\Changelog\ChangeEntry
  */
+#[CoversClass( ChangeEntry::class )]
 class ChangeEntryTest extends TestCase {
-	use \Yoast\PHPUnitPolyfills\Polyfills\ExpectException;
 
 	/**
 	 * Test general getters.
@@ -40,6 +42,7 @@ class ChangeEntryTest extends TestCase {
 		$this->assertSame( 'me!', $change->getAuthor() );
 		$this->assertSame( 'Bar', $change->getContent() );
 
+		// @phan-suppress-next-line PhanTypeMismatchArgument -- This is testing the type casting.
 		$this->assertSame( $change, $change->setSignificance( null )->setAuthor( 111 )->setSubheading( 222 )->setContent( 333 ) );
 		$this->assertSame( null, $change->getSignificance() );
 		$this->assertSame( '111', $change->getAuthor() );
@@ -68,6 +71,7 @@ class ChangeEntryTest extends TestCase {
 	public function testConstructor_error() {
 		$this->expectException( InvalidArgumentException::class );
 		$this->expectExceptionMessage( 'Automattic\\Jetpack\\Changelog\\ChangeEntry::__construct: Unrecognized data item "foo"' );
+		// @phan-suppress-next-line PhanNoopNew -- Expecting it to throw.
 		new ChangeEntry( array( 'foo' => 'bar' ) );
 	}
 
@@ -100,22 +104,21 @@ class ChangeEntryTest extends TestCase {
 	 * @param array       $config Compare config.
 	 * @param int         $expect Expected value.
 	 */
+	#[DataProvider( 'provideCompare' )]
 	public function testCompare( ChangeEntry $a, ChangeEntry $b, array $config, $expect ) {
-		$ret = ChangeEntry::compare( $a, $b, $config );
 		// We only care about the sign of the return value.
-		$ret = $ret < 0 ? -1 : ( $ret > 0 ? 1 : 0 );
+		$ret = ChangeEntry::compare( $a, $b, $config ) <=> 0;
 		$this->assertSame( $expect, $ret );
 
-		$ret = ChangeEntry::compare( $b, $a, $config );
 		// We only care about the sign of the return value.
-		$ret = $ret < 0 ? -1 : ( $ret > 0 ? 1 : 0 );
+		$ret = ChangeEntry::compare( $b, $a, $config ) <=> 0;
 		$this->assertSame( -$expect, $ret );
 	}
 
 	/**
 	 * Data provider for testCompare.
 	 */
-	public function provideCompare() {
+	public static function provideCompare() {
 		return array(
 			'Default config, equal'                        => array(
 				new ChangeEntry(
@@ -400,13 +403,14 @@ class ChangeEntryTest extends TestCase {
 	 * @param string             $json JSON data.
 	 * @param ChangeEntry|string $change Change entry, or error message if decoding should fail.
 	 */
+	#[DataProvider( 'provideJson' )]
 	public function testJson( $json, $change ) {
 		if ( is_string( $change ) ) {
 			$this->expectException( InvalidArgumentException::class );
 			$this->expectExceptionMessage( $change );
 			ChangeEntry::jsonUnserialize( json_decode( $json ) );
 		} else {
-			$this->assertSame( $json, json_encode( $change ) );
+			$this->assertSame( $json, json_encode( $change, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
 			$this->assertEquals( $change, ChangeEntry::jsonUnserialize( json_decode( $json ) ) );
 		}
 	}
@@ -414,7 +418,7 @@ class ChangeEntryTest extends TestCase {
 	/**
 	 * Data provider for testJson.
 	 */
-	public function provideJson() {
+	public static function provideJson() {
 		return array(
 			'Basic serialization'              => array(
 				'{"__class__":"Automattic\\\\Jetpack\\\\Changelog\\\\ChangeEntry","significance":null,"timestamp":"2021-02-18T00:00:00+0000","subheading":"","author":"","content":""}',
@@ -434,5 +438,4 @@ class ChangeEntryTest extends TestCase {
 			),
 		);
 	}
-
 }

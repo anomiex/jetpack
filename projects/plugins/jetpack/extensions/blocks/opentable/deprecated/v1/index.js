@@ -1,7 +1,7 @@
-import { defaultAttributes } from '../../attributes';
+import metadata from '../../block.json';
 
 export default {
-	attributes: defaultAttributes,
+	attributes: metadata.attributes,
 	supports: {
 		align: true,
 		html: false,
@@ -9,7 +9,10 @@ export default {
 	save: ( { attributes: { rid } } ) => (
 		<>
 			{ rid.map( restaurantId => (
-				<a href={ `https://www.opentable.com/restref/client/?rid=${ restaurantId }` }>
+				<a
+					key={ restaurantId }
+					href={ `https://www.opentable.com/restref/client/?rid=${ restaurantId }` }
+				>
 					{ `https://www.opentable.com/restref/client/?rid=${ restaurantId }` }
 				</a>
 			) ) }

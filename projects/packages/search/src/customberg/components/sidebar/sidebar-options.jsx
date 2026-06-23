@@ -6,20 +6,21 @@ import {
 	ToggleControl,
 } from '@wordpress/components';
 import { __ } from '@wordpress/i18n';
-import classNames from 'classnames';
+import clsx from 'clsx';
 import useEntityRecordState from 'hooks/use-entity-record-state';
 import useSiteLoadingState from 'hooks/use-loading-state';
 import useSearchOptions from 'hooks/use-search-options';
+import { RESULT_FORMAT_PRODUCT, SERVER_OBJECT_NAME } from 'instant-search/lib/constants';
 import ColorControl from './color-control';
 import ExcludedPostTypesControl from './excluded-post-types-control';
 import ThemeControl from './theme-control';
 
-/* eslint-disable react/jsx-no-bind */
+const { isFreePlan = false } = window[ SERVER_OBJECT_NAME ];
 
 /**
  * Customization/configuration tab for the sidebar.
  *
- * @returns {Element} component instance
+ * @return {Element} component instance
  */
 export default function SidebarOptions() {
 	// Initializes default values used for FormToggle in order to avoid changing
@@ -28,10 +29,12 @@ export default function SidebarOptions() {
 		color,
 		excludedPostTypes,
 		infiniteScroll = true,
+		filteringOpensOverlay = true,
 		resultFormat,
 		setColor,
 		setExcludedPostTypes,
 		setInfiniteScroll,
+		setFilteringOpensOverlay,
 		setResultFormat,
 		setShowLogo,
 		setSort,
@@ -43,17 +46,38 @@ export default function SidebarOptions() {
 		sortEnabled = true,
 		theme,
 		trigger,
+		postDate = false,
+		setPostDate,
+		productPrice = true,
+		setProductPrice,
+		aiAnswersEnabled = false,
+		setAiAnswersEnabled,
+		searchSuggestionsEnabled = false,
+		setSearchSuggestionsEnabled,
 	} = useSearchOptions();
 
 	const { isSaving } = useEntityRecordState();
 	const { isLoading } = useSiteLoadingState();
 	const isDisabled = isSaving || isLoading;
 
+	const sortOptions = [
+		{ label: __( 'Relevance (recommended)', 'jetpack-search-pkg' ), value: 'relevance' },
+		{ label: __( 'Newest first', 'jetpack-search-pkg' ), value: 'newest' },
+		{ label: __( 'Oldest first', 'jetpack-search-pkg' ), value: 'oldest' },
+	];
+	if ( resultFormat === RESULT_FORMAT_PRODUCT ) {
+		sortOptions.push(
+			{ label: __( 'Rating', 'jetpack-search-pkg' ), value: 'rating_desc' },
+			{ label: __( 'Price: low to high', 'jetpack-search-pkg' ), value: 'price_asc' },
+			{ label: __( 'Price: high to low', 'jetpack-search-pkg' ), value: 'price_desc' }
+		);
+	}
+
 	// TODO: ask the user if they attempt to navigate away from the page with pending changes.
 
 	return (
 		<Panel
-			className={ classNames( 'jp-search-configure-sidebar-options', {
+			className={ clsx( 'jp-search-configure-sidebar-options', {
 				'jp-search-configure-sidebar-options--is-disabled': isDisabled,
 			} ) }
 		>
@@ -76,18 +100,16 @@ export default function SidebarOptions() {
 				<ColorControl disabled={ isDisabled } onChange={ setColor } value={ color } />
 			</PanelBody>
 
-			<PanelBody title={ __( 'Search options', 'jetpack-search-pkg' ) } initialOpen={ true }>
+			<PanelBody title={ __( 'Search settings', 'jetpack-search-pkg' ) } initialOpen={ true }>
 				<SelectControl
 					className="jp-search-configure-default-sort-select"
 					disabled={ isDisabled }
 					label={ __( 'Default sort', 'jetpack-search-pkg' ) }
 					value={ sort }
-					options={ [
-						{ label: __( 'Relevance (recommended)', 'jetpack-search-pkg' ), value: 'relevance' },
-						{ label: __( 'Newest first', 'jetpack-search-pkg' ), value: 'newest' },
-						{ label: __( 'Oldest first', 'jetpack-search-pkg' ), value: 'oldest' },
-					] }
+					options={ sortOptions }
 					onChange={ setSort }
+					__nextHasNoMarginBottom={ true }
+					__next40pxDefaultSize={ true }
 				/>
 				<SelectControl
 					className="jp-search-configure-overlay-trigger-select"
@@ -96,19 +118,29 @@ export default function SidebarOptions() {
 					value={ trigger }
 					options={ [
 						{
-							label: __( 'Open when the user starts typing', 'jetpack-search-pkg' ),
-							value: 'immediate',
-						},
-						{
-							label: __( 'Open when results are available', 'jetpack-search-pkg' ),
-							value: 'results',
-						},
-						{
-							label: __( 'Open when user submits the form', 'jetpack-search-pkg' ),
+							label: __( 'Open when user submits the form (recommended)', 'jetpack-search-pkg' ),
 							value: 'submit',
+						},
+						{
+							label: __( 'Open when user starts typing', 'jetpack-search-pkg' ),
+							value: 'immediate',
 						},
 					] }
 					onChange={ setTrigger }
+					__nextHasNoMarginBottom={ true }
+					__next40pxDefaultSize={ true }
+				/>
+				<ToggleControl
+					className="jp-search-configure-filtering-opens-overlay-toggle"
+					checked={ filteringOpensOverlay }
+					disabled={ isDisabled }
+					help={ __(
+						'Open overlay when filters are used outside the Jetpack Sidebar',
+						'jetpack-search-pkg'
+					) }
+					label={ __( 'Open overlay from filter links', 'jetpack-search-pkg' ) }
+					onChange={ setFilteringOpensOverlay }
+					__nextHasNoMarginBottom={ true }
 				/>
 				<ExcludedPostTypesControl
 					disabled={ isDisabled }
@@ -124,21 +156,72 @@ export default function SidebarOptions() {
 					disabled={ isDisabled }
 					label={ __( 'Show sort selector', 'jetpack-search-pkg' ) }
 					onChange={ setSortEnabled }
+					__nextHasNoMarginBottom={ true }
 				/>
+				{ RESULT_FORMAT_PRODUCT === resultFormat && (
+					<ToggleControl
+						className="jp-search-configure-product-price-toggle"
+						checked={ productPrice }
+						disabled={ isDisabled }
+						label={ __( 'Show price', 'jetpack-search-pkg' ) }
+						onChange={ setProductPrice }
+						__nextHasNoMarginBottom={ true }
+					/>
+				) }
 				<ToggleControl
 					className="jp-search-configure-infinite-scroll-toggle"
 					checked={ infiniteScroll }
 					disabled={ isDisabled }
 					label={ __( 'Enable infinite scroll', 'jetpack-search-pkg' ) }
 					onChange={ setInfiniteScroll }
+					__nextHasNoMarginBottom={ true }
 				/>
+				{ 'expanded' === resultFormat && (
+					<ToggleControl
+						className="jp-search-configure-post-date-toggle"
+						checked={ postDate }
+						disabled={ isDisabled }
+						label={ __( 'Show post date', 'jetpack-search-pkg' ) }
+						onChange={ setPostDate }
+						__nextHasNoMarginBottom={ true }
+					/>
+				) }
+				{ ! isFreePlan && (
+					<ToggleControl
+						className="jp-search-configure-show-logo-toggle"
+						checked={ showLogo }
+						disabled={ isDisabled }
+						label={ __( 'Show "Powered by Jetpack"', 'jetpack-search-pkg' ) }
+						onChange={ setShowLogo }
+						__nextHasNoMarginBottom={ true }
+					/>
+				) }
 				<ToggleControl
-					className="jp-search-configure-show-logo-toggle"
-					checked={ showLogo }
+					className="jp-search-configure-search-suggestions-toggle"
+					checked={ searchSuggestionsEnabled }
 					disabled={ isDisabled }
-					label={ __( 'Show "Powered by Jetpack"', 'jetpack-search-pkg' ) }
-					onChange={ setShowLogo }
+					label={ __( 'Enable search suggestions', 'jetpack-search-pkg' ) }
+					help={ __(
+						'Show autocomplete query suggestions as visitors type, instead of updating search results on every keystroke.',
+						'jetpack-search-pkg'
+					) }
+					onChange={ setSearchSuggestionsEnabled }
+					__nextHasNoMarginBottom={ true }
 				/>
+				{ ! isFreePlan && (
+					<ToggleControl
+						className="jp-search-configure-ai-answers-toggle"
+						checked={ aiAnswersEnabled }
+						disabled={ isDisabled }
+						label={ __( 'Enable AI Answers', 'jetpack-search-pkg' ) }
+						help={ __(
+							'Generate AI-powered answers to visitor queries using your site’s content.',
+							'jetpack-search-pkg'
+						) }
+						onChange={ setAiAnswersEnabled }
+						__nextHasNoMarginBottom={ true }
+					/>
+				) }
 			</PanelBody>
 		</Panel>
 	);

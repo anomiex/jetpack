@@ -2,11 +2,11 @@
 /**
  * Primary class file for the Jetpack Starter Plugin plugin.
  *
- * @package automattic/jetpack-starter-plugin-plugin
+ * @package automattic/jetpack-starter-plugin
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
-	exit;
+	exit( 0 );
 }
 
 use Automattic\Jetpack\Admin_UI\Admin_Menu;
@@ -19,6 +19,8 @@ use Automattic\Jetpack\Sync\Data_Settings;
 
 /**
  * Class Jetpack_Starter_Plugin
+ *
+ * @phan-constructor-used-for-side-effects
  */
 class Jetpack_Starter_Plugin {
 
@@ -34,12 +36,11 @@ class Jetpack_Starter_Plugin {
 			_x( 'Starter Plugin', 'The Jetpack Starter Plugin product name, without the Jetpack prefix', 'jetpack-starter-plugin' ),
 			'manage_options',
 			'jetpack-starter-plugin',
-			array( $this, 'plugin_settings_page' ),
-			99
+			array( $this, 'plugin_settings_page' )
 		);
 		add_action( 'load-' . $page_suffix, array( $this, 'admin_init' ) );
 
-		// Init Jetpack packages and ConnectionUI.
+		// Init Jetpack packages
 		add_action(
 			'plugins_loaded',
 			function () {
@@ -88,9 +89,8 @@ class Jetpack_Starter_Plugin {
 		);
 		Assets::enqueue_script( 'jetpack-starter-plugin' );
 		// Initial JS state including JP Connection data.
-		wp_add_inline_script( 'jetpack-starter-plugin', Connection_Initial_State::render(), 'before' );
+		Connection_Initial_State::render_script( 'jetpack-starter-plugin' );
 		wp_add_inline_script( 'jetpack-starter-plugin', $this->render_initial_state(), 'before' );
-
 	}
 
 	/**
@@ -99,7 +99,7 @@ class Jetpack_Starter_Plugin {
 	 * @return string
 	 */
 	public function render_initial_state() {
-		return 'var jetpackStarterPluginInitialState=JSON.parse(decodeURIComponent("' . rawurlencode( wp_json_encode( $this->initial_state() ) ) . '"));';
+		return 'var jetpackStarterPluginInitialState=' . wp_json_encode( $this->initial_state(), JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP ) . ';';
 	}
 
 	/**

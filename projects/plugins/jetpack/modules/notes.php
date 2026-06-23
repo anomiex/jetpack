@@ -1,7 +1,7 @@
 <?php // phpcs:ignore WordPress.Files.FileName.InvalidClassFileName
 /**
  * Module Name: Notifications
- * Module Description: Receive instant notifications of site comments and likes.
+ * Module Description: Receive real‑time notifications about site activity across your devices.
  * Sort Order: 13
  * First Introduced: 1.9
  * Requires Connection: Yes
@@ -15,9 +15,14 @@
  */
 
 use Automattic\Jetpack\Connection\Manager as Connection_Manager;
+use Automattic\Jetpack\Status\Host;
+
+if ( ! defined( 'ABSPATH' ) ) {
+	exit( 0 );
+}
 
 if ( ! defined( 'JETPACK_NOTES__CACHE_BUSTER' ) ) {
-	define( 'JETPACK_NOTES__CACHE_BUSTER', JETPACK__VERSION . '-' . gmdate( 'oW' ) );
+	define( 'JETPACK_NOTES__CACHE_BUSTER', JETPACK__VERSION . '-' . gmdate( 'oW' ) . '-lite' );
 }
 
 /**
@@ -82,8 +87,15 @@ class Jetpack_Notifications {
 
 		// Do not show notifications in the Site Editor, which is always in fullscreen mode.
 		global $pagenow;
-		// phpcs:ignore WordPress.Security.NonceVerification
-		if ( 'admin.php' === $pagenow && isset( $_GET['page'] ) && 'gutenberg-edit-site' === $_GET['page'] ) {
+
+		// Pre 13.7 pages that still need to be supported if < 13.7 is
+		// still installed.
+		$allowed_old_pages       = array( 'admin.php', 'themes.php' );
+		$is_old_site_editor_page = in_array( $pagenow, $allowed_old_pages, true ) && isset( $_GET['page'] ) && 'gutenberg-edit-site' === $_GET['page']; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		// For Gutenberg > 13.7, the core `site-editor.php` route is used instead
+		$is_site_editor_page = 'site-editor.php' === $pagenow;
+
+		if ( $is_site_editor_page || $is_old_site_editor_page ) {
 			return;
 		}
 
@@ -98,9 +110,12 @@ class Jetpack_Notifications {
 	 * @return void
 	 */
 	public function styles_and_scripts() {
+		if ( self::is_block_editor() ) {
+			return;
+		}
 		$is_rtl = is_rtl();
 
-		if ( Jetpack::is_module_active( 'masterbar' ) ) {
+		if ( ( new Host() )->is_woa_site() ) {
 			/**
 			 * Can be used to force Notifications to display in RTL style.
 			 *
@@ -123,28 +138,14 @@ class Jetpack_Notifications {
 
 		$this->print_js();
 
-		// attempt to use core or plugin libraries if registered.
 		$script_handles = array();
-		if ( ! wp_script_is( 'mustache', 'registered' ) ) {
-			wp_register_script( 'mustache', $this->wpcom_static_url( '/wp-content/js/mustache.js' ), null, JETPACK_NOTES__CACHE_BUSTER, true );
-		}
-		$script_handles[] = 'mustache';
-		if ( ! wp_script_is( 'underscore', 'registered' ) ) {
-			wp_register_script( 'underscore', $this->wpcom_static_url( '/wp-includes/js/underscore.min.js' ), null, JETPACK_NOTES__CACHE_BUSTER, true );
-		}
-		$script_handles[] = 'underscore';
-		if ( ! wp_script_is( 'backbone', 'registered' ) ) {
-			wp_register_script( 'backbone', $this->wpcom_static_url( '/wp-includes/js/backbone.min.js' ), array( 'underscore' ), JETPACK_NOTES__CACHE_BUSTER, true );
-		}
-		$script_handles[] = 'backbone';
-
-		wp_register_script( 'wpcom-notes-common', $this->wpcom_static_url( '/wp-content/mu-plugins/notes/notes-common-v2.js' ), array( 'jquery', 'underscore', 'backbone', 'mustache' ), JETPACK_NOTES__CACHE_BUSTER, true );
+		wp_register_script( 'wpcom-notes-common', $this->wpcom_static_url( '/wp-content/mu-plugins/notes/notes-common-lite.min.js' ), array(), JETPACK_NOTES__CACHE_BUSTER, true );
 		$script_handles[] = 'wpcom-notes-common';
-		$script_handles[] = 'jquery';
-		$script_handles[] = 'jquery-migrate';
-		$script_handles[] = 'jquery-core';
 		wp_enqueue_script( 'wpcom-notes-admin-bar', $this->wpcom_static_url( '/wp-content/mu-plugins/notes/admin-bar-v2.js' ), array( 'wpcom-notes-common' ), JETPACK_NOTES__CACHE_BUSTER, true );
 		$script_handles[] = 'wpcom-notes-admin-bar';
+
+		$wp_notes_args = 'var wpNotesArgs = ' . wp_json_encode( array( 'cacheBuster' => JETPACK_NOTES__CACHE_BUSTER ), JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP ) . ';';
+		wp_add_inline_script( 'wpcom-notes-admin-bar', $wp_notes_args, 'before' );
 
 		if ( class_exists( 'Jetpack_AMP_Support' ) && Jetpack_AMP_Support::is_amp_request() ) {
 			add_filter(
@@ -173,7 +174,11 @@ class Jetpack_Notifications {
 			return;
 		}
 
-		$wpcom_locale = get_locale();
+		if ( self::is_block_editor() ) {
+			return;
+		}
+
+		$user_locale = get_user_locale();
 
 		if ( ! class_exists( 'GP_Locales' ) ) {
 			if ( defined( 'JETPACK__GLOTPRESS_LOCALES_PATH' ) && file_exists( JETPACK__GLOTPRESS_LOCALES_PATH ) ) {
@@ -182,26 +187,46 @@ class Jetpack_Notifications {
 		}
 
 		if ( class_exists( 'GP_Locales' ) ) {
-			$wpcom_locale_object = GP_Locales::by_field( 'wp_locale', $wpcom_locale );
-			if ( $wpcom_locale_object instanceof GP_Locale ) {
-				$wpcom_locale = $wpcom_locale_object->slug;
+			$jetpack_locale_object = GP_Locales::by_field( 'slug', $user_locale );
+			if ( $jetpack_locale_object instanceof GP_Locale ) {
+				$user_locale = $jetpack_locale_object->slug;
 			}
 		}
 
-		$classes = 'wpnt-loading wpn-read';
+		$third_party_cookie_check_iframe = '<span style="display:none;"><iframe class="jetpack-notes-cookie-check" src="https://widgets.wp.com/3rd-party-cookie-check/index.html"></iframe></span>';
+
+		// Opt into the v3 notifications panel/iframe via the `notifications=v3` query parameter.
+		$notifications_version = sanitize_key( wp_unslash( $_GET['notifications'] ?? '' ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$panel_id              = 'v3' === $notifications_version ? 'wpnt-notes-panel3' : 'wpnt-notes-panel2';
+
+		$title = self::get_notes_markup();
+
+		// The default fallback is `en_US`. Remove underscore if present, noting that lang codes can be more than three chars.
+		$user_locale = strtolower( explode( '_', $user_locale, 2 )[0] );
+
 		$wp_admin_bar->add_menu(
 			array(
 				'id'     => 'notes',
-				'title'  => '<span id="wpnt-notes-unread-count" class="' . esc_attr( $classes ) . '">
-					<span class="noticon noticon-notification"></span>
-					</span>',
+				'title'  => $title,
 				'meta'   => array(
-					'html'  => '<div id="wpnt-notes-panel2" class="intrinsic-ignore" style="display:none" lang="' . esc_attr( $wpcom_locale ) . '" dir="' . ( is_rtl() ? 'rtl' : 'ltr' ) . '"><div class="wpnt-notes-panel-header"><span class="wpnt-notes-header">' . __( 'Notifications', 'jetpack' ) . '</span><span class="wpnt-notes-panel-link"></span></div></div>',
+					'html'  => '<div id="' . esc_attr( $panel_id ) . '" class="intrinsic-ignore" style="display:none" lang="' . esc_attr( $user_locale ) . '" dir="' . ( is_rtl() ? 'rtl' : 'ltr' ) . '"><div class="wpnt-notes-panel-header"><span class="wpnt-notes-header">' . __( 'Notifications', 'jetpack' ) . '</span><span class="wpnt-notes-panel-link"></span></div></div>' . $third_party_cookie_check_iframe,
 					'class' => 'menupop',
 				),
 				'parent' => 'top-secondary',
+				'href'   => 'https://wordpress.com/reader/notifications',
 			)
 		);
+	}
+
+	/**
+	 * Returns the HTML markup for used by notification in top bar
+	 *
+	 * @return string
+	 */
+	private static function get_notes_markup() {
+		return '<span id="wpnt-notes-unread-count" class="wpnt-loading wpn-read"></span>
+<span class="noticon noticon-bell ab-icon"></span>
+<span class="screen-reader-text">' . esc_html__( 'Notifications', 'jetpack' ) . '</span>';
 	}
 
 	/**
@@ -211,19 +236,33 @@ class Jetpack_Notifications {
 	 */
 	public function print_js() {
 		$link_accounts_url = is_user_logged_in() && ! ( new Connection_Manager( 'jetpack' ) )->is_user_connected() ? Jetpack::admin_url() : false;
-		?>
-<script data-ampdevmode type="text/javascript">
-/* <![CDATA[ */
-	var wpNotesIsJetpackClient = true;
-	var wpNotesIsJetpackClientV2 = true;
-		<?php if ( $link_accounts_url ) : ?>
-	var wpNotesLinkAccountsURL = '<?php echo esc_url( $link_accounts_url ); ?>';
-<?php endif; ?>
-/* ]]> */
-</script>
-		<?php
+		$script_contents   = <<<'JS'
+var wpNotesIsJetpackClient = true;
+var wpNotesIsJetpackClientV2 = true;
+JS;
+		if ( $link_accounts_url ) {
+			$script_contents .= "\nvar wpNotesLinkAccountsURL = " . wp_json_encode( $link_accounts_url, JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP ) . ';';
+		}
+		wp_print_inline_script_tag(
+			$script_contents,
+			array(
+				'data-ampdevmode' => true,
+			)
+		);
 	}
 
+	/**
+	 * Checks to see if we're in the block editor.
+	 */
+	public static function is_block_editor() {
+		if ( function_exists( 'get_current_screen' ) ) {
+			$current_screen = get_current_screen();
+			if ( ! empty( $current_screen ) && $current_screen->is_block_editor() ) {
+				return true;
+			}
+		}
+		return false;
+	}
 }
 
 Jetpack_Notifications::init();

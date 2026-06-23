@@ -1,4 +1,4 @@
-<?php // phpcs:ignore WordPress.Files.FileName
+<?php
 /**
  * File loader test suite.
  *
@@ -21,7 +21,7 @@ class ManifestReaderTest extends TestCase {
 	 * The older version of the autoloader that we want to use. Note that
 	 * the version should support PSR-4 since this one does.
 	 */
-	const OLDER_VERSION = '2.4.0.0';
+	const OLDER_VERSION = '2.6.0.0';
 
 	/**
 	 * The directory of a plugin using the autoloader.
@@ -39,19 +39,17 @@ class ManifestReaderTest extends TestCase {
 
 	/**
 	 * Setup before class runs before the class.
-	 *
-	 * @beforeClass
 	 */
-	public static function set_up_before_class() {
+	public static function setUpBeforeClass(): void {
+		parent::setUpBeforeClass();
 		self::$older_plugin_dir = Test_Plugin_Factory::create_test_plugin( false, self::OLDER_VERSION )->make();
 	}
 
 	/**
 	 * Setup runs before each test.
-	 *
-	 * @before
 	 */
-	public function set_up() {
+	public function setUp(): void {
+		parent::setUp();
 		$this->reader = new Manifest_Reader( new Version_Selector() );
 	}
 
@@ -99,7 +97,7 @@ class ManifestReaderTest extends TestCase {
 
 		$this->assertArrayHasKey( Classmap_Test_Class::class, $input_array );
 		$this->assertEquals( Test_Plugin_Factory::VERSION_CURRENT, $input_array[ Classmap_Test_Class::class ]['version'] );
-		$this->assertEquals( $input_array[ Classmap_Test_Class::class ]['path'], TEST_PLUGIN_DIR . '/includes/class-classmap-test-class.php' );
+		$this->assertEquals( TEST_PLUGIN_DIR . '/includes/class-classmap-test-class.php', $input_array[ Classmap_Test_Class::class ]['path'] );
 	}
 
 	/**
@@ -116,7 +114,7 @@ class ManifestReaderTest extends TestCase {
 
 		$this->assertArrayHasKey( Classmap_Test_Class::class, $input_array );
 		$this->assertEquals( Test_Plugin_Factory::VERSION_CURRENT, $input_array[ Classmap_Test_Class::class ]['version'] );
-		$this->assertEquals( $input_array[ Classmap_Test_Class::class ]['path'], TEST_PLUGIN_DIR . '/includes/class-classmap-test-class.php' );
+		$this->assertEquals( TEST_PLUGIN_DIR . '/includes/class-classmap-test-class.php', $input_array[ Classmap_Test_Class::class ]['path'] );
 	}
 
 	/**
@@ -133,6 +131,6 @@ class ManifestReaderTest extends TestCase {
 
 		$this->assertArrayHasKey( Classmap_Test_Class::class, $input_array );
 		$this->assertEquals( Test_Plugin_Factory::VERSION_CURRENT, $input_array[ Classmap_Test_Class::class ]['version'] );
-		$this->assertEquals( $input_array[ Classmap_Test_Class::class ]['path'], TEST_PLUGIN_DIR . '/includes/class-classmap-test-class.php' );
+		$this->assertEquals( TEST_PLUGIN_DIR . '/includes/class-classmap-test-class.php', $input_array[ Classmap_Test_Class::class ]['path'] );
 	}
 }

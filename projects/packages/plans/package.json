@@ -1,7 +1,7 @@
 {
-	"private": true,
 	"name": "@automattic/jetpack-plans",
-	"version": "0.1.1-alpha",
+	"version": "0.11.9",
+	"private": true,
 	"description": "Fetch information about Jetpack Plans from wpcom",
 	"homepage": "https://github.com/Automattic/jetpack/tree/HEAD/projects/packages/plans/#readme",
 	"bugs": {
@@ -20,10 +20,5 @@
 		"build-production": "echo 'Not implemented.",
 		"build-production-js": "echo 'Not implemented.",
 		"clean": "true"
-	},
-	"devDependencies": {},
-	"engines": {
-		"node": "^16.13.2",
-		"yarn": "use pnpm instead - see docs/yarn-upgrade.md"
 	}
 }

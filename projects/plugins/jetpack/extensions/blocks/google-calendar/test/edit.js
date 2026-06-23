@@ -1,24 +1,33 @@
-import { isSimpleSite } from '@automattic/jetpack-shared-extension-utils';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { GoogleCalendarEdit } from '../edit';
 
-jest.mock( '@wordpress/components/build/sandbox', () => ( {
-	__esModule: true,
-	default: props => <iframe title="Some title" { ...props } />,
-} ) );
+jest.mock( '@wordpress/components', () => {
+	const actual = jest.requireActual( '@wordpress/components' );
+	const mocks = {
+		SandBox: props => <iframe title="Some title" { ...props } />,
+	};
+	return new Proxy( actual, {
+		get( target, property ) {
+			return mocks[ property ] ?? target[ property ];
+		},
+	} );
+} );
 
-// isSimpleSite is mocked simply to check appropriate support link is displayed.
-jest.mock( '@automattic/jetpack-shared-extension-utils', () => ( {
-	...jest.requireActual( '@automattic/jetpack-shared-extension-utils' ),
-	isSimpleSite: jest.fn(),
-} ) );
+// Mock @automattic/jetpack-script-data functions to allow isWpcomPlatformSite to be correctly used.
+jest.mock( '@automattic/jetpack-script-data', () => {
+	return {
+		isWpcomPlatformSite: jest.fn().mockReturnValue( false ),
+	};
+} );
+
+// Get access to the mock function for testing
+const { isWpcomPlatformSite } = jest.requireMock( '@automattic/jetpack-script-data' );
 
 describe( 'GoogleCalendarEdit', () => {
 	const defaultClassName = 'wp-block-jetpack-google-calendar';
 	const defaultAttributes = {
-		url:
-			'https://calendar.google.com/calendar/embed?src=test.user%40a8c.com&ctz=Pacific%2FAuckland',
+		url: 'https://calendar.google.com/calendar/embed?src=test.user%40a8c.com&ctz=Pacific%2FAuckland',
 		height: '600',
 		width: '800',
 	};
@@ -38,7 +47,6 @@ describe( 'GoogleCalendarEdit', () => {
 		setAttributes,
 		clientId: 1,
 		isMobile: false,
-		className: 'custom-calendar-class',
 		isSelected: true,
 		name: 'jetpack/google-calendar',
 		noticeOperations: {
@@ -57,9 +65,6 @@ describe( 'GoogleCalendarEdit', () => {
 		const emptyProps = { ...defaultProps, attributes: emptyAttributes };
 		const { container } = render( <GoogleCalendarEdit { ...emptyProps } /> );
 
-		// Check block specific CSS classes are applied.
-		// eslint-disable-next-line testing-library/no-container, testing-library/no-node-access
-		expect( container.firstChild ).toHaveClass( defaultProps.className );
 		expect(
 			// eslint-disable-next-line testing-library/no-container, testing-library/no-node-access
 			container.querySelector( `.${ defaultClassName }-placeholder-instructions` )
@@ -86,7 +91,7 @@ describe( 'GoogleCalendarEdit', () => {
 			screen.getByText( 'Paste the embed code you copied from your Google Calendar below' )
 		).toBeInTheDocument();
 
-		const supportLink = screen.getByText( 'Learn more' );
+		const supportLink = screen.getByRole( 'link', { name: 'Learn more(opens in a new tab)' } );
 
 		expect( supportLink ).toBeInTheDocument();
 		expect( supportLink ).toHaveAttribute(
@@ -104,13 +109,15 @@ describe( 'GoogleCalendarEdit', () => {
 	} );
 
 	test( 'renders wpcom support link if simple or atomic site', () => {
-		isSimpleSite.mockImplementationOnce( () => true );
+		isWpcomPlatformSite.mockImplementationOnce( () => true );
 
 		const emptyProps = { ...defaultProps, attributes: emptyAttributes };
 		render( <GoogleCalendarEdit { ...emptyProps } /> );
 
 		const url = 'https://en.support.wordpress.com/wordpress-editor/blocks/google-calendar/';
-		expect( screen.getByText( 'Learn more' ) ).toHaveAttribute( 'href', url );
+		const supportLink = screen.getByRole( 'link', { name: 'Learn more(opens in a new tab)' } );
+		expect( supportLink ).toBeInTheDocument();
+		expect( supportLink ).toHaveAttribute( 'href', url );
 	} );
 
 	test( 'handles submitted embed codes', async () => {

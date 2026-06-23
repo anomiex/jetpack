@@ -7,6 +7,13 @@ use Automattic\Jetpack\Analyzer\Scripts;
 class PluginDownloader {
 	private $type;
 
+	/**
+	 * Path to output directory.
+	 *
+	 * @var string
+	 */
+	public $output_dir;
+
 	public function __construct($type) {
 		$this->type = $type;
 		$this->output_dir = realpath( dirname( __DIR__ ) . '/../output' ) . '/';
@@ -42,7 +49,7 @@ class PluginDownloader {
 
 		$file_path = $this->output_dir . $url_filename;
 		if (false === strpos($url_filename, '.zip')) {
-			$file_path = $file_path  . '.zip';
+			$file_path .= '.zip';
 		}
 		$context = stream_context_create(array('http' => array(
 			'header' => 'User-Agent: jp-analyzer',

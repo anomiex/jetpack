@@ -1,4 +1,4 @@
-import React from 'react';
+import * as React from 'react';
 
 import './path-breadcrumbs.scss';
 
@@ -6,7 +6,7 @@ import './path-breadcrumbs.scss';
  * Splits URL by slashes for rendering breadcrumbs.
  *
  * @param {string} path - String URL.
- * @returns {string[]} - Array of strings.
+ * @return {string[]} - Array of strings.
  */
 function splitDomainPath( path ) {
 	const splits = path.split( '/' ).filter( piece => piece.length > 0 );
@@ -27,6 +27,8 @@ const PathBreadcrumbs = ( { className, onClick, url } ) => {
 				className="jetpack-instant-search__path-breadcrumb-link"
 				href={ `//${ url }` }
 				onClick={ onClick }
+				tabIndex="-1"
+				aria-hidden="true"
 			>
 				{ breadcrumbPieces.map( ( piece, index, pieces ) => (
 					<span className="jetpack-instant-search__path-breadcrumb-piece" key={ piece }>

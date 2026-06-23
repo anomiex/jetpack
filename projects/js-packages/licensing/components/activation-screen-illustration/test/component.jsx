@@ -1,5 +1,4 @@
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import ActivationScreenIllustration from '../index';
 
 describe( 'ActivationScreenIllustration', () => {
@@ -11,7 +10,7 @@ describe( 'ActivationScreenIllustration', () => {
 
 		it( 'correct images src is used', () => {
 			render( <ActivationScreenIllustration { ...testProps } /> );
-			const image = screen.getByRole( 'img' );
+			const image = screen.getByRole( 'presentation' );
 			expect( image ).toHaveAttribute( 'src', testProps.imageUrl );
 		} );
 

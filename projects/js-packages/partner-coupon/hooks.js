@@ -1,15 +1,16 @@
 import { getRedirectUrl } from '@automattic/jetpack-components';
 import { useCallback, useEffect } from 'react';
+import { assignLocation } from './utils/assignLocation.js';
 
 /**
  * Handle partner coupon redeem analytics and clicks.
  *
- * @param {object} partnerCoupon - Partner coupon details.
- * @param {string} siteRawUrl - Site's raw URL.
- * @param {object} connectionStatus - Connection status.
- * @param {boolean} tracksUserData - Should we track user data.
- * @param {object} analytics - Analytics.
- * @returns {Function} Click handler for coupon redemption.
+ * @param {object}  partnerCoupon    - Partner coupon details.
+ * @param {string}  siteRawUrl       - Site's raw URL.
+ * @param {object}  connectionStatus - Connection status.
+ * @param {boolean} tracksUserData   - Should we track user data.
+ * @param {object}  analytics        - Analytics.
+ * @return {Function} Click handler for coupon redemption.
  */
 export function usePartnerCouponRedemption(
 	partnerCoupon,
@@ -45,11 +46,13 @@ export function usePartnerCouponRedemption(
 			} );
 		}
 
-		window.location.href = getRedirectUrl( 'jetpack-plugin-partner-coupon-checkout', {
-			path: partnerCoupon.product.slug,
-			site: siteRawUrl,
-			query: `coupon=${ partnerCoupon.coupon_code }`,
-		} );
+		assignLocation(
+			getRedirectUrl( 'jetpack-plugin-partner-coupon-checkout', {
+				path: partnerCoupon.product.slug,
+				site: siteRawUrl,
+				query: `coupon=${ partnerCoupon.coupon_code }`,
+			} )
+		);
 	}, [ analytics, tracksUserData, connectionStatus, partnerCoupon, siteRawUrl ] );
 
 	return onClick;

@@ -7,6 +7,8 @@
 
 namespace Automattic\Jetpack\Social;
 
+use WP_Post;
+
 /**
  * Adds the meta tags.
  */
@@ -21,6 +23,7 @@ class Meta_Tags {
 	 */
 	private $open_graph_conflicting_plugins = array(
 		'jetpack/jetpack.php',                                   // The Jetpack plugin adds its own meta tags.
+		'jetpack-dev/jetpack.php',                               // Jetpack's location with the beta plugin.
 		'2-click-socialmedia-buttons/2-click-socialmedia-buttons.php', // 2 Click Social Media Buttons.
 		'add-link-to-facebook/add-link-to-facebook.php',         // Add Link to Facebook.
 		'add-meta-tags/add-meta-tags.php',                       // Add Meta Tags.
@@ -58,6 +61,8 @@ class Meta_Tags {
 		'wp-facebook-like-send-open-graph-meta/wp-facebook-like-send-open-graph-meta.php', // WP Facebook Like Send & Open Graph Meta.
 		'wp-facebook-open-graph-protocol/wp-facebook-ogp.php',   // WP Facebook Open Graph protocol.
 		'wp-ogp/wp-ogp.php',                                     // WP-OGP.
+		'wp-seopress/seopress.php',                              // SEOPress.
+		'wp-seopress-pro/seopress-pro.php',                      // SEOPress Pro.
 		'zoltonorg-social-plugin/zosp.php',                      // Zolton.org Social Plugin.
 		'wp-fb-share-like-button/wp_fb_share-like_widget.php',   // WP Facebook Like Button.
 		'open-graph-metabox/open-graph-metabox.php',             // Open Graph Metabox.
@@ -164,9 +169,9 @@ class Meta_Tags {
 		}
 
 		return array(
-			'url'    => $img_src[0],
-			'width'  => $img_src[1],
-			'height' => $img_src[2],
+			'src'        => $img_src[0],
+			'src_width'  => $img_src[1],
+			'src_height' => $img_src[2],
 		);
 	}
 
@@ -230,7 +235,57 @@ class Meta_Tags {
 			);
 		}
 
+		// Trim the description if it's still too long, and add an ellipsis.
+		$description_length = 197;
+		$description        = mb_strimwidth( $description, 0, $description_length, '…' );
+
 		return $description;
+	}
+
+	/**
+	 * To set a custom OG:title for social notes.
+	 */
+	public function get_og_title_for_social_notes() {
+		$text     = wp_strip_all_tags( get_the_excerpt() );
+		$length   = 55;
+		$ellipsis = "\u{2026}";
+
+		if ( strlen( $text ) <= $length ) {
+			return $text;
+		}
+
+		$words   = str_word_count( $text, 2 );
+		$indices = array_keys( $words );
+
+		// There is only one word, or the first word plus initial non-word characters, is longer than 55 characters.
+		if ( count( $indices ) === 1 || $indices[0] + strlen( $words[ $indices[0] ] ) > $length ) {
+			return substr( $text, 0, $length ) . $ellipsis;
+		}
+
+		$substring_index = 0;
+		foreach ( $indices as $current_index ) {
+			$current_length = $current_index + strlen( $words[ $current_index ] );
+			if ( $current_length > $length ) {
+				$substring_index = $current_index - 1;
+				break;
+			}
+			$substring_index = $current_length;
+		}
+		return substr( $text, 0, $substring_index ) . $ellipsis;
+	}
+
+	/**
+	 * Filters the OG tags when we are displaying a Social Note,
+	 * and adjusts the title. This allows us to adjust the title
+	 * when Jetpack is active as well as social.
+	 *
+	 * @param array $tags The array of OG tags so far.
+	 */
+	public function get_note_title( $tags ) {
+		if ( ! isset( $tags['og:title'] ) || empty( trim( $tags['og:title'] ) ) ) {
+			$tags['og:title'] = $this->get_og_title_for_social_notes();
+		}
+		return $tags;
 	}
 
 	/**
@@ -239,40 +294,39 @@ class Meta_Tags {
 	 * @param WP_Post|null $post The post to render the tags for.
 	 */
 	public function render_tags( $post = null ) {
-		if ( ! $this->should_render_meta_tags() ) {
-			return;
-		}
-
 		$data = get_post( $post );
 		if ( empty( $data ) ) {
 			return;
 		}
 
-		$tags = array();
-
-		if ( empty( $data->post_title ) ) {
-			$tags['og:title'] = __( '(no title)', 'jetpack-social' );
-		} else {
-			/** This filter is documented in core/src/wp-includes/post-template.php */
-			$tags['og:title'] = wp_kses( apply_filters( 'the_title', $data->post_title, $data->ID ), array() );
+		if ( $data->post_type === Note::JETPACK_SOCIAL_NOTE_CPT ) {
+			add_filter( 'jetpack_open_graph_tags', array( $this, 'get_note_title' ) );
 		}
 
-		$tags['og:url'] = get_permalink( $data->ID );
+		if ( ! $this->should_render_meta_tags() ) {
+			return;
+		}
+
+		$tags = array();
+
+		/** This filter is documented in core/src/wp-includes/post-template.php */
+		$tags['og:title'] = wp_kses( apply_filters( 'the_title', $data->post_title, $data->ID ), array() );
+		$tags['og:url']   = get_permalink( $data->ID );
 		if ( ! post_password_required( $data ) ) {
+			$excerpt = '';
+
 			/*
 			 * If the post author set an excerpt, use that.
 			 * Otherwise, pick the post content that comes before the More tag if there is one.
 			 * Do not use the post content if it contains premium content.
 			 */
 			if ( ! empty( $data->post_excerpt ) ) {
-				$tags['og:description'] = $this->get_description( $data->post_excerpt );
+				$excerpt = $data->post_excerpt;
 			} elseif ( ! has_block( 'premium-content/container', $data->post_content ) ) {
-				$excerpt                = explode( '<!--more-->', $data->post_content )[0];
-				$tags['og:description'] = $this->get_description( $excerpt );
+				$excerpt = explode( '<!--more-->', $data->post_content )[0];
 			}
-			// Shorten the description if it's too long.
-			$description_length     = 197;
-			$tags['og:description'] = strlen( $tags['og:description'] ) > $description_length ? mb_substr( $tags['og:description'], 0, $description_length ) . '…' : $tags['og:description'];
+
+			$tags['og:description'] = $this->get_description( $excerpt );
 		}
 
 		$image = $this->get_featured_image();
@@ -281,27 +335,39 @@ class Meta_Tags {
 			$tags = array_merge(
 				$tags,
 				array(
-					'og:image'        => $image['url'],
-					'og:image:width'  => $image['width'],
-					'og:image:height' => $image['height'],
+					'og:image'        => $image['src'],
+					'og:image:width'  => $image['src_width'],
+					'og:image:height' => $image['src_height'],
 				)
 			);
+		}
 
-			if ( $this->should_render_twitter_cards_tags() ) {
-				$tags = array_merge(
-					$tags,
-					array(
-						'twitter:image' => $image['url'],
-						'twitter:card'  => 'summary_large_image',
-					)
-				);
-			}
+		/** This filter is documented in projects/plugins/jetpack/functions.opengraph.php */
+		$image_width = absint( apply_filters( 'jetpack_open_graph_image_width', 200 ) );
+
+		/** This filter is documented in projects/plugins/jetpack/functions.opengraph.php */
+		$image_height = absint( apply_filters( 'jetpack_open_graph_image_height', 200 ) );
+
+		/** This filter is documented in projects/plugins/jetpack/functions.opengraph.php */
+		$tags = apply_filters( 'jetpack_open_graph_tags', $tags, compact( 'image_width', 'image_height' ) );
+		if ( empty( trim( $tags['og:title'] ) ) ) {
+				$tags['og:title'] = __( '(no title)', 'jetpack-social' );
+		}
+
+		if ( ! empty( $tags['og:image'] ) && $this->should_render_twitter_cards_tags() ) {
+			$tags = array_merge(
+				$tags,
+				array(
+					'twitter:image' => $tags['og:image'],
+					'twitter:card'  => 'summary_large_image',
+				)
+			);
 		}
 
 		echo '<!-- Generated by Jetpack Social -->' . PHP_EOL;
 
 		foreach ( $tags as $property => $content ) {
-			$label = strpos( $property, 'twitter' ) === false ? 'property' : 'name';
+			$label = ! str_contains( $property, 'twitter' ) ? 'property' : 'name';
 
 			if ( $content ) {
 				printf( '<meta %1$s="%2$s" content="%3$s">' . PHP_EOL, esc_attr( $label ), esc_attr( $property ), esc_attr( $content ) );

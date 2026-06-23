@@ -1,3 +1,6 @@
+@use "../_utilities/mixins/breakpoint";
+@use "../atoms/colors/colors";
+
 // ==========================================================================
 // Jetpack Connection Landing Page ('Please connect jetpack')
 //===========================================================================
@@ -6,11 +9,15 @@
 // Jetpack NUX Page(s) (main jetpack admin page)
 //===========================================================================
 
-// Needs to be cleaned. Let's remove those important tags and unneeded classes that we can utilize from core. Properly nest elements. migrate into _main.scss
-// Once everything is tested, I'll remove all the comments below as well. - @jeffgolenski
+// Needs to be cleaned. Let's remove those important tags and unneeded
+// classes that we can utilize from core. Properly nest elements. migrate
+// into _main.scss
+// Once everything is tested, I'll remove all the comments below as well.
+// - @jeffgolenski
 
 // wrapping these common element names temporarily until I can audit - jeff
 .jp-content {
+
 	.hide {
 		display: none;
 	}
@@ -23,6 +30,7 @@
 
 	h1 {
 		font-weight: 400;
+		// stylelint-disable-next-line declaration-property-unit-allowed-list -- this should be changed to a unitless value: https://developer.wordpress.org/coding-standards/wordpress-coding-standards/css/#values
 		line-height: 1.75em;
 		position: relative;
 		z-index: 3;
@@ -30,39 +38,44 @@
 		text-align: center;
 
 		&.success {
-			color: $green;
+			color: colors.$green;
 		}
 	}
+
 	.footer {
 		padding-top: 0;
 		margin-top: 0;
 		background-image: none;
 
-		&:before {
+		&::before {
 			height: inherit;
 		}
 	}
 
-	.more-info:before {
+	.more-info::before {
 		content: none;
 	}
 } //.jp-content
 
 .landing {
+
 	.wpcom-connect {
 		min-height: 400px;
 	}
 }
 
 .wpcom-connect {
+
 	.j-col {
 		padding: 0;
 	}
 }
 
 // Breakpoints
-@include breakpoint(large-desktop) {
+@include breakpoint.breakpoint(large-desktop) {
+
 	.jp-content {
+
 		.landing {
 			padding: 0 2em;
 		}
@@ -73,10 +86,12 @@
 	}
 } // large-desktop
 
-@include breakpoint(large-phone) {
+@include breakpoint.breakpoint(large-phone) {
+
 	.jp-content {
+
 		.landing {
-			padding: 0 .5em;
+			padding: 0 0.5em;
 		}
 	}
 } // large-phone

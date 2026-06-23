@@ -1,21 +1,20 @@
 import { QRCode } from '@automattic/jetpack-components';
-import { Component, Button, Modal } from '@wordpress/components';
+import { JetpackLogo } from '@automattic/jetpack-shared-extension-utils/icons';
+import { Button, Modal } from '@wordpress/components';
 import { useSelect } from '@wordpress/data';
 import { store as editorStore } from '@wordpress/editor';
 import { useRef, useEffect, useState } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
-import { JetpackLogo } from '../../../shared/icons.js';
-import useSiteLogo from '../hooks/use-site-logo.js';
-import { handleDownloadQRCode } from '../utils/handle-download-qr-code.js';
+import useQRLogo from '../hooks/use-qr-logo.js';
 
 /**
  * React component that renders a QR code for the post,
  * pulling the post data from the editor store.
  *
- * @returns {Component} The react component.
+ * @return {import('react').ReactComponent} The react component.
  */
 export function QRPost() {
-	const wrapperElementRef = useRef();
+	const wrapperElementRef = useRef( undefined );
 
 	// Pick and convert Jetpack logo to data image.
 	const [ jetpackLogoUrl, setJetpackLogo ] = useState();
@@ -33,10 +32,10 @@ export function QRPost() {
 		setJetpackLogo( `data:image/svg+xml;base64,${ window.btoa( serializedSVG ) }` );
 	}, [ wrapperElementRef ] );
 
-	// Pick title and permalink post.
+	// Pick permalink and logo for QR code (site icon → site logo → Jetpack logo).
 	const permalink = useSelect( select => select( editorStore ).getPermalink(), [] );
-	const { dataUrl: siteLogoUrl } = useSiteLogo( { generateDataUrl: true } );
-	const codeLogo = siteLogoUrl || jetpackLogoUrl;
+	const { dataUrl: qrLogoUrl } = useQRLogo( { generateDataUrl: true } );
+	const codeLogo = qrLogoUrl || jetpackLogoUrl;
 
 	return (
 		<div ref={ wrapperElementRef }>
@@ -60,15 +59,14 @@ export function QRPost() {
 }
 
 export function QRPostButton() {
-	const qrCodeRef = useRef();
-	const slug = useSelect( select => select( editorStore ).getEditedPostSlug(), [] );
+	const qrCodeRef = useRef( undefined );
 	const [ isModalOpen, setIsModalOpen ] = useState( false );
 	const switchModal = () => setIsModalOpen( v => ! v );
 	const closeModal = () => setIsModalOpen( false );
 
 	return (
 		<div className="qr-post-button">
-			<Button isSecondary onClick={ switchModal }>
+			<Button variant="secondary" onClick={ switchModal }>
 				{ __( 'Get QR code', 'jetpack' ) }
 			</Button>
 
@@ -80,16 +78,6 @@ export function QRPostButton() {
 				>
 					<div className="qr-post-modal__qr-code" ref={ qrCodeRef }>
 						<QRPost />
-					</div>
-
-					<div className="qr-post-modal__actions_buttons">
-						<Button isSecondary onClick={ () => handleDownloadQRCode( slug, qrCodeRef ) }>
-							{ __( 'Download', 'jetpack' ) }
-						</Button>
-
-						<Button isSecondary onClick={ closeModal }>
-							{ __( 'Close', 'jetpack' ) }
-						</Button>
 					</div>
 				</Modal>
 			) }

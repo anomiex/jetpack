@@ -5,6 +5,139 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 2.0.0 - 2026-04-13
+### Added
+- Add @wordpress/theme 0.6.0 design tokens for charts library Storybook previews. [#46846]
+
+### Changed
+- Change from `@storybook/test-runner` to `@storybook/addon-vitest`, which also requires switching from webpack to vite for building the storybook. [#47802]
+- Switch to Native TypeScript compiler based on Go. [#47375]
+- Update dependencies. [#47472]
+- Update legacy Node calls. [#47770]
+- Update package dependencies. [#46552] [#46647] [#46854] [#46905] [#47002] [#47043] [#47099] [#47101] [#47173] [#47285] [#47300] [#47309] [#47371] [#47496] [#47684] [#47693] [#47719] [#47799] [#47870] [#47890] [#47958]
+- Update story path for publicize components. [#46516]
+
+### Fixed
+- Add missing `await` in vitest config, which may be causing intermittent CI errors. [#48029]
+- Add NodePackageImporter to Vite SCSS config to support pkg: imports. [#47840]
+- Fix storybook build failure caused by postcss-import not resolving package.json exports for @wordpress/theme/design-tokens.css. [#46973]
+
+## 1.1.2 - 2026-01-12
+### Changed
+- Update package dependencies. [#45652] [#45737] [#45915] [#45958] [#46022] [#46143] [#46362] [#46363] [#46375] [#46456]
+
+## 1.1.1 - 2025-10-13
+### Changed
+- Update package dependencies. [#44677] [#44701] [#45027] [#45097] [#45127] [#45128] [#45173] [#45200] [#45229] [#45298] [#45299] [#45334] [#45335]
+
+## 1.1.0 - 2025-08-06
+### Added
+- Charts: Add custom ordering. [#44427]
+
+### Changed
+- Update package dependencies. [#43766] [#44020] [#44148] [#44151] [#44217] [#44218] [#44219] [#44356]
+
+## 1.0.0 - 2025-06-03
+### Added
+- Add Scan package to storybook. [#42806]
+
+### Changed
+- Code: First pass of style coding standards. [#42734]
+- Import built CSS for `@wordpress/*` packages instead of rebuilding from Sass sources. [#43670]
+- Remove extensionAliases from webpack config after enabling TypeScript's `rewriteRelativeImportExtensions` option. [#42990]
+- sass: `@use` rather than `@import` for `@wordpress/base-styles` where possible. [#43607]
+- Update package dependencies. [#43071] [#43326] [#43349] [#43398] [#43400] [#43516] [#43578] [#43718] [#43734]
+
+### Fixed
+- Linting: Format SCSS imports consistently. [#43018]
+
+## 0.6.1 - 2025-04-02
+### Added
+- Publicize Components: Add Storybook support [#42167]
+
+### Changed
+- Added .jsx extension alias support. [#41524]
+- Update dependencies. [#41723]
+- Update package dependencies. [#41819] [#41955] [#42163] [#42384] [#42509] [#42511] [#42762] [#42809]
+
+## 0.6.0 - 2025-02-05
+### Added
+- Charts: adds Barchart functionality and storybook item [#40353]
+- Storybook: Improve launch instructions [#41115]
+
+### Changed
+- Storybook: Change target to esnext [#41078]
+- Updated package dependencies. [#40564] [#40693] [#40797] [#40841] [#41099] [#41286] [#41491]
+
+## 0.5.1 - 2024-12-04
+### Changed
+- Updated package dependencies. [#39176] [#39302] [#39594] [#39669] [#39707] [#39910] [#39999] [#40060] [#40288] [#40363]
+
+### Fixed
+- Update Storybook FAQ reference. [#40199]
+
+## 0.5.0 - 2024-08-29
+### Added
+- Add jetpack as project [#37216]
+- add social logos [#38036]
+
+### Changed
+- Add webpack resolve.extensionAlias for tsc compat. [#35453]
+- Don't minify in dev builds. [#35919]
+- Try adding support for `@storybook/test-runner`. [#35919]
+- Updated package dependencies.
+- Use `jetpack:src` condition when building, so all deps don't have to be built first. [#35919]
+
+### Removed
+- Remove unused JS deps on `autoprefixer`, `postcss-custom-properties`. [#35695]
+
+### Fixed
+- Lossless image optimization for images (should improve performance with no visible changes). [#38750]
+
+## 0.4.1 - 2024-02-07
+### Added
+- Add AI Client icon components [#32079]
+- Added boost back to storybook [#34180]
+- Storybook: register ./extensions folder of the Jetpack plugin project [#33771]
+
+### Changed
+- Boost: Updated storybook configuration to allow scss imports in boost stories. [#32690]
+- Jetpack Boost: Remove Jetpack Boost stories while in the React refactor [#34103]
+- Updated package dependencies.
+
+### Fixed
+- Storybook: remove Jetpack plugin from deps to fix builds in trunk [#33784]
+
+## 0.4.0 - 2023-07-06
+### Added
+- Import root styles from js-packages to load root variables used by components [#30037]
+
+### Changed
+- Updated package dependencies.
+
+### Fixed
+- Update config to work around some bugs so `NODE_PATH` is no longer needed when running storybook. [#31607]
+
+## 0.3.2 - 2023-04-07
+### Added
+- Include VideoPress block editor folder to the stories
+
+### Changed
+- Update to React 18.
+
+## 0.3.1 - 2023-01-11
+### Changed
+- Updated package dependencies.
+
+## 0.3.0 - 2022-11-01
+### Added
+- Added support for scanning the dashboard project from the Search package
+- Add VideoPress package folder to projects
+- VideoPress: Support selecting poster by frame
+
+### Fixed
+- StoryBook: fix unexistent package bug
+
 ## 0.2.0 - 2022-07-06
 ### Added
 - Add 'Jetpack Dashboard' background color. [#22597]

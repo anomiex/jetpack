@@ -1,20 +1,20 @@
-import { JETPACK_CONTACT_BETA_SUPPORT } from 'constants/urls';
 import { getRedirectUrl } from '@automattic/jetpack-components';
 import { createInterpolateElement } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
+import PropTypes from 'prop-types';
+import { Component } from 'react';
+import { connect } from 'react-redux';
+import { useLocation } from 'react-router';
+import { SocialLogo } from 'social-logos';
 import ConnectionBanner from 'components/connection-banner';
 import NoticesList from 'components/global-notices';
 import SimpleNotice from 'components/notice';
 import NoticeAction from 'components/notice/notice-action.jsx';
-import PropTypes from 'prop-types';
-import React from 'react';
-import { connect } from 'react-redux';
-import { withRouter } from 'react-router-dom';
-import SocialLogo from 'social-logos';
+import { JETPACK_CONTACT_BETA_SUPPORT } from 'constants/urls';
 import {
 	getSiteConnectionStatus,
 	getSiteOfflineMode,
-	isStaging,
+	isConnectionOwner,
 	isInIdentityCrisis,
 	isCurrentUserLinked,
 	isReconnectingSite,
@@ -22,7 +22,6 @@ import {
 	hasConnectedOwner,
 } from 'state/connection';
 import {
-	isAtomicSite,
 	isDevVersion,
 	userCanConnectAccount,
 	userCanConnectSite,
@@ -31,13 +30,13 @@ import {
 } from 'state/initial-state';
 import { getLicensingError, clearLicensingError } from 'state/licensing';
 import { getSiteDataErrors } from 'state/site';
+import DeprecationNotice from './deprecation-notice';
 import DismissableNotices from './dismissable';
 import JetpackConnectionErrors from './jetpack-connection-errors';
 import PlanConflictWarning from './plan-conflict-warning';
 import JetpackStateNotices from './state-notices';
-import UserLicenseActivationNotice from './user-license-activation';
 
-export class DevVersionNotice extends React.Component {
+export class DevVersionNotice extends Component {
 	static displayName = 'DevVersionNotice';
 
 	render() {
@@ -63,37 +62,7 @@ DevVersionNotice.propTypes = {
 	userIsSubscriber: PropTypes.bool.isRequired,
 };
 
-export class StagingSiteNotice extends React.Component {
-	static displayName = 'StagingSiteNotice';
-
-	render() {
-		if ( this.props.isStaging && ! this.props.isInIdentityCrisis ) {
-			const stagingSiteSupportLink = getRedirectUrl( 'jetpack-support-staging-sites' ),
-				props = {
-					text: __( 'You are running Jetpack on a staging server.', 'jetpack' ),
-					status: 'is-basic',
-					showDismiss: false,
-				};
-
-			return (
-				<SimpleNotice { ...props }>
-					<NoticeAction href={ stagingSiteSupportLink }>
-						{ __( 'More Info', 'jetpack' ) }
-					</NoticeAction>
-				</SimpleNotice>
-			);
-		}
-
-		return false;
-	}
-}
-
-StagingSiteNotice.propTypes = {
-	isStaging: PropTypes.bool.isRequired,
-	isInIdentityCrisis: PropTypes.bool.isRequired,
-};
-
-export class OfflineModeNotice extends React.Component {
+export class OfflineModeNotice extends Component {
 	static displayName = 'OfflineModeNotice';
 
 	render() {
@@ -102,12 +71,12 @@ export class OfflineModeNotice extends React.Component {
 				reasons = [];
 
 			if ( offlineMode.filter ) {
-				reasons.push( __( 'The jetpack_development_mode filter is active', 'jetpack' ) );
+				reasons.push( __( 'The jetpack_offline_mode filter is active', 'jetpack' ) );
 			}
 			if ( offlineMode.constant ) {
 				reasons.push(
 					sprintf(
-						/* translators: placeholder is a constant, such as WP_LOCAL_DEV. */
+						/* translators: %s: a PHP constant, such as WP_LOCAL_DEV. */
 						__( 'The %s constant is defined', 'jetpack' ),
 						'JETPACK_DEV_DEBUG'
 					)
@@ -116,7 +85,7 @@ export class OfflineModeNotice extends React.Component {
 			if ( offlineMode.wpLocalConstant ) {
 				reasons.push(
 					sprintf(
-						/* translators: placeholder is a constant, such as WP_LOCAL_DEV. */
+						/* translators: %s: a PHP constant, such as WP_LOCAL_DEV. */
 						__( 'The %s constant is defined', 'jetpack' ),
 						'WP_LOCAL_DEV'
 					)
@@ -126,6 +95,9 @@ export class OfflineModeNotice extends React.Component {
 				reasons.push(
 					__( 'Your site URL is a known local development environment URL', 'jetpack' )
 				);
+			}
+			if ( offlineMode.option ) {
+				reasons.push( __( 'The jetpack_offline_mode option is active', 'jetpack' ) );
 			}
 
 			const text = createInterpolateElement(
@@ -170,7 +142,7 @@ OfflineModeNotice.propTypes = {
 	siteOfflineMode: PropTypes.oneOfType( [ PropTypes.bool, PropTypes.object ] ).isRequired,
 };
 
-export class UserUnlinked extends React.Component {
+export class UserUnlinked extends Component {
 	static displayName = 'UserUnlinked';
 
 	render() {
@@ -178,7 +150,8 @@ export class UserUnlinked extends React.Component {
 			return (
 				<div className="jp-unlinked-notice">
 					<ConnectionBanner
-						title={ __(
+						title={ __( 'Connect your WordPress.com account', 'jetpack' ) }
+						description={ __(
 							'Jetpack is powering your site, but to access all of its features you’ll need to connect your account to WordPress.com.',
 							'jetpack'
 						) }
@@ -202,26 +175,29 @@ UserUnlinked.propTypes = {
 	siteConnected: PropTypes.bool.isRequired,
 };
 
-class JetpackNotices extends React.Component {
+class JetpackNotices extends Component {
 	static displayName = 'JetpackNotices';
+
+	dismissNotice = noticeKey => {
+		document.cookie = `jetpack_deprecate_dismissed[${ noticeKey }]=1; expires=Fri, 31 Dec 9999 23:59:59 GMT; path=/; Secure; SameSite=None`;
+	};
 
 	render() {
 		const siteDataErrors = this.props.siteDataErrors.filter( error =>
-			error.hasOwnProperty( 'action' )
+			Object.hasOwn( error, 'action' )
 		);
 
-		const isUserConnectScreen = '/connect-user' === this.props.location.pathname;
-		const isUserLicenseActivationScreen = this.props.location.pathname.startsWith( '/license' );
+		const isUserConnectScreen = this.props.location.pathname.startsWith( '/connect-user' );
 
 		return (
 			<div aria-live="polite">
 				<NoticesList />
 				{ this.props.siteConnectionStatus &&
 					this.props.userCanConnectSite &&
-					! this.props.isReconnectingSite &&
 					( this.props.connectionErrors.length > 0 || siteDataErrors.length > 0 ) && (
 						<JetpackConnectionErrors
 							errors={ this.props.connectionErrors.concat( siteDataErrors ) }
+							display={ ! this.props.isReconnectingSite }
 						/>
 					) }
 				<JetpackStateNotices />
@@ -233,11 +209,7 @@ class JetpackNotices extends React.Component {
 					siteConnectionStatus={ this.props.siteConnectionStatus }
 					siteOfflineMode={ this.props.siteOfflineMode }
 				/>
-				<StagingSiteNotice
-					isStaging={ this.props.isStaging }
-					isInIdentityCrisis={ this.props.isInIdentityCrisis }
-				/>
-				<PlanConflictWarning />
+				<PlanConflictWarning location={ this.props.location } />
 				<DismissableNotices />
 				{ ! this.props.isReconnectingSite &&
 					this.props.userCanConnectAccount &&
@@ -269,9 +241,20 @@ class JetpackNotices extends React.Component {
 						onDismissClick={ this.props.clearLicensingError }
 					/>
 				) }
-				{ ! isUserLicenseActivationScreen && ! this.props.isAtomicSite && (
-					<UserLicenseActivationNotice pathname={ this.props.location.pathname } />
-				) }
+
+				{ window.noticeInfo &&
+					Object.entries( window.noticeInfo ).map( ( [ noticeKey, { title, message, link } ] ) => (
+						<DeprecationNotice
+							key={ noticeKey }
+							noticeKey={ noticeKey }
+							// eslint-disable-next-line react/jsx-no-bind
+							dismissNotice={ () => this.dismissNotice( noticeKey ) }
+							title={ title }
+							message={ message }
+							link={ getRedirectUrl( link.url ) }
+							linkText={ link.label }
+						/>
+					) ) }
 			</div>
 		);
 	}
@@ -285,11 +268,10 @@ export default connect(
 			userCanConnectSite: userCanConnectSite( state ),
 			userCanConnectAccount: userCanConnectAccount( state ),
 			userIsSubscriber: userIsSubscriber( state ),
+			isConnectionOwner: isConnectionOwner( state ),
 			isLinked: isCurrentUserLinked( state ),
 			isDevVersion: isDevVersion( state ),
-			isAtomicSite: isAtomicSite( state ),
 			siteOfflineMode: getSiteOfflineMode( state ),
-			isStaging: isStaging( state ),
 			isInIdentityCrisis: isInIdentityCrisis( state ),
 			connectionErrors: getConnectionErrors( state ),
 			siteDataErrors: getSiteDataErrors( state ),
@@ -305,4 +287,4 @@ export default connect(
 			},
 		};
 	}
-)( withRouter( JetpackNotices ) );
+)( props => <JetpackNotices { ...props } location={ useLocation() } /> );

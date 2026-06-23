@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react';
+
 export type ProductPriceProps = {
 	/**
 	 * Product price.
@@ -15,9 +17,9 @@ export type ProductPriceProps = {
 	currency?: string;
 
 	/**
-	 * Product leytend.
+	 * Product legend.
 	 */
-	leyend?: string;
+	legend?: string;
 
 	/**
 	 * Show the not off price.
@@ -28,16 +30,41 @@ export type ProductPriceProps = {
 	 * Force the price as a not off price.
 	 */
 	isNotConvenientPrice?: boolean;
+
+	/**
+	 * Hides the price fraction if fraction is zero.
+	 */
+	hidePriceFraction?: boolean;
+
+	/**
+	 * Hides discount label
+	 */
+	hideDiscountLabel?: boolean;
+
+	/**
+	 * Custom promo label
+	 */
+	promoLabel?: string;
+
+	/**
+	 * Alternative legend with HTML syntax
+	 */
+	children?: ReactNode;
+
+	/**
+	 * Component variant
+	 */
+	variant?: 'default' | 'simple';
 };
 
 export type PriceProps = {
 	/**
-	 * Price valuerice.
+	 * Price value.
 	 */
 	value: number;
 
 	/**
-	 * Price current code.
+	 * Price currency code.
 	 */
 	currency: string;
 
@@ -45,4 +72,14 @@ export type PriceProps = {
 	 * True when it is an off price.
 	 */
 	isOff: boolean;
+
+	/**
+	 * Hides the price fraction if fraction is zero.
+	 */
+	hidePriceFraction?: boolean;
+
+	/**
+	 * Inline layout - symbol same size and positioned inline with the number.
+	 */
+	inline?: boolean;
 };

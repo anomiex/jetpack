@@ -6,11 +6,10 @@ import {
 import domReady from '@wordpress/dom-ready';
 import { addFilter } from '@wordpress/hooks';
 import { __ } from '@wordpress/i18n';
-import { uniq } from 'lodash';
 import paidBlockMediaPlaceholder from './media-placeholder';
 import paidBlockMediaReplaceFlow from './media-replace-flow';
 import renderPaidIcon from './render-paid-icon.js';
-import withUpgradeBanner from './with-upgrade-banner';
+import { blockEditWithUpgradeBanner } from './with-upgrade-banner';
 
 import './editor.scss';
 
@@ -23,7 +22,9 @@ const jetpackPaidBlock = ( settings, name ) => {
 		}
 
 		// Populate block keywords.
-		settings.keywords = uniq( [ ...settings.keywords, 'premium', __( 'premium', 'jetpack' ) ] );
+		settings.keywords = [
+			...new Set( [ ...settings.keywords, 'premium', __( 'premium', 'jetpack' ) ] ),
+		];
 
 		// Extend Icon for Paid blocks.
 		if ( ! isStillUsableWithFreePlan( name ) ) {
@@ -37,6 +38,16 @@ const jetpackPaidBlock = ( settings, name ) => {
 				default: true,
 			};
 		}
+
+		// Ensure that the toolbar of the inner blocks doesn't overlap the upgrade banner by displaying the controls
+		// of the inner blocks in the parent block toolbar (which is always placed above the upgrade banner).
+		// The cover block is excluded from this behavior because the toolbars of its inner blocks do not interfere.
+		if ( name !== 'core/cover' ) {
+			settings.supports = {
+				...settings.supports,
+				__experimentalExposeControlsToChildren: true,
+			};
+		}
 	}
 
 	return settings;
@@ -45,8 +56,11 @@ const jetpackPaidBlock = ( settings, name ) => {
 // Extend BlockType.
 addFilter( 'blocks.registerBlockType', 'jetpack/paid-block', jetpackPaidBlock );
 
-// Extend BlockListBlock.
-addFilter( 'editor.BlockListBlock', 'jetpack/paid-block-with-warning', withUpgradeBanner );
+addFilter(
+	'blocks.registerBlockType',
+	'jetpack/paid-block-with-upgrade-banner',
+	blockEditWithUpgradeBanner
+);
 
 // Take the control of the MediaPlaceholder.
 addFilter(

@@ -1,13 +1,13 @@
 import { __ } from '@wordpress/i18n';
 import PropTypes from 'prop-types';
-import React, { useMemo } from 'react';
+import { Fragment, useMemo } from 'react';
 import DisconnectCard from '../disconnect-card';
 
 /**
  * Render a list of connected plugins.
  *
  * @param {object} props - The properties
- * @returns {React.Component} - The ConnectedPlugins React component
+ * @return {import('react').Component} - The ConnectedPlugins React component
  */
 
 const ConnectedPlugins = props => {
@@ -35,12 +35,12 @@ const ConnectedPlugins = props => {
 
 	if ( connectedPlugins && connectedPluginsArray.length > 0 ) {
 		return (
-			<React.Fragment>
+			<Fragment>
 				<div className="jp-connection__disconnect-dialog__step-copy">
 					<p className="jp-connection__disconnect-dialog__large-text">
 						{ __(
 							'Jetpack is powering other plugins on your site. If you disconnect, these plugins will no longer work.',
-							'jetpack'
+							'jetpack-connection-js'
 						) }
 					</p>
 				</div>
@@ -49,7 +49,7 @@ const ConnectedPlugins = props => {
 						return <DisconnectCard title={ plugin.name } key={ plugin.slug } />;
 					} ) }
 				</div>
-			</React.Fragment>
+			</Fragment>
 		);
 	}
 

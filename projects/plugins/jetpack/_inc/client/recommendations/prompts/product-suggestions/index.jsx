@@ -1,9 +1,9 @@
+import { Spinner } from '@wordpress/components';
 import { __ } from '@wordpress/i18n';
-import { JetpackLoadingIcon } from 'components/jetpack-loading-icon';
-import { MoneyBackGuarantee } from 'components/money-back-guarantee';
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { connect } from 'react-redux';
-import { Redirect } from 'react-router-dom';
+import { Navigate } from 'react-router';
+import { MoneyBackGuarantee } from 'components/money-back-guarantee';
 import {
 	getNextRoute,
 	isProductSuggestionsAvailable as isProductSuggestionsAvailableCheck,
@@ -32,7 +32,7 @@ const ProductSuggestionsComponent = ( {
 	const hasDiscount = useMemo( () => isCouponValid( discountData ), [ discountData ] );
 
 	if ( isFetchingSuggestions || isFetchingUpsell ) {
-		return <JetpackLoadingIcon altText={ __( 'Loading recommendations', 'jetpack' ) } />;
+		return <Spinner />;
 	}
 
 	// Redirect the user to the next step if they are not eligible for the product
@@ -41,7 +41,7 @@ const ProductSuggestionsComponent = ( {
 		// We have to remove the first "#" value from the next route value
 		// so React Router will match it with one of the other recommendations paths.
 		// E.g. "#/recommendations/monitor" => "/recommendations/monitor".
-		return <Redirect to={ nextRoute.substring( 1 ) } />;
+		return <Navigate to={ nextRoute.substring( 1 ) } replace />;
 	}
 
 	return (

@@ -1,11 +1,10 @@
-/* eslint-disable jsx-a11y/click-events-have-key-events */
-import classNames from 'classnames';
+import clsx from 'clsx';
+import PropTypes from 'prop-types';
+import { createRef, Component } from 'react';
 import Gridicon from 'components/gridicon';
 import Tooltip from 'components/tooltip';
-import PropTypes from 'prop-types';
-import React from 'react';
 
-export default class ModuleChartBar extends React.Component {
+export default class ModuleChartBar extends Component {
 	static displayName = 'ModuleChartBar';
 
 	static propTypes = {
@@ -17,6 +16,8 @@ export default class ModuleChartBar extends React.Component {
 		max: PropTypes.number,
 		count: PropTypes.number,
 	};
+
+	valueBarRef = createRef();
 
 	state = { showPopover: false };
 
@@ -40,7 +41,7 @@ export default class ModuleChartBar extends React.Component {
 		};
 
 		sections.push(
-			<div key="spacer" className={ classNames( spacerClassOptions ) } style={ remainStyle } />
+			<div key="spacer" className={ clsx( spacerClassOptions ) } style={ remainStyle } />
 		);
 
 		const valueStyle = {
@@ -59,7 +60,7 @@ export default class ModuleChartBar extends React.Component {
 
 		sections.push(
 			<div
-				ref="valueBar"
+				ref={ this.valueBarRef }
 				key="value"
 				className="dops-chart__bar-section is-bar"
 				style={ valueStyle }
@@ -136,7 +137,7 @@ export default class ModuleChartBar extends React.Component {
 				className="dops-chart__tooltip"
 				id="popover__chart-bar"
 				showDelay={ 200 }
-				context={ this.refs && this.refs.valueBar }
+				context={ this.valueBarRef.current }
 				isVisible={ this.state.showPopover }
 				position={ this.props.tooltipPosition }
 			>
@@ -166,7 +167,7 @@ export default class ModuleChartBar extends React.Component {
 				onMouseEnter={ this.mouseEnter }
 				onMouseLeave={ this.mouseLeave }
 				aria-label={ this.props.data.tooltipData[ 0 ].label + ' — ' + this.props.data.value + '.' }
-				className={ classNames( barClass ) }
+				className={ clsx( barClass ) }
 				style={ barStyle }
 			>
 				{ this.buildSections() }

@@ -4,13 +4,14 @@ use Automattic\Jetpack\Assets;
 
 // Exit if file is accessed directly.
 if ( ! defined( 'ABSPATH' ) ) {
-	exit;
+	exit( 0 );
 }
 
 /**
  * Class to include elements to modify Related Posts look in Customizer.
  *
  * @since 4.4.0
+ * @phan-constructor-used-for-side-effects
  */
 class Jetpack_Related_Posts_Customize {
 
@@ -34,8 +35,10 @@ class Jetpack_Related_Posts_Customize {
 	 * @since 4.4.0
 	 */
 	public function __construct() {
-		add_action( 'customize_register', array( $this, 'customize_register' ) );
-		add_action( 'customize_controls_enqueue_scripts', array( $this, 'customize_controls_enqueue_scripts' ) );
+		if ( ! wp_is_block_theme() ) {
+			add_action( 'customize_register', array( $this, 'customize_register' ) );
+			add_action( 'customize_controls_enqueue_scripts', array( $this, 'customize_controls_enqueue_scripts' ) );
+		}
 	}
 
 	/**
@@ -65,20 +68,20 @@ class Jetpack_Related_Posts_Customize {
 			$wp_customize->add_setting(
 				$control_id,
 				array(
-					'default'    => isset( $field['default'] ) ? $field['default'] : '',
-					'type'       => isset( $field['setting_type'] ) ? $field['setting_type'] : 'option',
-					'capability' => isset( $field['capability'] ) ? $field['capability'] : 'edit_theme_options',
-					'transport'  => isset( $field['transport'] ) ? $field['transport'] : 'postMessage',
+					'default'    => $field['default'] ?? '',
+					'type'       => $field['setting_type'] ?? 'option',
+					'capability' => $field['capability'] ?? 'edit_theme_options',
+					'transport'  => $field['transport'] ?? 'postMessage',
 				)
 			);
 			$control_settings = array(
-				'label'           => isset( $field['label'] ) ? $field['label'] : '',
-				'description'     => isset( $field['description'] ) ? $field['description'] : '',
+				'label'           => $field['label'] ?? '',
+				'description'     => $field['description'] ?? '',
 				'settings'        => $control_id,
-				'type'            => isset( $field['control_type'] ) ? $field['control_type'] : 'text',
+				'type'            => $field['control_type'] ?? 'text',
 				'section'         => $this->prefix,
 				'priority'        => 10,
-				'active_callback' => isset( $field['active_callback'] ) ? $field['active_callback'] : __CLASS__ . '::is_single',
+				'active_callback' => $field['active_callback'] ?? __CLASS__ . '::is_single',
 			);
 			switch ( $field['control_type'] ) {
 				case 'text':
@@ -110,7 +113,6 @@ class Jetpack_Related_Posts_Customize {
 				)
 			);
 		}
-
 	}
 
 	/**
@@ -287,7 +289,6 @@ class Jetpack_Related_Posts_Customize {
 			false
 		);
 	}
-
 } // class end
 
 /**

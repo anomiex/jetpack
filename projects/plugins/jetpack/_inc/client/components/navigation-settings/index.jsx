@@ -1,16 +1,16 @@
+import { isWoASite as _isWoASite } from '@automattic/jetpack-script-data';
 import { __, _x } from '@wordpress/i18n';
+import debugFactory from 'debug';
+import PropTypes from 'prop-types';
+import { Component } from 'react';
+import { connect } from 'react-redux';
+import { useLocation } from 'react-router';
 import QuerySitePlugins from 'components/data/query-site-plugins';
 import Search from 'components/search';
 import SectionNav from 'components/section-nav';
 import NavItem from 'components/section-nav/item';
 import NavTabs from 'components/section-nav/tabs';
-import debugFactory from 'debug';
 import analytics from 'lib/analytics';
-import { noop } from 'lodash';
-import PropTypes from 'prop-types';
-import React from 'react';
-import { connect } from 'react-redux';
-import { withRouter } from 'react-router-dom';
 import { isSiteConnected, isCurrentUserLinked } from 'state/connection';
 import {
 	userCanManageModules as _userCanManageModules,
@@ -28,8 +28,9 @@ import { filterSearch, getSearchTerm } from 'state/search';
 import { isPluginActive } from 'state/site/plugins';
 
 const debug = debugFactory( 'calypso:url-search' );
+const noop = () => {};
 
-export class NavigationSettings extends React.Component {
+export class NavigationSettings extends Component {
 	static displayName = 'NavigationSettings';
 
 	state = {
@@ -37,9 +38,14 @@ export class NavigationSettings extends React.Component {
 	};
 
 	UNSAFE_componentWillMount() {
-		// We need to handle the search term not only on route update but also on page load in case of some external redirects
+		// We need to handle the search term not only on route update but also on page load in case of some external redirects.
 		this.onRouteChange( this.props.location );
-		this.props.history.listen( this.onRouteChange );
+	}
+
+	componentDidUpdate( oldprops ) {
+		if ( oldprops.location !== this.props.location ) {
+			this.onRouteChange( this.props.location );
+		}
 	}
 
 	UNSAFE_componentWillReceiveProps( nextProps ) {
@@ -142,14 +148,13 @@ export class NavigationSettings extends React.Component {
 							{ _x( 'Performance', 'Navigation item.', 'jetpack' ) }
 						</NavItem>
 					) }
-					{ this.props.hasAnyOfTheseModules( [
-						'masterbar',
+					{ ( this.props.hasAnyOfTheseModules( [
 						'markdown',
-						'custom-content-types',
 						'post-by-email',
 						'infinite-scroll',
 						'copy-post',
-					] ) && (
+					] ) ||
+						window.CUSTOM_CONTENT_TYPE__INITIAL_STATE.active ) && (
 						<NavItem
 							path="#writing"
 							onClick={ this.handleClickForTracking( 'writing' ) }
@@ -171,7 +176,6 @@ export class NavigationSettings extends React.Component {
 						'comments',
 						'gravatar-hovercards',
 						'markdown',
-						'subscriptions',
 					] ) && (
 						<NavItem
 							path="#discussion"
@@ -183,7 +187,6 @@ export class NavigationSettings extends React.Component {
 					) }
 					{ this.props.hasAnyOfTheseModules( [
 						'seo-tools',
-						'wordads',
 						'stats',
 						'related-posts',
 						'verification-tools',
@@ -196,6 +199,24 @@ export class NavigationSettings extends React.Component {
 							selected={ this.props.location.pathname === '/traffic' }
 						>
 							{ _x( 'Traffic', 'Navigation item.', 'jetpack' ) }
+						</NavItem>
+					) }
+					{ this.props.hasAnyOfTheseModules( [ 'wpcom-reader' ] ) && ! this.props.isWoASite && (
+						<NavItem
+							path="#reader"
+							onClick={ this.handleClickForTracking( 'reader' ) }
+							selected={ this.props.location.pathname === '/reader' }
+						>
+							{ _x( 'Reader', 'Navigation item.', 'jetpack' ) }
+						</NavItem>
+					) }
+					{ this.props.hasAnyOfTheseModules( [ 'wordads' ] ) && (
+						<NavItem
+							path="#earn"
+							onClick={ this.handleClickForTracking( 'earn' ) }
+							selected={ this.props.location.pathname === '/earn' }
+						>
+							{ _x( 'Monetize', 'Navigation item.', 'jetpack' ) }
 						</NavItem>
 					) }
 				</NavTabs>
@@ -264,6 +285,7 @@ NavigationSettings.propTypes = {
 	isModuleActivated: PropTypes.func.isRequired,
 	searchHasFocus: PropTypes.bool.isRequired,
 	location: PropTypes.object.isRequired,
+	isWoASite: PropTypes.bool.isRequired,
 };
 
 NavigationSettings.defaultProps = {
@@ -274,6 +296,7 @@ NavigationSettings.defaultProps = {
 	isSiteConnected: false,
 	isModuleActivated: noop,
 	searchHasFocus: false,
+	isWoASite: false,
 };
 
 export default connect(
@@ -290,8 +313,9 @@ export default connect(
 		moduleList: getModules( state ),
 		isPluginActive: plugin_slug => isPluginActive( state, plugin_slug ),
 		searchTerm: getSearchTerm( state ),
+		isWoASite: _isWoASite( state ),
 	} ),
 	dispatch => ( {
 		searchForTerm: term => dispatch( filterSearch( term ) ),
 	} )
-)( withRouter( NavigationSettings ) );
+)( props => <NavigationSettings { ...props } location={ useLocation() } /> );

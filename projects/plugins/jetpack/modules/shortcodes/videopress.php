@@ -8,6 +8,10 @@
  * @package automattic/jetpack
  */
 
+if ( ! defined( 'ABSPATH' ) ) {
+	exit( 0 );
+}
+
 if ( ! Jetpack::is_module_active( 'videopress' ) ) {
 
 	\Automattic\Jetpack\Assets::add_resource_hint(
@@ -15,7 +19,6 @@ if ( ! Jetpack::is_module_active( 'videopress' ) ) {
 		'dns-prefetch'
 	);
 
-	include_once JETPACK__PLUGIN_DIR . 'modules/videopress/utility-functions.php';
 	include_once JETPACK__PLUGIN_DIR . 'modules/videopress/shortcode.php';
 
 }

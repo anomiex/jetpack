@@ -9,12 +9,12 @@
 const path = require( 'path' );
 const jetpackWebpackConfig = require( '@automattic/jetpack-webpack-config/webpack' );
 const RemoveAssetWebpackPlugin = require( '@automattic/remove-asset-webpack-plugin' );
-const glob = require( 'glob' );
+const { glob } = require( 'glob' );
 
 const webpack = jetpackWebpackConfig.webpack;
 const sharedWebpackConfig = {
 	mode: jetpackWebpackConfig.mode,
-	devtool: jetpackWebpackConfig.isDevelopment ? 'source-map' : false,
+	devtool: jetpackWebpackConfig.devtool,
 	output: {
 		...jetpackWebpackConfig.output,
 		path: path.join( __dirname, '..' ),
@@ -47,15 +47,16 @@ const sharedWebpackConfig = {
 					{
 						loader: 'postcss-loader',
 						options: {
-							postcssOptions: { plugins: { autoprefixer: {} } },
+							postcssOptions: { plugins: [ require( 'autoprefixer' ) ] },
 						},
 					},
 					{
 						loader: 'sass-loader',
 						options: {
+							api: 'modern-compiler',
 							sassOptions: {
 								// The minifier will minify if necessary.
-								outputStyle: 'expanded',
+								style: 'expanded',
 							},
 						},
 					},
@@ -115,43 +116,16 @@ const RenamerPlugin = {
 // CSS that's built in almost a normal way.
 const entries = {
 	'_inc/build/style.min': path.join( __dirname, '../_inc/client', 'scss/style.scss' ),
+	'_inc/build/social-logos/social-logos': path.join( __dirname, '../scss/_social-logos.scss' ),
 };
 
 // CSS that needs to have the rtl files renamed using the above RenamerPlugin.
 const weirdRtlEntries = {
-	'css/jetpack': [
-		// When making changes to that list, you must also update $concatenated_style_handles in class.jetpack.php.
-		'modules/carousel/swiper-bundle.css',
-		'modules/carousel/jetpack-carousel.css',
-		'modules/contact-form/css/grunion.css',
-		'modules/infinite-scroll/infinity.css',
-		'modules/likes/style.css',
-		'modules/related-posts/related-posts.css',
-		'modules/sharedaddy/sharing.css',
-		'modules/shortcodes/css/slideshow-shortcode.css',
-		'modules/shortcodes/css/style.css', // TODO: Should be renamed to shortcode-presentations
-		'modules/shortcodes/css/quiz.css',
-		'modules/subscriptions/subscriptions.css',
-		'modules/theme-tools/responsive-videos/responsive-videos.css',
-		'modules/theme-tools/social-menu/social-menu.css',
-		'modules/tiled-gallery/tiled-gallery/tiled-gallery.css',
-		'modules/widgets/wordpress-post-widget/style.css',
-		'modules/widgets/gravatar-profile.css',
-		'modules/widgets/goodreads/css/goodreads.css',
-		'modules/widgets/social-media-icons/style.css',
-		'modules/widgets/top-posts/style.css',
-		'modules/widgets/image-widget/style.css',
-		'modules/widgets/my-community/style.css',
-		'modules/widgets/authors/style.css',
-		'modules/wordads/css/style.css',
-		'modules/widgets/eu-cookie-law/style.css',
-		'modules/widgets/flickr/style.css',
-		'modules/widgets/instagram/instagram.css',
-		'jetpack_vendor/automattic/jetpack-search/src/widgets/css/search-widget-frontend.css',
-		'modules/widgets/simple-payments/style.css',
-		'modules/widgets/social-icons/social-icons.css',
-		'modules/widgets/milestone/milestone-widget.css',
-	].map( n => path.join( __dirname, '..', n ) ),
+	'_inc/build/likes/style.min': path.join( __dirname, '../modules/likes/style.css' ),
+	'_inc/build/subscriptions/subscriptions.min': path.join(
+		__dirname,
+		'../modules/subscriptions/subscriptions.css'
+	),
 };
 
 // Non-minified CSS, that also needs to have the rtl files renamed using the above RenamerPlugin.
@@ -159,28 +133,16 @@ const weirdRtlNominEntries = {};
 
 // Admin CSS files to insert into weirdRtlNominEntries and weirdRtlEntries.
 for ( const name of [
-	'modules/custom-post-types/comics/comics',
 	'modules/shortcodes/css/recipes',
 	'modules/shortcodes/css/recipes-print',
 	'modules/shortcodes/css/slideshow-shortcode',
-	'modules/contact-form/css/editor-inline-editing-style',
-	'modules/contact-form/css/editor-style',
-	'modules/contact-form/css/editor-ui',
-	'modules/custom-css/csstidy/cssparse',
-	'modules/custom-css/csstidy/cssparsed',
-	'modules/custom-css/custom-css/css/codemirror',
-	'modules/custom-css/custom-css/css/css-editor',
-	'modules/custom-css/custom-css/css/use-codemirror',
 	'modules/post-by-email/post-by-email',
-	'modules/protect/protect-dashboard-widget',
 	'modules/sharedaddy/admin-sharing',
 	'modules/videopress/videopress-admin',
 	'modules/videopress/css/editor',
 	'modules/videopress/css/videopress-editor-style',
 	'modules/widget-visibility/widget-conditions/widget-conditions',
 	'modules/widgets/gallery/css/admin',
-	'modules/sso/jetpack-sso-login',
-	'modules/masterbar/admin-menu/admin-menu',
 ] ) {
 	weirdRtlNominEntries[ name ] = path.join( __dirname, '..', name + '.css' );
 	weirdRtlEntries[ name + '.min' ] = path.join( __dirname, '..', name + '.css' );
@@ -190,7 +152,6 @@ for ( const name of [
 // The ltr version is apparently used unminified.
 for ( const name of [
 	'modules/carousel/jetpack-carousel',
-	'modules/contact-form/css/grunion',
 	'modules/related-posts/related-posts',
 	'modules/shortcodes/css/recipes',
 	'modules/shortcodes/css/recipes-print',
@@ -200,15 +161,6 @@ for ( const name of [
 	'modules/theme-tools/compat/twentytwentyone',
 ] ) {
 	weirdRtlEntries[ name ] = path.join( __dirname, '..', name + '.css' );
-}
-
-// Calypso scss to compile.
-// prettier-ignore
-for ( const file of glob
-	.sync( 'modules/calypsoify/*.scss' )
-	.filter( n => ! path.basename( n ).startsWith( '_' ) )
-) {
-	weirdRtlEntries[ file.substring( 0, file.length - 5 ) + '.min' ] = './' + file;
 }
 
 // General scss to compile.

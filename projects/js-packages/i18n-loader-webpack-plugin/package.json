@@ -1,40 +1,44 @@
 {
 	"name": "@automattic/i18n-loader-webpack-plugin",
-	"version": "2.0.14",
+	"version": "2.0.106",
 	"description": "A Webpack plugin to load WordPress i18n when Webpack lazy-loads a bundle.",
+	"keywords": [
+		"webpack",
+		"plugin",
+		"loader",
+		"webpack-plugin",
+		"wordpress",
+		"gettext",
+		"i18n"
+	],
 	"homepage": "https://github.com/Automattic/jetpack/tree/HEAD/projects/js-packages/i18n-loader-webpack-plugin/#readme",
 	"bugs": {
 		"url": "https://github.com/Automattic/jetpack/labels/[JS Package] I18n Loader Webpack Plugin"
 	},
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/Automattic/jetpack.git",
-		"directory": "projects/js-packages/i18n-loader-webpack-plugin"
+		"url": "git+https://github.com/Automattic/i18n-loader-webpack-plugin.git"
 	},
 	"license": "GPL-2.0-or-later",
 	"author": "Automattic",
+	"exports": {
+		".": "./src/I18nLoaderPlugin.js"
+	},
 	"scripts": {
-		"test": "jest tests",
-		"test-coverage": "jest tests --coverage --collectCoverageFrom='src/**/*.js' --coverageDirectory=\"$COVERAGE_DIR\" --coverageReporters=clover"
+		"test": "jest --config=tests/jest.config.cjs",
+		"test-coverage": "pnpm run test --coverage"
 	},
 	"dependencies": {
 		"debug": "^4.3.2"
 	},
 	"devDependencies": {
-		"@wordpress/dependency-extraction-webpack-plugin": "3.6.0",
-		"@wordpress/i18n": "4.12.0",
-		"jest": "28.1.0",
-		"webpack": "5.72.1",
-		"webpack-cli": "4.9.1"
+		"@wordpress/dependency-extraction-webpack-plugin": "6.48.1",
+		"@wordpress/i18n": "6.21.1",
+		"jest": "30.4.2",
+		"webpack": "5.107.2",
+		"webpack-cli": "6.0.1"
 	},
 	"peerDependencies": {
-		"webpack": "^5.29.0"
-	},
-	"engines": {
-		"node": "^16.13.2",
-		"yarn": "use pnpm instead - see docs/yarn-upgrade.md"
-	},
-	"exports": {
-		".": "./src/I18nLoaderPlugin.js"
+		"webpack": "^5.104.1"
 	}
 }

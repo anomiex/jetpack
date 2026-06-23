@@ -1,6 +1,6 @@
 import { Component } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
-import classnames from 'classnames';
+import clsx from 'clsx';
 import { LAYOUT_CIRCLE, MAX_ROUNDED_CORNERS } from '../constants';
 import GalleryImageEdit from '../gallery-image/edit';
 import GalleryImageSave from '../gallery-image/save';
@@ -54,6 +54,7 @@ export default class Layout extends Component {
 				key={ i }
 				link={ img.link }
 				linkTo={ linkTo }
+				customLink={ img.customLink }
 				onMoveBackward={ isSave ? undefined : onMoveBackward( i ) }
 				onMoveForward={ isSave ? undefined : onMoveForward( i ) }
 				onRemove={ isSave ? undefined : onRemoveImage( i ) }
@@ -90,7 +91,7 @@ export default class Layout extends Component {
 		return (
 			<div
 				style={ style }
-				className={ classnames( className, {
+				className={ clsx( className, {
 					[ `has-rounded-corners-${ roundedCornersValue }` ]: roundedCornersValue > 0,
 				} ) }
 			>

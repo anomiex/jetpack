@@ -1,11 +1,19 @@
+@use "../_utilities/mixins/breakpoint";
+@use "../atoms/colors/colors";
+@use "../atoms/icons/automatticons";
+@use "../atoms/typography/functions" as typography-functions;
+@use "../atoms/typography/variables" as typography-variables;
+
 // ==========================================================================
 // Main Layout
 // ==========================================================================
+@use "sass:color";
 
 .configure .frame.top.fixed {
-	@include breakpoint(tablet){
+
+	@include breakpoint.breakpoint(tablet) {
 		padding-left: 0;
-	};
+	}
 }
 
 // ==========================================================================
@@ -13,7 +21,7 @@
 // ==========================================================================
 
 .wrap.inner,
-.page-content  {
+.page-content {
 	max-width: 950px;
 	margin: 0 auto;
 
@@ -23,35 +31,39 @@
 }
 
 .page-content {
-	@include breakpoint(large-phone){
+
+	@include breakpoint.breakpoint(large-phone) {
 		margin-top: 0;
-	};
+	}
 }
 
 .wrap.inner {
-	@include breakpoint(large-desktop) {
-		background: $clouds;
+
+	@include breakpoint.breakpoint(large-desktop) {
+		background: colors.$clouds;
 		padding: 15px;
-	};
-	@include breakpoint(large-phone) {
-		margin-top: em(24px);
-	};
+	}
+
+	@include breakpoint.breakpoint(large-phone) {
+		margin-top: typography-functions.em(24px);
+	}
 }
 
 .page-content.about {
 	position: relative;
 	z-index: 10;
 
-	@include breakpoint(large-desktop){
-		background: $clouds;
+	@include breakpoint.breakpoint(large-desktop) {
+		background: colors.$clouds;
 		padding: 15px;
-	};
+	}
 }
 
 .page-content.configure {
-	@include breakpoint(large-desktop){
-		background: $clouds;
-	};
+
+	@include breakpoint.breakpoint(large-desktop) {
+		background: colors.$clouds;
+	}
 }
 
 .footer nav {
@@ -67,18 +79,23 @@
 .header {
 	left: 0;
 	right: 0;
-	background: $green;
+	background: colors.$green;
 }
+
 .header-nav {
+
 	li {
 		line-height: 60px;
 
 	}
+
 	a {
-		padding: 0 em(10px);
+		padding: 0 typography-functions.em(10px);
 		line-height: 24px;
 	}
+
 	.jetpack-logo {
+
 		a {
 			display: inline-block;
 			position: relative;
@@ -89,7 +106,7 @@
 			background-size: 183px auto;
 			color: #fff;
 			line-height: 60px;
-			font-weight: normal;
+			font-weight: 400;
 
 			span {
 				text-indent: -9999px;
@@ -97,8 +114,8 @@
 			}
 
 			// needs to be cleaned up and removed - jeffgolenski
-			&:before {
-				content: '';
+			&::before {
+				content: "";
 				position: absolute;
 				top: 0;
 				left: 0;
@@ -109,6 +126,7 @@
 			}
 		}
 	}
+
 	.jetpack-modules + .jetpack-modules {
 		margin-left: 15px;
 	}
@@ -120,22 +138,28 @@
 	li {
 		margin: 0;
 	}
-	@include breakpoint(desktop){
+
+	@include breakpoint.breakpoint(desktop) {
 		font-size: 13px;
-	};
+	}
 }
 
 // Help tab
 .jetpack-pagestyles {
+
 	#screen-meta {
 		margin: 0;
 	}
+
 	#screen-meta-links .screen-meta-toggle {
 		z-index: 2;
 	}
-	#screen-options-link-wrap, #contextual-help-link-wrap {
+
+	#screen-options-link-wrap,
+	#contextual-help-link-wrap {
 		border: none;
 	}
+
 	.update-nag {
 		display: none;
 	}
@@ -155,6 +179,7 @@
 		color: #999;
 	}
 }
+
 .modal {
 	background: #fff;
 	position: fixed;
@@ -171,22 +196,24 @@
 		position: absolute;
 		top: 0;
 		right: 0;
-		font: 300 em(24px) 'genericons' !important;
+		font: 300 typography-functions.em(24px) Genericons !important;
 		color: #777;
-		content: '\f405';
+		content: "\f405";
 		display: inline-block;
-		padding: em(4px) em(10px) em(6px);
+		padding: typography-functions.em(4px) typography-functions.em(10px) typography-functions.em(6px);
 		z-index: 5;
 
 		&:hover {
 			background: #f0f0f1;
 			opacity: 0.8;
 		}
+
 		&:active {
 			background: #f0f0f1;
 			opacity: 0.4;
 		}
 	}
+
 	.content-container {
 		position: absolute;
 		top: 0;
@@ -194,13 +221,15 @@
 		bottom: 0;
 		left: 0;
 		overflow: auto;
-		padding: em(30px, 14px);
+		padding: typography-functions.em(30px, 14px);
 	}
+
 	.content {
 		margin: 0 auto;
 		max-width: 900px;
 		text-align: left;
 	}
+
 	h2 {
 		text-align: left;
 		margin-top: 0;
@@ -209,16 +238,19 @@
 		line-height: 32px;
 		text-shadow: 0 1px 1px #fff;
 
-		@include breakpoint(large-phone){
+		@include breakpoint.breakpoint(large-phone) {
 			font-size: 26px;
-		};
+		}
 	}
+
 	h5 {
 		clear: left;
 	}
+
 	p {
-		font-size: em(16px, 13px);
+		font-size: typography-functions.em(16px, 13px);
 	}
+
 	footer {
 		position: absolute;
 		left: 0;
@@ -232,17 +264,20 @@
 		ul {
 			margin: 0;
 		}
+
 		li {
 			display: inline-block;
 			margin: 0;
 		}
 	}
+
 	.button-secondary,
 	.button-primary:active {
 		// fixing weird core bug thingy
 		vertical-align: baseline;
 	}
-	@include breakpoint(desktop){
+
+	@include breakpoint.breakpoint(desktop) {
 		bottom: 5%;
 		margin-left: 36px;
 		font-size: 80%;
@@ -250,18 +285,21 @@
 		.content {
 			top: 38px;
 		}
-	};
-	@include breakpoint(tablet){
+	}
+
+	@include breakpoint.breakpoint(tablet) {
 		top: 66px;
 		margin-left: 0;
-	};
-	@include breakpoint(phablet){
+	}
+
+	@include breakpoint.breakpoint(phablet) {
 		top: 10px;
 		right: 10px;
 		bottom: 10px;
 		left: 10px;
 	}
 }
+
 .jp-info-img {
 	float: right;
 	margin: 0 0 8px 30px;
@@ -275,14 +313,17 @@
 			margin-top: 0;
 		}
 	}
-	@include breakpoint(tablet){
+
+	@include breakpoint.breakpoint(tablet) {
 		float: none;
 		margin: 0 0 15px;
-	};
+	}
 }
+
 .content-container.modal-footer {
 	bottom: 53px;
 }
+
 .shade {
 	background: #000;
 	bottom: 0;
@@ -302,59 +343,72 @@
 
 // NOTE: .download-jetpack is in _buttons.scss
 .footer {
-	margin-top: em(20px);
+	margin-top: typography-functions.em(20px);
 	position: relative;
-	padding: em(140px) 0 em(60px);
+	padding: typography-functions.em(140px) 0 typography-functions.em(60px);
 	text-align: center;
 
-	&:before,
-	&:after {
-		content: '';
+	&::before,
+	&::after {
+		content: "";
 		position: absolute;
 		left: 0;
 		pointer-events: none;
 	}
-	&:before {
+
+	&::before {
 		top: 0;
 		margin-top: -1px; // Removes subpixel gap on retina landscape
 		width: 100%;
 		height: 195px;
 	}
-	&:after {
+
+	&::after {
 		display: none;
 	}
+
 	.download-jetpack {
 		margin-bottom: 33px;
 	}
-	@include minbreakpoint(large-desktop){
-			padding-bottom: 35px;
-	};
-	@include breakpoint(large-desktop) {
+
+	@include breakpoint.minbreakpoint(large-desktop) {
+		padding-bottom: 35px;
+	}
+
+	@include breakpoint.breakpoint(large-desktop) {
 		padding-top: 165px;
 		padding-bottom: 0;
 
-		&:before {
+		&::before {
 			background-size: 160% auto;
 		}
+
 		ul {
 			float: none;
 			overflow: hidden; // Clears the float
 		}
-	};
-	@include breakpoint(desktop){
+	}
+
+	@include breakpoint.breakpoint(desktop) {
 		padding-top: 146px;
-	};
-	@include breakpoint(tablet){
+	}
+
+	@include breakpoint.breakpoint(tablet) {
 		margin-top: 0;
-	};
-	@include breakpoint(large-phone){
+	}
+
+	@include breakpoint.breakpoint(large-phone) {
 		margin-top: 0;
 		padding-top: 135px;
-	};
-	@include breakpoint(phone){
+	}
+
+	@include breakpoint.breakpoint(phone) {
 		padding-top: 76px;
-	};
+	}
 }
+
+// stylelint-disable-next-line no-duplicate-selectors
+// -- This is part of the larger footer nav section.
 .footer nav {
 	max-width: 100%;
 
@@ -365,55 +419,67 @@
 
 		&:hover,
 		&:focus {
-			color: #81A844;
+			color: colors.$green;
 		}
 	}
-	@include breakpoint(large-desktop){
+
+	@include breakpoint.breakpoint(large-desktop) {
+
 		a,
 		a:visited {
+
 			&:hover,
 			&:focus {
-				color: $green;
+				color: colors.$green;
 			}
 		}
-	};
-	@include breakpoint(large-phone){
+	}
+
+	@include breakpoint.breakpoint(large-phone) {
+
 		li {
 			display: block;
 			float: none;
 			margin: 0;
 			text-align: left;
 		}
+
 		a {
 			display: block;
 			padding: 0 16px;
 			line-height: 44px;
 		}
-	};
+	}
 }
+
 .primary {
 	padding: 25px 15px 10px 15px;
 	border-bottom: 1px solid #f0f0f1;
 }
+
 .secondary-footer {
 	margin: 0 auto;
 
 	li {
 		margin-right: 5px;
 	}
-	@include minbreakpoint(tablet){
+
+	@include breakpoint.minbreakpoint(tablet) {
 		padding: 8px 15px 10px;
 		margin-bottom: 30px;
 		border-bottom: 1px solid #f0f0f1;
-	};
-	@include minbreakpoint(large-desktop){
-			margin-bottom: 0;
-	};
-	@include breakpoint(tablet){
+	}
+
+	@include breakpoint.minbreakpoint(large-desktop) {
+		margin-bottom: 0;
+	}
+
+	@include breakpoint.breakpoint(tablet) {
 		padding: 8px 15px 8px;
 		border-bottom: none;
-	};
-	@include breakpoint(large-phone){
+	}
+
+	@include breakpoint.breakpoint(large-phone) {
 		margin: 0;
 		padding: 0;
 		border: none;
@@ -422,14 +488,15 @@
 		a {
 			border-top: 1px solid #f0f0f1;
 		}
-	};
+	}
 }
+
 .footer .a8c-attribution {
 	margin: 0;
 	padding: 0 6px;
 	color: #bbb;
-	font-size: em(11px);
-	font-family: $gill;
+	font-size: typography-functions.em(11px);
+	font-family: typography-variables.$gill;
 	text-transform: uppercase;
 
 	a {
@@ -442,33 +509,38 @@
 		right: 9999px;
 		outline: 0;
 
-		&:after {
-			content: 'A';
+		&::after {
+			content: "A";
 			position: absolute;
 			top: 2px;
 			right: -9999px;
 			height: 100%;
 			color: #999;
-			font-size: em(17px, 11px);
-			font-family: $automatticons;
+			font-size: typography-functions.em(17px, 11px);
+			font-family: automatticons.$automatticons;
 			text-align: center;
 		}
+
 		&:hover {
-			&:after {
-				animation: jetpack-candy .4s ease-in-out;
+
+			&::after {
+				animation: jetpack-candy 0.4s ease-in-out;
 			}
 		}
 	}
 }
+
 .secondary {
-		@include minbreakpoint(tablet){
-			padding: 0 15px 10px 15px;
-			border-bottom: 1px solid #f0f0f1;
-		}
-		@include minbreakpoint(large-desktop){
-			padding: 0 15px 10px 15px;
-			border-bottom: none;
-		}
+
+	@include breakpoint.minbreakpoint(tablet) {
+		padding: 0 15px 10px 15px;
+		border-bottom: 1px solid #f0f0f1;
+	}
+
+	@include breakpoint.minbreakpoint(large-desktop) {
+		padding: 0 15px 10px 15px;
+		border-bottom: none;
+	}
 }
 
 
@@ -477,8 +549,8 @@
 // ==========================================================================
 
 .jetpack-message {
-	background: lighten($green, 5%);
-	border: 1px solid darken($green, 5%);
+	background: color.adjust(colors.$green, $lightness: 5%);
+	border: 1px solid color.adjust(colors.$green, $lightness: -5%);
 	margin: 33px auto 0;
 	max-width: 90%;
 	position: relative;
@@ -490,7 +562,7 @@
 		padding: 10px 15px;
 		background: #fff;
 		border: 0;
-		box-shadow: 0 1px 1px 0 rgba(0,0,0,.1);
+		box-shadow: 0 1px 1px 0 rgba(0, 0, 0, 0.1);
 		font-size: 13px;
 		text-align: center;
 
@@ -505,74 +577,84 @@
 				display: inline-block;
 			}
 		}
+
 		p {
 			color: #3c4549;
 		}
+
 		.jp-button {
 			margin-top: 15px;
 			display: none;
 		}
 	}
-	.squeezer {
-		h2 {
-			font-size: 1em;
-		}
-	}
+
 	h2 {
 		color: #fff;
 		margin: 0;
 	}
+
 	p {
 		color: #fff;
 		margin: 0;
 		opacity: 0.7;
 	}
+
 	.squeezer {
 		padding: 23px 23px 23px 80px;
 		position: relative;
 		text-align: left;
 
-		&:before {
+		&::before {
 			color: #fff;
-			content: '\f418';
-			font-family: 'Genericons';
+			content: "\f418";
+			font-family: Genericons;
 			font-size: 33px;
 			height: 33px;
 			left: 25px;
 			opacity: 0.6;
 			position: absolute;
 			top: 23px;
-			top: calc( 50% - 22px );
+			top: calc(50% - 22px);
 		}
-		@include breakpoint(large-phone){
+
+		h2 {
+			font-size: 1em;
+		}
+
+		@include breakpoint.breakpoint(large-phone) {
 			padding: 23px;
 
-			&:before {
+			&::before {
 				display: none;
 			}
 		}
+
 		a {
-			color:#FFF;
-			border-bottom:1px solid #D5E4BD;
-		} a:hover{
-			border-bottom:1px solid #F1F6E9;
+			color: #fff;
+			border-bottom: 1px solid #d5e4bd;
+		}
+
+		a:hover {
+			border-bottom: 1px solid #f1f6e9;
 		}
 	}
-	&.error .squeezer:before,
-	&.jetpack-err .squeezer:before {
-		content: '\f414';
+
+	&.error .squeezer::before,
+	&.jetpack-err .squeezer::before {
+		content: "\f414";
 	}
 }
 
 .configure-module .jetpack-message {
-	max-width:100%;
+	max-width: 100%;
 }
 
 // ==========================================================================
 // Uncategorized
 // ==========================================================================
 
-@include breakpoint(large-phone){
+@include breakpoint.breakpoint(large-phone) {
+
 	.wrap.inner.jp-support { // Used anywhere?
 		.jp-support-column-left {
 			width: 100%;
@@ -582,41 +664,49 @@
 				width: 100%;
 			}
 		}
+
 		.jp-support-column-right {
 			width: 100%;
 		}
 	}
-};
+}
 
 // ==========================================================================
 // Custom Breakpoints
 // ==========================================================================
 
 @media screen and (max-width: 515px) {
+
 	.jp-frame {
+
 		.header-nav {
 			padding-bottom: 10px;
 
 			li {
 				line-height: 30px;
 			}
+
 			.jetpack-logo {
 				width: 100%;
 				text-align: center;
 			}
+
 			.jetpack-modules {
 				margin: 0;
 				width: 50%;
 				text-align: right;
 				padding: 0 5px;
 			}
+
 			.jetpack-modules + .jetpack-modules {
 				text-align: left;
 			}
+
 			.jetpack-modules:nth-child(4) {
 				text-align: center;
 				margin: 0 auto;
 				width: 100%;
+
 				a {
 					padding: 0 10px;
 				}
@@ -631,4 +721,10 @@
 #ie-legacy-notice .dops-notice__content {
 	display: inline-block;
 	margin-left: 10px;
+}
+
+.jp-loading-placeholder {
+	margin-top: 30vh;
+	margin-bottom: 25vh;
+	text-align: center;
 }

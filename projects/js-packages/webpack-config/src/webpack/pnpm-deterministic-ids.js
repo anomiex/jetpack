@@ -12,7 +12,8 @@ const {
 } = require( 'webpack/lib/ids/IdHelpers' );
 const { compareModulesByPreOrderIndexOrIdentifier } = require( 'webpack/lib/util/comparators' );
 
-const PNPM_PATH_REGEXP = /(?<=^|[|!])(?:\.\.\/)*node_modules\/\.pnpm\/[^/]*\/node_modules\/([^|!]+)/g;
+const PNPM_PATH_REGEXP =
+	/(?<=^|[|!])(?:\.\.\/)*node_modules\/\.pnpm\/[^/]*\/node_modules\/([^|!]+)/g;
 
 /**
  * Replace pnpm store paths in an identifier.
@@ -25,7 +26,7 @@ const PNPM_PATH_REGEXP = /(?<=^|[|!])(?:\.\.\/)*node_modules\/\.pnpm\/[^/]*\/nod
  * up with colliding identifiers, but Webpack already handles that.
  *
  * @param {string} identifier - Identifier.
- * @returns {string} Transformed identifier.
+ * @return {string} Transformed identifier.
  */
 function fixPnpmPaths( identifier ) {
 	return identifier.replace( PNPM_PATH_REGEXP, '.pnpm/$1' );
@@ -43,7 +44,7 @@ class PnpmDeterministicModuleIdsPlugin {
 	 * Apply the plugin
 	 *
 	 * @param {Compiler} compiler - the compiler instance
-	 * @returns {void}
+	 * @return {void}
 	 */
 	apply( compiler ) {
 		compiler.hooks.compilation.tap( 'PnpmDeterministicModuleIdsPlugin', compilation => {

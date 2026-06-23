@@ -1,5 +1,7 @@
 import { __ } from '@wordpress/i18n';
-import React, { Component } from 'react';
+import { cleanForSlug } from '@wordpress/url';
+import * as React from 'react';
+import { Component } from 'react';
 import Gridicon from './gridicon';
 import PhotonImage from './photon-image';
 import ProductPrice from './product-price';
@@ -13,6 +15,20 @@ class SearchResultProduct extends Component {
 		if ( result_type !== 'post' ) {
 			return null;
 		}
+
+		const getCategories = () => {
+			let cats = fields[ 'category.name.default' ];
+
+			if ( ! cats ) {
+				return [];
+			}
+
+			if ( ! Array.isArray( cats ) ) {
+				cats = [ cats ];
+			}
+
+			return cats;
+		};
 
 		const firstImage = Array.isArray( fields[ 'image.url.raw' ] )
 			? fields[ 'image.url.raw' ][ 0 ]
@@ -30,11 +46,22 @@ class SearchResultProduct extends Component {
 		const showMatchHint =
 			hasQuery &&
 			! titleHasMark &&
-			Array.isArray( highlight.content ) &&
-			highlight.content[ 0 ]?.length > 0;
+			typeof highlight === 'object' &&
+			Object.entries( highlight ).some(
+				( [ key, value ] ) =>
+					key !== 'title' && key !== 'comments' && Array.isArray( value ) && value[ 0 ]?.length > 0
+			);
 
 		return (
-			<li className="jetpack-instant-search__search-result jetpack-instant-search__search-result-product">
+			<li
+				className={ [
+					'jetpack-instant-search__search-result',
+					'jetpack-instant-search__search-result-product',
+					getCategories()
+						.map( cat => 'jetpack-instant-search__search-result-category--' + cleanForSlug( cat ) )
+						.join( ' ' ),
+				].join( ' ' ) }
+			>
 				<a
 					className="jetpack-instant-search__search-result-product-img-link"
 					href={ `//${ fields[ 'permalink.url.raw' ] }` }
@@ -79,13 +106,15 @@ class SearchResultProduct extends Component {
 					/>
 				</h3>
 
-				<ProductPrice
-					price={ fields[ 'wc.price' ] }
-					salePrice={ fields[ 'wc.sale_price' ] }
-					formattedPrice={ fields[ 'wc.formatted_price' ] }
-					formattedRegularPrice={ fields[ 'wc.formatted_regular_price' ] }
-					formattedSalePrice={ fields[ 'wc.formatted_sale_price' ] }
-				/>
+				{ this.props.showProductPrice && (
+					<ProductPrice
+						price={ fields[ 'wc.price' ] }
+						salePrice={ fields[ 'wc.sale_price' ] }
+						formattedPrice={ fields[ 'wc.formatted_price' ] }
+						formattedRegularPrice={ fields[ 'wc.formatted_regular_price' ] }
+						formattedSalePrice={ fields[ 'wc.formatted_sale_price' ] }
+					/>
+				) }
 
 				{ !! fields[ 'meta._wc_average_rating.double' ] && (
 					<ProductRatings

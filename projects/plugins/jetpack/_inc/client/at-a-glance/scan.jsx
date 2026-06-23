@@ -1,7 +1,13 @@
 import restApi from '@automattic/jetpack-api';
-import { getRedirectUrl, numberFormat } from '@automattic/jetpack-components';
+import { getRedirectUrl } from '@automattic/jetpack-components';
+import { isWoASite } from '@automattic/jetpack-script-data';
+import { formatNumber } from '@automattic/number-formatters';
 import { createInterpolateElement } from '@wordpress/element';
-import { __, _n } from '@wordpress/i18n';
+import { __, _n, _x } from '@wordpress/i18n';
+import PropTypes from 'prop-types';
+import { Fragment, Component } from 'react';
+import { connect } from 'react-redux';
+import Button from 'components/button';
 import Card from 'components/card';
 import DashItem from 'components/dash-item';
 import { createNotice, removeNotice } from 'components/global-notices/state/notices/actions';
@@ -12,11 +18,7 @@ import {
 	getJetpackProductUpsellByFeature,
 	FEATURE_SECURITY_SCANNING_JETPACK,
 } from 'lib/plans/constants';
-import { get, isArray, noop } from 'lodash';
 import { getProductDescriptionUrl } from 'product-descriptions/utils';
-import PropTypes from 'prop-types';
-import React, { Component } from 'react';
-import { connect } from 'react-redux';
 import {
 	isFetchingVaultPressData,
 	getVaultPressScanThreatCount,
@@ -27,16 +29,18 @@ import {
 	isOfflineMode,
 	connectUser,
 } from 'state/connection';
-import { isAtomicSite, showBackups } from 'state/initial-state';
+import { showBackups } from 'state/initial-state';
 import { getScanStatus, isFetchingScanStatus } from 'state/scan';
 import { getSitePlan, isFetchingSiteData } from 'state/site';
 import { isPluginInstalled } from 'state/site/plugins';
 
+const noop = () => {};
+
 /**
  * Displays a card for Security Scan based on the props given.
  *
- * @param   {object} props - Settings to render the card.
- * @returns {object}       Security Scan card
+ * @param {object} props - Settings to render the card.
+ * @return {object}       Security Scan card
  */
 const renderCard = props => (
 	<DashItem
@@ -54,8 +58,8 @@ const renderCard = props => (
 		pro={ true }
 		overrideContent={ props.overrideContent }
 	>
-		{ isArray( props.content ) ? (
-			props.content
+		{ Array.isArray( props.content ) ? (
+			props.content.map( ( el, i ) => <Fragment key={ i }>{ el }</Fragment> )
 		) : (
 			<p className="jp-dash-item__description">{ props.content }</p>
 		) }
@@ -156,7 +160,7 @@ class DashScan extends Component {
 		}
 
 		// The VaultPress plugin is active and we received scanning data
-		const scanEnabled = get( vaultPressData, [ 'data', 'features', 'security' ], false );
+		const scanEnabled = vaultPressData?.data?.features?.security ?? false;
 		if ( scanEnabled ) {
 			const threats = this.props.scanThreats;
 
@@ -206,11 +210,13 @@ class DashScan extends Component {
 					<p className="jp-dash-item__description" key="inactive-scanning">
 						{ createInterpolateElement(
 							__(
-								'VaultPress is not active, <a>please activate</a> to enable automatic scanning for security for threats.',
+								'VaultPress is not active, <Button>please activate</Button> to enable automatic scanning for security for threats.',
 								'jetpack'
 							),
 							{
-								a: <a href="javascript:void(0)" onClick={ this.onActivateVaultPressClick } />,
+								Button: (
+									<Button className="jp-link-button" onClick={ this.onActivateVaultPressClick } />
+								),
 							}
 						) }
 					</p>,
@@ -248,7 +254,7 @@ class DashScan extends Component {
 	getUpgradeBanner() {
 		return (
 			<JetpackBanner
-				callToAction={ __( 'Upgrade', 'jetpack' ) }
+				callToAction={ _x( 'Upgrade', 'Call to action to buy a new plan', 'jetpack' ) }
 				title={ __(
 					'Purchase Jetpack Scan to protect your site from security threats with automated scanning.',
 					'jetpack'
@@ -281,7 +287,7 @@ class DashScan extends Component {
 	}
 
 	renderAction( url, message ) {
-		if ( this.props.isAtomicSite ) {
+		if ( isWoASite() ) {
 			return null;
 		}
 
@@ -304,8 +310,10 @@ class DashScan extends Component {
 		return (
 			<>
 				{ renderActiveCard( [
-					<h2 className="jp-dash-item__count is-alert">{ numberFormat( numberOfThreats ) }</h2>,
-					<p className="jp-dash-item__description">
+					<h2 key="header" className="jp-dash-item__count is-alert">
+						{ formatNumber( numberOfThreats ) }
+					</h2>,
+					<p key="description" className="jp-dash-item__description">
 						{ createInterpolateElement(
 							_n(
 								'Security threat found. <a>Click here</a> to fix them immediately.',
@@ -339,7 +347,7 @@ class DashScan extends Component {
 			return (
 				<>
 					{ renderActiveCard(
-						__( 'Please finish your setup by entering your server’s credentials.', 'jetpack' )
+						__( 'Enter your SSH, SFTP, or FTP credentials to enable one-click fixes', 'jetpack' )
 					) }
 					{ this.renderAction(
 						getRedirectUrl( 'jetpack-scan-dash-credentials', { site: siteRawUrl } ),
@@ -376,11 +384,9 @@ class DashScan extends Component {
 	}
 
 	getUpgradeContent() {
-		const { hasConnectedOwner } = this.props;
-
 		return renderCard( {
 			className: 'jp-dash-item__is-inactive',
-			overrideContent: hasConnectedOwner ? this.getUpgradeBanner() : this.getConnectBanner(),
+			overrideContent: this.getUpgradeBanner(),
 		} );
 	}
 
@@ -433,7 +439,6 @@ export default connect(
 		const sitePlan = getSitePlan( state );
 
 		return {
-			isAtomicSite: isAtomicSite( state ),
 			isOfflineMode: isOfflineMode( state ),
 			scanStatus: getScanStatus( state ),
 			fetchingScanStatus: isFetchingScanStatus( state ),
@@ -443,7 +448,7 @@ export default connect(
 			scanThreats: getVaultPressScanThreatCount( state ),
 			fetchingSiteData: isFetchingSiteData( state ),
 			sitePlan,
-			planClass: getPlanClass( get( sitePlan, 'product_slug', '' ) ),
+			planClass: getPlanClass( sitePlan?.product_slug ?? '' ),
 			showBackups: showBackups( state ),
 			upgradeUrl: getProductDescriptionUrl( state, 'scan' ),
 			hasConnectedOwner: hasConnectedOwnerSelector( state ),

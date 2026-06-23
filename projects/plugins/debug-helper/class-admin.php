@@ -9,6 +9,8 @@ namespace Automattic\Jetpack\Debug_Helper;
 
 /**
  * Class Jetpack_Debug_Helper_Admin
+ *
+ * @phan-constructor-used-for-side-effects
  */
 class Admin {
 
@@ -66,8 +68,8 @@ class Admin {
 			<?php foreach ( $jetpack_dev_debug_modules as $module_slug => $module_details ) : ?>
 
 				<p>
-					<input type="checkbox" name="active_modules[]" value="<?php echo esc_attr( $module_slug ); ?>" <?php checked( in_array( $module_slug, (array) $stored_options, true ) ); ?> />
-					<b><?php echo esc_html( $module_details['name'] ); ?></b>
+					<input id="module-<?php echo esc_attr( $module_slug ); ?>" type="checkbox" name="active_modules[]" value="<?php echo esc_attr( $module_slug ); ?>" <?php checked( in_array( $module_slug, (array) $stored_options, true ) ); ?> />
+					<label style="font-weight: bold;" for="module-<?php echo esc_attr( $module_slug ); ?>"><?php echo esc_html( $module_details['name'] ); ?></label>
 					<?php echo esc_html( $module_details['description'] ); ?>
 				</p>
 
@@ -94,7 +96,6 @@ class Admin {
 			wp_safe_redirect( get_home_url() );
 		}
 	}
-
 }
 
 add_action(

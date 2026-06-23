@@ -3,7 +3,7 @@ const jetpackWebpackConfig = require( '@automattic/jetpack-webpack-config/webpac
 
 module.exports = {
 	mode: jetpackWebpackConfig.mode,
-	devtool: jetpackWebpackConfig.isDevelopment ? 'source-map' : false,
+	devtool: jetpackWebpackConfig.devtool,
 	entry: {
 		'jp-search-dashboard': path.join( __dirname, '../src/dashboard/index.jsx' ),
 	},
@@ -36,6 +36,15 @@ module.exports = {
 		...jetpackWebpackConfig.StandardPlugins( {
 			DependencyExtractionPlugin: {
 				injectPolyfill: true,
+				// Match Boost / Jetpack AI admin: @wordpress/ui pulls these in transitively;
+				// they are not reliably registered as WP script handles in all contexts, so
+				// bundle them together instead of externalizing. Both must be bundled jointly
+				// so @wordpress/theme's module-init lock() lands on the same private-apis
+				// consent map. See PR #48173.
+				requestMap: {
+					'@wordpress/theme': { external: false },
+					'@wordpress/private-apis': { external: false },
+				},
 			},
 		} ),
 	],
@@ -57,10 +66,13 @@ module.exports = {
 				includeNodeModules: [ '@automattic/jetpack-' ],
 			} ),
 
+			// Workarounds for non-extracted `@wordpress/*` packages.
+			...jetpackWebpackConfig.BundledWpPkgsTranspileRules(),
+
 			// Handle CSS.
 			jetpackWebpackConfig.CssRule( {
 				extensions: [ 'css', 'sass', 'scss' ],
-				extraLoaders: [ 'sass-loader' ],
+				extraLoaders: [ { loader: 'sass-loader', options: { api: 'modern-compiler' } } ],
 			} ),
 
 			// Handle images.

@@ -1,5 +1,4 @@
 import { __, _x } from '@wordpress/i18n';
-import { getIconColor } from '../../../shared/block-icons';
 import attributes from './attributes';
 import deprecatedV1 from './deprecated/v1';
 import edit from './edit';
@@ -17,6 +16,7 @@ export const defaultFirstMessage = __(
 );
 
 export const settings = {
+	apiVersion: 3,
 	title,
 	description: __(
 		'Let your visitors send you a message on WhatsApp with the tap of a button.',
@@ -24,7 +24,6 @@ export const settings = {
 	),
 	icon: {
 		src: icon,
-		foreground: getIconColor(),
 	},
 	category: 'grow',
 	parent: [ 'jetpack/send-a-message' ],

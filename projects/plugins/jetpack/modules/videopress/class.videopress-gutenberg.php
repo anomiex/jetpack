@@ -7,6 +7,12 @@
 
 use Automattic\Jetpack\Assets;
 use Automattic\Jetpack\Blocks;
+use Automattic\Jetpack\Current_Plan as Jetpack_Plan;
+use Automattic\Jetpack\VideoPress\Block_Replacement;
+
+if ( ! defined( 'ABSPATH' ) ) {
+	exit( 0 );
+}
 
 /**
  * Register a VideoPress extension to replace the default Core Video block.
@@ -32,10 +38,13 @@ class VideoPress_Gutenberg {
 	 * Initialize the VideoPress Gutenberg extension
 	 */
 	private function __construct() {
-		add_action( 'init', array( $this, 'register_video_block_with_videopress' ) );
+		// Run late to avoid race condition with other plugins that register the video block
+		// Jetpack's jetpack_register_block function bails if the block is already registered
+		add_action( 'init', array( $this, 'register_video_block_with_videopress' ), 99 );
 		add_action( 'jetpack_register_gutenberg_extensions', array( $this, 'set_extension_availability' ) );
 		add_action( 'enqueue_block_editor_assets', array( $this, 'override_video_upload' ) );
 		add_action( 'enqueue_block_editor_assets', array( $this, 'add_resumable_upload_support' ) );
+		Block_Replacement::init();
 	}
 
 	/**
@@ -102,9 +111,9 @@ class VideoPress_Gutenberg {
 	public function set_extension_availability() {
 		$availability = $this->check_videopress_availability();
 		if ( $availability['available'] ) {
-			Jetpack_Gutenberg::set_extension_available( 'jetpack/videopress' );
+			Jetpack_Gutenberg::set_extension_available( 'videopress' );
 		} else {
-			Jetpack_Gutenberg::set_extension_unavailable( 'jetpack/videopress', $availability['unavailable_reason'] );
+			Jetpack_Gutenberg::set_extension_unavailable( 'videopress', $availability['unavailable_reason'] );
 		}
 	}
 
@@ -195,18 +204,7 @@ class VideoPress_Gutenberg {
 				'_inc/build/videopress/js/gutenberg-video-upload.min.js',
 				'modules/videopress/js/gutenberg-video-upload.js'
 			),
-			array( 'wp-api-fetch', 'wp-polyfill', 'lodash' ),
-			JETPACK__VERSION,
-			false
-		);
-
-		wp_enqueue_script(
-			'jetpack-videopress-gutenberg-playback-jwt',
-			Assets::get_file_url_for_environment(
-				'modules/videopress/js/videopress-token-bridge.js',
-				'modules/videopress/js/videopress-token-bridge.js'
-			),
-			array(),
+			array( 'wp-api-fetch', 'wp-polyfill' ),
 			JETPACK__VERSION,
 			false
 		);

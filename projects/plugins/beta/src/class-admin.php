@@ -7,7 +7,7 @@
 
 namespace Automattic\JetpackBeta;
 
-use Jetpack;
+use Automattic\Jetpack\Admin_UI\Admin_Menu;
 
 /**
  * Handles the Jetpack Beta plugin Admin functions.
@@ -36,24 +36,14 @@ class Admin {
 	 * Action for `admin_menu` and `network_admin_menu`.
 	 */
 	public static function add_actions() {
-		if ( class_exists( Jetpack::class ) ) {
-			self::$hookname = add_submenu_page(
-				'jetpack',
-				'Jetpack Beta',
-				'Jetpack Beta',
-				'update_plugins',
-				'jetpack-beta',
-				array( self::class, 'render' )
-			);
-		} else {
-			self::$hookname = add_menu_page(
-				'Jetpack Beta',
-				'Jetpack Beta',
-				'update_plugins',
-				'jetpack-beta',
-				array( self::class, 'render' )
-			);
-		}
+		self::$hookname = Admin_Menu::add_menu(
+			'Beta Tester',
+			'Beta Tester',
+			'update_plugins',
+			'jetpack-beta',
+			array( self::class, 'render' ),
+			998
+		);
 
 		if ( false !== self::$hookname ) {
 			add_action( 'load-' . self::$hookname, array( self::class, 'admin_page_load' ) );
@@ -88,7 +78,7 @@ class Admin {
 		if ( is_network_admin() && ! is_plugin_active_for_network( JPBETA__PLUGIN_FOLDER . '/jetpack-beta.php' ) ) {
 			$exception = new \RuntimeException( __( 'Jetpack Beta Tester must be activated for the network to be used from Network Admin.', 'jetpack-beta' ) );
 			require_once __DIR__ . '/admin/exception.template.php';
-			exit;
+			exit( 0 );
 		}
 
 		ob_start();
@@ -124,7 +114,6 @@ class Admin {
 	 * Action for `load-{$hook}`.
 	 */
 	public static function admin_page_load() {
-		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		$plugin_name = isset( $_GET['plugin'] ) ? filter_var( wp_unslash( $_GET['plugin'] ) ) : null;
 		$plugin      = null;
 
@@ -139,7 +128,7 @@ class Admin {
 			) {
 				// phpcs:ignore WordPress.Security.NonceVerification.Recommended
 				wp_safe_redirect( Utils::admin_url( $_GET ) );
-				exit();
+				exit( 0 );
 			}
 		}
 
@@ -178,7 +167,7 @@ class Admin {
 		}
 
 		wp_safe_redirect( Utils::admin_url( $plugin ? array( 'plugin' => $plugin_name ) : array() ) );
-		exit();
+		exit( 0 );
 	}
 
 	/**
@@ -248,13 +237,13 @@ class Admin {
 	 * @return (string|null)[] HTML and diff summary.
 	 */
 	public static function to_test_content( Plugin $plugin ) {
-		if ( is_plugin_active( $plugin->plugin_file() ) ) {
-			$path = WP_PLUGIN_DIR . '/' . $plugin->plugin_slug();
+		if ( $plugin->is_active( 'stable' ) ) {
+			$path = dirname( $plugin->plugin_path() );
 			$info = (object) array(
 				'source' => 'stable',
 			);
-		} elseif ( is_plugin_active( $plugin->dev_plugin_file() ) ) {
-			$path = WP_PLUGIN_DIR . '/' . $plugin->dev_plugin_slug();
+		} elseif ( $plugin->is_active( 'dev' ) ) {
+			$path = dirname( $plugin->dev_plugin_path() );
 			$info = $plugin->dev_info();
 			if ( ! $info ) {
 				return array(
@@ -354,5 +343,4 @@ class Admin {
 		</a>
 		<?php
 	}
-
 }

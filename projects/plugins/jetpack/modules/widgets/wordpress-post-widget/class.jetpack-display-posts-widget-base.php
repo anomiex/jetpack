@@ -1,5 +1,11 @@
 <?php // phpcs:ignore WordPress.Files.FileName.InvalidClassFileName
 
+use Automattic\Jetpack\Image_CDN\Image_CDN_Core;
+
+if ( ! defined( 'ABSPATH' ) ) {
+	exit( 0 );
+}
+
 /**
  * For back-compat, the final widget class must be named
  * Jetpack_Display_Posts_Widget.
@@ -104,7 +110,7 @@ abstract class Jetpack_Display_Posts_Widget__Base extends WP_Widget {
 			if ( current_user_can( 'manage_options' ) ) {
 				$content .= '<p>';
 				/* Translators: the "Blog URL" field mentioned is the input field labeled as such in the widget form. */
-				$content .= esc_html__( 'The Blog URL is not properly setup in the widget.', 'jetpack' );
+				$content .= esc_html__( 'The Blog URL is not properly set up in the widget.', 'jetpack' );
 				$content .= '</p>';
 			}
 			$content .= $args['after_widget'];
@@ -128,7 +134,7 @@ abstract class Jetpack_Display_Posts_Widget__Base extends WP_Widget {
 		if ( ! empty( $instance['title'] ) ) {
 			/** This filter is documented in core/src/wp-includes/default-widgets.php */
 			$instance['title'] = apply_filters( 'widget_title', $instance['title'] );
-			$content          .= $args['before_title'] . $instance['title'] . ': ' . $site_info->name . $args['after_title']; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+			$content          .= $args['before_title'] . $instance['title'] . ': ' . $site_info->name . $args['after_title'];
 		} else {
 			$content .= $args['before_title'] . esc_html( $site_info->name ) . $args['after_title'];
 		}
@@ -150,9 +156,9 @@ abstract class Jetpack_Display_Posts_Widget__Base extends WP_Widget {
 		 * Show only as much posts as we need. If we have less than configured amount,
 		 * we must show only that much posts.
 		 */
-		$number_of_posts = min( $instance['number_of_posts'], count( $posts_list ) );
+		$number_of_posts = min( $instance['number_of_posts'], is_countable( $posts_list ) ? count( $posts_list ) : 0 );
 
-		for ( $i = 0; $i < $number_of_posts; $i ++ ) {
+		for ( $i = 0; $i < $number_of_posts; $i++ ) {
 			$single_post = $posts_list[ $i ];
 			$post_title  = ( $single_post['title'] ) ? $single_post['title'] : '( No Title )';
 
@@ -175,7 +181,7 @@ abstract class Jetpack_Display_Posts_Widget__Base extends WP_Widget {
 				 * @param array $args Array of Photon Parameters.
 				 */
 				$image_params = apply_filters( 'jetpack_display_posts_widget_image_params', array() );
-				$content     .= '<a title="' . esc_attr( $post_title ) . '" href="' . esc_url( $single_post['url'] ) . '"' . $target . '><img src="' . jetpack_photon_url( $featured_image, $image_params ) . '" alt="' . esc_attr( $post_title ) . '"/></a>';
+				$content     .= '<a title="' . esc_attr( $post_title ) . '" href="' . esc_url( $single_post['url'] ) . '"' . $target . '><img src="' . Image_CDN_Core::cdn_url( $featured_image, $image_params ) . '" alt="' . esc_attr( $post_title ) . '"/></a>';
 			}
 
 			if ( true === $instance['show_excerpts'] ) {
@@ -210,12 +216,12 @@ abstract class Jetpack_Display_Posts_Widget__Base extends WP_Widget {
 		/**
 		 * Initialize widget configuration variables.
 		 */
-		$title              = ( isset( $instance['title'] ) ) ? $instance['title'] : __( 'Recent Posts', 'jetpack' );
-		$url                = ( isset( $instance['url'] ) ) ? $instance['url'] : '';
-		$number_of_posts    = ( isset( $instance['number_of_posts'] ) ) ? $instance['number_of_posts'] : 5;
-		$open_in_new_window = ( isset( $instance['open_in_new_window'] ) ) ? $instance['open_in_new_window'] : false;
-		$featured_image     = ( isset( $instance['featured_image'] ) ) ? $instance['featured_image'] : false;
-		$show_excerpts      = ( isset( $instance['show_excerpts'] ) ) ? $instance['show_excerpts'] : false;
+		$title              = $instance['title'] ?? __( 'Recent Posts', 'jetpack' );
+		$url                = $instance['url'] ?? '';
+		$number_of_posts    = $instance['number_of_posts'] ?? 5;
+		$open_in_new_window = $instance['open_in_new_window'] ?? false;
+		$featured_image     = $instance['featured_image'] ?? false;
+		$show_excerpts      = $instance['show_excerpts'] ?? false;
 
 		/**
 		 * Check if the widget instance has errors available.
@@ -259,7 +265,7 @@ abstract class Jetpack_Display_Posts_Widget__Base extends WP_Widget {
 			<label for="<?php echo esc_attr( $this->get_field_id( 'number_of_posts' ) ); ?>"><?php esc_html_e( 'Number of Posts to Display:', 'jetpack' ); ?></label>
 			<select name="<?php echo esc_attr( $this->get_field_name( 'number_of_posts' ) ); ?>">
 				<?php
-				for ( $i = 1; $i <= 10; $i ++ ) {
+				for ( $i = 1; $i <= 10; $i++ ) {
 					echo '<option value="' . esc_attr( $i ) . '" ' . selected( $number_of_posts, $i ) . '>' . esc_html( $i ) . '</option>';
 				}
 				?>
@@ -353,7 +359,7 @@ abstract class Jetpack_Display_Posts_Widget__Base extends WP_Widget {
 		if ( ! empty( $instance['url'] ) ) {
 			$blog_data = $this->fetch_blog_data( $instance['url'], array(), true );
 
-			if ( is_wp_error( $blog_data['site_info']['error'] ) && 'www.' === substr( $instance['url'], 0, 4 ) ) {
+			if ( is_wp_error( $blog_data['site_info']['error'] ) && str_starts_with( $instance['url'], 'www.' ) ) {
 				$blog_data = $this->fetch_blog_data( substr( $instance['url'], 4 ), array(), true );
 
 				if ( ! is_wp_error( $blog_data['site_info']['error'] ) ) {
@@ -669,7 +675,7 @@ abstract class Jetpack_Display_Posts_Widget__Base extends WP_Widget {
 		/**
 		 * If no optional data is supplied, initialize a new structure
 		 */
-		if ( ! empty( $original_data ) ) {
+		if ( ! empty( $original_data ) && is_array( $original_data ) ) {
 			$widget_data = $original_data;
 		} else {
 			$widget_data = array(

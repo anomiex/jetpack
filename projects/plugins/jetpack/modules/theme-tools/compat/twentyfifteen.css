@@ -23,7 +23,7 @@
 	font-family: "Noto Sans", sans-serif;
 }
 
-.site .portfolio-entry-content .more-link:after {
+.site .portfolio-entry-content .more-link::after {
 	font-size: 16px;
 	top: 1px;
 }
@@ -103,7 +103,7 @@
 
 /* List type widgets */
 .widget_rss_links ul,
-.widget_top-posts ul ,
+.widget_top-posts ul,
 .widget_upcoming_events_widget ul {
 	list-style: none;
 	margin: 0;
@@ -259,6 +259,20 @@ iframe[id*="twitter-widget-"] {
 	margin-bottom: 1.6em;
 }
 
+/**
+ * Responsive Videos
+ */
+
+.jetpack-video-wrapper {
+	margin-bottom: 1.6em;
+}
+
+.jetpack-video-wrapper > embed,
+.jetpack-video-wrapper > iframe,
+.jetpack-video-wrapper > object,
+.jetpack-video-wrapper > .wp-video {
+	margin-bottom: 0;
+}
 
 /**
  * Jetpack Comments
@@ -276,11 +290,12 @@ iframe[id*="twitter-widget-"] {
 .comment-subscription-form {
 	font-size: 12px;
 	font-size: 1.2rem;
+	/* stylelint-disable-next-line declaration-property-unit-allowed-list -- this should be changed to a unitless value: https://developer.wordpress.org/coding-standards/wordpress-coding-standards/css/#values */
 	line-height: 1.5em;
 	margin: 2em 0 0;
 }
 
-.comment-subscription-form + .comment-subscription-form  {
+.comment-subscription-form + .comment-subscription-form {
 	margin-top: 1em;
 }
 
@@ -314,7 +329,7 @@ iframe[id*="twitter-widget-"] {
 	border-bottom: 0;
 }
 
-.hentry .jp-relatedposts-headline em:before {
+.hentry .jp-relatedposts-headline em::before {
 	opacity: 0.7;
 }
 
@@ -379,6 +394,7 @@ iframe[id*="twitter-widget-"] {
  */
 
 @media screen and (min-width: 46.25em) {
+
 	.site .portfolio-entry {
 		margin-bottom: 1.6471em;
 	}
@@ -390,7 +406,7 @@ iframe[id*="twitter-widget-"] {
 		font-size: 14px;
 	}
 
-	.site .portfolio-entry-content .more-link:after {
+	.site .portfolio-entry-content .more-link::after {
 		top: 3px;
 	}
 
@@ -481,8 +497,9 @@ iframe[id*="twitter-widget-"] {
 }
 
 @media screen and (min-width: 55em) {
+
 	.site .portfolio-entry {
-		margin-bottom: 1.6842em
+		margin-bottom: 1.6842em;
 	}
 
 	.site .portfolio-entry-title,
@@ -492,7 +509,7 @@ iframe[id*="twitter-widget-"] {
 		font-size: 16px;
 	}
 
-	.site .portfolio-entry-content .more-link:after {
+	.site .portfolio-entry-content .more-link::after {
 		font-size: 24px;
 		top: 0;
 	}
@@ -543,6 +560,7 @@ iframe[id*="twitter-widget-"] {
 	.hentry div#jp-relatedposts div.jp-relatedposts-items p {
 		font-size: 1.6rem;
 		font-size: 16px;
+		/* stylelint-disable-next-line declaration-property-unit-allowed-list -- this should be changed to a unitless value: https://developer.wordpress.org/coding-standards/wordpress-coding-standards/css/#values */
 		line-height: 1.5em;
 	}
 
@@ -552,8 +570,9 @@ iframe[id*="twitter-widget-"] {
 }
 
 @media screen and (min-width: 59.6875em) {
+
 	.site .portfolio-entry {
-		margin-bottom: 1.6em
+		margin-bottom: 1.6em;
 	}
 
 	.site .portfolio-entry-title,
@@ -563,7 +582,7 @@ iframe[id*="twitter-widget-"] {
 		font-size: 12px;
 	}
 
-	.site .portfolio-entry-content .more-link:after {
+	.site .portfolio-entry-content .more-link::after {
 		font-size: 16px;
 		top: 1px;
 	}
@@ -627,8 +646,9 @@ iframe[id*="twitter-widget-"] {
 }
 
 @media screen and (min-width: 68.75em) {
+
 	.site .portfolio-entry {
-		margin-bottom: 1.6471em
+		margin-bottom: 1.6471em;
 	}
 
 	.site .portfolio-entry-title,
@@ -638,7 +658,7 @@ iframe[id*="twitter-widget-"] {
 		font-size: 14px;
 	}
 
-	.site .portfolio-entry-content .more-link:after {
+	.site .portfolio-entry-content .more-link::after {
 		top: 3px;
 	}
 
@@ -696,8 +716,9 @@ iframe[id*="twitter-widget-"] {
 }
 
 @media screen and (min-width: 77.5em) {
+
 	.site .portfolio-entry {
-		margin-bottom: 1.6842em
+		margin-bottom: 1.6842em;
 	}
 
 	.site .portfolio-entry-title,
@@ -707,7 +728,7 @@ iframe[id*="twitter-widget-"] {
 		font-size: 16px;
 	}
 
-	.site .portfolio-entry-content .more-link:after {
+	.site .portfolio-entry-content .more-link::after {
 		font-size: 24px;
 		top: 0;
 	}
@@ -760,6 +781,7 @@ iframe[id*="twitter-widget-"] {
 	.hentry div#jp-relatedposts div.jp-relatedposts-items p {
 		font-size: 16px;
 		font-size: 1.6rem;
+		/* stylelint-disable-next-line declaration-property-unit-allowed-list -- this should be changed to a unitless value: https://developer.wordpress.org/coding-standards/wordpress-coding-standards/css/#values */
 		line-height: 1.5em;
 	}
 

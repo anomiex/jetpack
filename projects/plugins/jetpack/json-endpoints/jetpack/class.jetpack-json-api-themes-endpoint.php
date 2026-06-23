@@ -1,4 +1,11 @@
 <?php // phpcs:ignore WordPress.Files.FileName.InvalidClassFileName
+
+use Automattic\Jetpack\Image_CDN\Image_CDN_Core;
+
+if ( ! defined( 'ABSPATH' ) ) {
+	exit( 0 );
+}
+
 /**
  * Base class for working with themes, has useful helper functions.
  */
@@ -64,7 +71,6 @@ abstract class Jetpack_JSON_API_Themes_Endpoint extends Jetpack_JSON_API_Endpoin
 		}
 
 		return array( 'themes' => $themes );
-
 	}
 
 	/**
@@ -140,7 +146,7 @@ abstract class Jetpack_JSON_API_Themes_Endpoint extends Jetpack_JSON_API_Endpoin
 		$id              = $theme->get_stylesheet();
 		$formatted_theme = array(
 			'id'         => $id,
-			'screenshot' => jetpack_photon_url( $theme->get_screenshot(), array(), 'network_path' ),
+			'screenshot' => Image_CDN_Core::cdn_url( $theme->get_screenshot(), array(), 'network_path' ),
 			'active'     => $id === $this->current_theme_id,
 		);
 
@@ -149,7 +155,7 @@ abstract class Jetpack_JSON_API_Themes_Endpoint extends Jetpack_JSON_API_Endpoin
 		}
 
 		$update_themes             = get_site_transient( 'update_themes' );
-		$formatted_theme['update'] = ( isset( $update_themes->response[ $id ] ) ) ? $update_themes->response[ $id ] : null;
+		$formatted_theme['update'] = $update_themes->response[ $id ] ?? null;
 
 		$autoupdate                    = in_array( $id, Jetpack_Options::get_option( 'autoupdate_themes', array() ), true );
 		$formatted_theme['autoupdate'] = $autoupdate;
@@ -212,5 +218,4 @@ abstract class Jetpack_JSON_API_Themes_Endpoint extends Jetpack_JSON_API_Endpoin
 
 		return array_map( array( $this, 'format_theme' ), $themes );
 	}
-
 }

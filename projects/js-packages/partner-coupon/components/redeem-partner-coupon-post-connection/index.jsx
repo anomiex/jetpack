@@ -1,7 +1,8 @@
-import { ActionButton, JetpackLogo } from '@automattic/jetpack-components';
+import { JetpackLogo } from '@automattic/jetpack-components';
 import { __, sprintf } from '@wordpress/i18n';
+import { Button } from '@wordpress/ui';
 import PropTypes from 'prop-types';
-import React, { useCallback, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { usePartnerCouponRedemption } from '../../hooks.js';
 
 /**
@@ -15,7 +16,7 @@ export const DISMISS_LS_ITEM_MAX_AGE = 3 * 24 * 60 * 60; // 3 days
 /**
  * Is partner coupon redeem CTA dismissed?
  *
- * @returns {boolean} Is the redeem CTA dismissed?
+ * @return {boolean} Is the redeem CTA dismissed?
  */
 function isDismissed() {
 	const dismissedAt = localStorage.getItem( DISMISS_LS_ITEM_NAME );
@@ -33,21 +34,15 @@ function isDismissed() {
 /**
  * Dismiss partner coupon redeem CTA.
  *
- * @returns {void}
+ * @return {void}
  */
 function dismiss() {
 	localStorage.setItem( DISMISS_LS_ITEM_NAME, new Date().getTime() );
 }
 
 const RedeemPartnerCouponPostConnection = props => {
-	const {
-		connectionStatus,
-		partnerCoupon,
-		assetBaseUrl,
-		siteRawUrl,
-		tracksUserData,
-		analytics,
-	} = props;
+	const { connectionStatus, partnerCoupon, assetBaseUrl, siteRawUrl, tracksUserData, analytics } =
+		props;
 	const [ dismissed, setDismissed ] = useState( isDismissed() );
 
 	const onClick = usePartnerCouponRedemption(
@@ -67,7 +62,7 @@ const RedeemPartnerCouponPostConnection = props => {
 		return null;
 	}
 
-	let logoComponent = null;
+	let logoComponent;
 
 	if ( partnerCoupon.partner.logo ) {
 		logoComponent = (
@@ -78,7 +73,10 @@ const RedeemPartnerCouponPostConnection = props => {
 					src={ `${ assetBaseUrl }${ partnerCoupon.partner.logo.src }` }
 					alt={ sprintf(
 						/* translators: %s: Name of Jetpack partner. */
-						__( 'Logo of %s who are offering a coupon in partnership with Jetpack', 'jetpack' ),
+						__(
+							'Logo of %s who are offering a coupon in partnership with Jetpack',
+							'jetpack-partner-coupon'
+						),
 						partnerCoupon.partner.name
 					) }
 					width={ partnerCoupon.partner.logo.width }
@@ -99,7 +97,7 @@ const RedeemPartnerCouponPostConnection = props => {
 					</div>
 
 					<h2 className="jetpack-redeem-partner-coupon-post-connection__heading">
-						{ __( 'One free year of Jetpack Backup', 'jetpack' ) }
+						{ __( 'One free year of Jetpack Backup', 'jetpack-partner-coupon' ) }
 					</h2>
 				</div>
 				<div
@@ -116,7 +114,7 @@ const RedeemPartnerCouponPostConnection = props => {
 							/* translators: %s: Name of a Jetpack product. */
 							__(
 								'Redeem your coupon and get started with %s for free the first year! Never worry about losing your data, ever.',
-								'jetpack'
+								'jetpack-partner-coupon'
 							),
 							partnerCoupon.product.title
 						) }
@@ -130,21 +128,20 @@ const RedeemPartnerCouponPostConnection = props => {
 
 					<div className="jetpack-redeem-partner-coupon-post-connection__actions">
 						<div>
-							<ActionButton
-								label={ sprintf(
+							<Button onClick={ onClick }>
+								{ sprintf(
 									/* translators: %s: Name of a Jetpack product. */
-									__( 'Redeem %s', 'jetpack' ),
+									__( 'Redeem %s', 'jetpack-partner-coupon' ),
 									partnerCoupon.product.title
 								) }
-								onClick={ onClick }
-							/>
+							</Button>
 						</div>
 						<div>
 							<button
 								className="jetpack-redeem-partner-coupon-post-connection__remind-me-later"
 								onClick={ onRemindMeLater }
 							>
-								{ __( 'Remind me later', 'jetpack' ) }
+								{ __( 'Remind me later', 'jetpack-partner-coupon' ) }
 							</button>
 						</div>
 					</div>

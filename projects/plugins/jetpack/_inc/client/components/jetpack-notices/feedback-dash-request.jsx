@@ -1,16 +1,16 @@
-import { JETPACK_CONTACT_SUPPORT, JETPACK_CONTACT_BETA_SUPPORT } from 'constants/urls';
 import { __ } from '@wordpress/i18n';
+import { Component } from 'react';
+import { connect } from 'react-redux';
 import SimpleNotice from 'components/notice';
 import NoticeAction from 'components/notice/notice-action.jsx';
-import React from 'react';
-import { connect } from 'react-redux';
+import { JETPACK_CONTACT_SUPPORT, JETPACK_CONTACT_BETA_SUPPORT } from 'constants/urls';
 import { isDevVersion as _isDevVersion } from 'state/initial-state';
 import {
 	isNoticeDismissed as _isNoticeDismissed,
 	dismissJetpackNotice,
 } from 'state/jetpack-notices';
 
-class FeedbackDashRequest extends React.Component {
+class FeedbackDashRequest extends Component {
 	static displayName = 'FeedbackDashRequest';
 
 	renderContent = () => {

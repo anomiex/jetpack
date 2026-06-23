@@ -1,5 +1,5 @@
-import { InnerBlocks } from '@wordpress/block-editor';
-import classnames from 'classnames';
+import { InnerBlocks, useBlockProps } from '@wordpress/block-editor';
+import clsx from 'clsx';
 
 const ALLOWED_BLOCKS = [
 	'jetpack/markdown',
@@ -28,15 +28,16 @@ const ALLOWED_BLOCKS = [
 const TEMPLATE = [ [ 'jetpack/email' ], [ 'jetpack/phone' ], [ 'jetpack/address' ] ];
 
 const ContactInfoEdit = props => {
-	const { isSelected } = props;
+	const { className, isSelected } = props;
+	const blockProps = useBlockProps( {
+		className: clsx( className, {
+			'jetpack-contact-info-block': true,
+			'is-selected': isSelected,
+		} ),
+	} );
 
 	return (
-		<div
-			className={ classnames( {
-				'jetpack-contact-info-block': true,
-				'is-selected': isSelected,
-			} ) }
-		>
+		<div { ...blockProps }>
 			<InnerBlocks allowedBlocks={ ALLOWED_BLOCKS } templateLock={ false } template={ TEMPLATE } />
 		</div>
 	);

@@ -9,6 +9,10 @@
  * Restore a post: /sites/%s/posts/%d/restore
  */
 
+if ( ! defined( 'ABSPATH' ) ) {
+	exit( 0 );
+}
+
 new WPCOM_JSON_API_Update_Post_Endpoint(
 	array(
 		'description'          => 'Create a post.',
@@ -30,8 +34,8 @@ new WPCOM_JSON_API_Update_Post_Endpoint(
 			'excerpt'           => '(HTML) An optional post excerpt.',
 			'slug'              => '(string) The name (slug) for the post, used in URLs.',
 			'author'            => '(string) The username or ID for the user to assign the post to.',
-			'publicize'         => '(array|bool) True or false if the post be publicized to external services. An array of services if we only want to publicize to a select few. Defaults to true.',
-			'publicize_message' => '(string) Custom message to be publicized to external services.',
+			'publicize'         => '(array|bool) True or false if the post be shared to external services. An array of services if we only want to share to a select few. Defaults to true.',
+			'publicize_message' => '(string) Custom message to be shared to external services.',
 			'status'            => array(
 				'publish'    => 'Publish the post.',
 				'private'    => 'Privately publish the post.',
@@ -99,8 +103,8 @@ new WPCOM_JSON_API_Update_Post_Endpoint(
 			'excerpt'           => '(HTML) An optional post excerpt.',
 			'slug'              => '(string) The name (slug) for the post, used in URLs.',
 			'author'            => '(string) The username or ID for the user to assign the post to.',
-			'publicize'         => '(array|bool) True or false if the post be publicized to external services. An array of services if we only want to publicize to a select few. Defaults to true.',
-			'publicize_message' => '(string) Custom message to be publicized to external services.',
+			'publicize'         => '(array|bool) True or false if the post be shared to external services. An array of services if we only want to share to a select few. Defaults to true.',
+			'publicize_message' => '(string) Custom message to be shared to external services.',
 			'status'            => array(
 				'publish' => 'Publish the post.',
 				'private' => 'Privately publish the post.',
@@ -197,6 +201,8 @@ new WPCOM_JSON_API_Update_Post_Endpoint(
 
 /**
  * Update post endpoint class.
+ *
+ * @phan-constructor-used-for-side-effects
  */
 class WPCOM_JSON_API_Update_Post_Endpoint extends WPCOM_JSON_API_Post_Endpoint {
 	/**
@@ -251,17 +257,23 @@ class WPCOM_JSON_API_Update_Post_Endpoint extends WPCOM_JSON_API_Post_Endpoint {
 	 * @param int    $post_id Post ID.
 	 */
 	public function write_post( $path, $blog_id, $post_id ) {
-		$new  = $this->api->ends_with( $path, '/new' );
-		$args = $this->query_args();
+		$delete_featured_image = null;
+		$new                   = $this->api->ends_with( $path, '/new' );
+		$args                  = $this->query_args();
 
 		// unhook publicize, it's hooked again later -- without this, skipping services is impossible.
 		if ( defined( 'IS_WPCOM' ) && IS_WPCOM ) {
-			remove_action( 'save_post', array( $GLOBALS['publicize_ui']->publicize, 'async_publicize_post' ), 100, 2 );
+			remove_action( 'save_post', array( $GLOBALS['publicize_ui']->publicize, 'async_publicize_post' ), 100 );
 			add_action( 'rest_api_inserted_post', array( $GLOBALS['publicize_ui']->publicize, 'async_publicize_post' ) );
 		}
 
 		if ( $new ) {
 			$input = $this->input( true );
+
+			// default to post.
+			if ( empty( $input['type'] ) ) {
+				$input['type'] = 'post';
+			}
 
 			if ( 'revision' === $input['type'] ) {
 				if ( ! isset( $input['parent'] ) ) {
@@ -271,11 +283,6 @@ class WPCOM_JSON_API_Update_Post_Endpoint extends WPCOM_JSON_API_Post_Endpoint {
 				$input['slug']   = $input['parent'] . '-autosave-v1';
 			} elseif ( ! isset( $input['title'] ) && ! isset( $input['content'] ) && ! isset( $input['excerpt'] ) ) {
 				return new WP_Error( 'invalid_input', 'Invalid request input', 400 );
-			}
-
-			// default to post.
-			if ( empty( $input['type'] ) ) {
-				$input['type'] = 'post';
 			}
 
 			$post_type = get_post_type_object( $input['type'] );
@@ -300,10 +307,8 @@ class WPCOM_JSON_API_Update_Post_Endpoint extends WPCOM_JSON_API_Post_Endpoint {
 						return new WP_Error( 'unauthorized', 'User cannot publish posts', 403 );
 					}
 				}
-			} else {
-				if ( ! current_user_can( $post_type->cap->edit_posts ) ) {
-					return new WP_Error( 'unauthorized', 'User cannot edit posts', 403 );
-				}
+			} elseif ( ! current_user_can( $post_type->cap->edit_posts ) ) {
+				return new WP_Error( 'unauthorized', 'User cannot edit posts', 403 );
 			}
 		} else {
 			$input = $this->input( false );
@@ -339,7 +344,7 @@ class WPCOM_JSON_API_Update_Post_Endpoint extends WPCOM_JSON_API_Post_Endpoint {
 				$input['status'] = 'pending';
 			}
 			$last_status = $post->post_status;
-			$new_status  = isset( $input['status'] ) ? $input['status'] : $last_status;
+			$new_status  = $input['status'] ?? $last_status;
 
 			// Make sure that drafts get the current date when transitioning to publish if not supplied in the post.
 			$date_in_past = ( strtotime( $post->post_date_gmt ) < time() );
@@ -439,14 +444,11 @@ class WPCOM_JSON_API_Update_Post_Endpoint extends WPCOM_JSON_API_Post_Endpoint {
 					if ( $is_hierarchical ) {
 						// Categories must be added by ID.
 						$tax_input[ $taxonomy ][] = (int) $term_info['term_id'];
+					} elseif ( is_int( $term ) ) { // Tags must be added by name.
+						$term                     = get_term( $term, $taxonomy );
+						$tax_input[ $taxonomy ][] = $term->name;
 					} else {
-						// Tags must be added by name.
-						if ( is_int( $term ) ) {
-							$term                     = get_term( $term, $taxonomy );
-							$tax_input[ $taxonomy ][] = $term->name;
-						} else {
-							$tax_input[ $taxonomy ][] = $term;
-						}
+						$tax_input[ $taxonomy ][] = $term;
 					}
 				}
 			}
@@ -480,10 +482,10 @@ class WPCOM_JSON_API_Update_Post_Endpoint extends WPCOM_JSON_API_Post_Endpoint {
 			unset( $input['menu_order'] );
 		}
 
-		$publicize = isset( $input['publicize'] ) ? $input['publicize'] : null;
+		$publicize = $input['publicize'] ?? null;
 		unset( $input['publicize'] );
 
-		$publicize_custom_message = isset( $input['publicize_message'] ) ? $input['publicize_message'] : null;
+		$publicize_custom_message = $input['publicize_message'] ?? null;
 		unset( $input['publicize_message'] );
 
 		if ( isset( $input['featured_image'] ) ) {
@@ -492,16 +494,16 @@ class WPCOM_JSON_API_Update_Post_Endpoint extends WPCOM_JSON_API_Post_Endpoint {
 			unset( $input['featured_image'] );
 		}
 
-		$metadata = isset( $input['metadata'] ) ? $input['metadata'] : null;
+		$metadata = $input['metadata'] ?? null;
 		unset( $input['metadata'] );
 
-		$likes = isset( $input['likes_enabled'] ) ? $input['likes_enabled'] : null;
+		$likes = $input['likes_enabled'] ?? null;
 		unset( $input['likes_enabled'] );
 
-		$sharing = isset( $input['sharing_enabled'] ) ? $input['sharing_enabled'] : null;
+		$sharing = $input['sharing_enabled'] ?? null;
 		unset( $input['sharing_enabled'] );
 
-		$sticky = isset( $input['sticky'] ) ? $input['sticky'] : null;
+		$sticky = $input['sticky'] ?? null;
 		unset( $input['sticky'] );
 
 		foreach ( $input as $key => $value ) {
@@ -541,6 +543,7 @@ class WPCOM_JSON_API_Update_Post_Endpoint extends WPCOM_JSON_API_Post_Endpoint {
 
 			$post_id = wp_insert_post( add_magic_quotes( $insert ), true );
 		} else {
+			// @phan-suppress-next-line PhanPossiblyUndeclaredVariable -- $post is set and validated several blocks earlier if $new (only set once) is falsy.
 			$insert['ID'] = $post->ID;
 
 			// wp_update_post ignores date unless edit_date is set
@@ -600,43 +603,35 @@ class WPCOM_JSON_API_Update_Post_Endpoint extends WPCOM_JSON_API_Post_Endpoint {
 				} else {
 					delete_post_meta( $post_id, 'switch_like_status' );
 				}
+			} elseif ( $likes ) {
+				update_post_meta( $post_id, 'switch_like_status', 1 );
 			} else {
-				if ( $likes ) {
-					update_post_meta( $post_id, 'switch_like_status', 1 );
+				delete_post_meta( $post_id, 'switch_like_status' );
+			}
+		} elseif ( isset( $likes ) ) {
+			if ( $sitewide_likes_enabled ) {
+				if ( false === $likes ) {
+					update_post_meta( $post_id, 'switch_like_status', 0 );
 				} else {
 					delete_post_meta( $post_id, 'switch_like_status' );
 				}
-			}
-		} else {
-			if ( isset( $likes ) ) {
-				if ( $sitewide_likes_enabled ) {
-					if ( false === $likes ) {
-						update_post_meta( $post_id, 'switch_like_status', 0 );
-					} else {
-						delete_post_meta( $post_id, 'switch_like_status' );
-					}
-				} else {
-					if ( true === $likes ) {
-						update_post_meta( $post_id, 'switch_like_status', 1 );
-					} else {
-						delete_post_meta( $post_id, 'switch_like_status' );
-					}
-				}
+			} elseif ( true === $likes ) {
+				update_post_meta( $post_id, 'switch_like_status', 1 );
+			} else {
+				delete_post_meta( $post_id, 'switch_like_status' );
 			}
 		}
 
 		// Set sharing status of the post.
 		if ( $new ) {
 			$sharing_enabled = isset( $sharing ) ? (bool) $sharing : true;
-			if ( false === $sharing_enabled ) {
+			if ( ! $sharing_enabled ) {
 				update_post_meta( $post_id, 'sharing_disabled', 1 );
 			}
-		} else {
-			if ( isset( $sharing ) && true === $sharing ) {
-				delete_post_meta( $post_id, 'sharing_disabled' );
-			} elseif ( isset( $sharing ) && false == $sharing ) { // phpcs:ignore Universal.Operators.StrictComparisons.LooseEqual
-				update_post_meta( $post_id, 'sharing_disabled', 1 );
-			}
+		} elseif ( isset( $sharing ) && true === $sharing ) {
+			delete_post_meta( $post_id, 'sharing_disabled' );
+		} elseif ( isset( $sharing ) && false == $sharing ) { // phpcs:ignore Universal.Operators.StrictComparisons.LooseEqual
+			update_post_meta( $post_id, 'sharing_disabled', 1 );
 		}
 
 		if ( isset( $sticky ) ) {
@@ -682,7 +677,7 @@ class WPCOM_JSON_API_Update_Post_Endpoint extends WPCOM_JSON_API_Post_Endpoint {
 					update_post_meta( $post_id, $GLOBALS['publicize_ui']->publicize->POST_SKIP . $service_connection->unique_id, 1 );
 				}
 			}
-		} elseif ( is_array( $publicize ) && ( count( $publicize ) > 0 ) ) {
+		} elseif ( is_array( $publicize ) && ( $publicize !== array() ) ) {
 			foreach ( $GLOBALS['publicize_ui']->publicize->get_services( 'all' ) as $name => $service ) {
 				/*
 				* We support both indexed and associative arrays:
@@ -691,12 +686,12 @@ class WPCOM_JSON_API_Update_Post_Endpoint extends WPCOM_JSON_API_Post_Endpoint {
 				*
 				* We do support mixed arrays: mixed integer and string keys (see 3rd example below).
 				*
-				* EG: array( 'twitter', 'facebook') will only publicize to those, ignoring the other available services
-				*      Form data: publicize[]=twitter&publicize[]=facebook
-				* EG: array( 'twitter' => '(int) $pub_conn_id_0, (int) $pub_conn_id_3', 'facebook' => (int) $pub_conn_id_7 ) will publicize to two Twitter accounts, and one Facebook connection, of potentially many.
-				*      Form data: publicize[twitter]=$pub_conn_id_0,$pub_conn_id_3&publicize[facebook]=$pub_conn_id_7
-				* EG: array( 'twitter', 'facebook' => '(int) $pub_conn_id_0, (int) $pub_conn_id_3' ) will publicize to all available Twitter accounts, but only 2 of potentially many Facebook connections
-				*      Form data: publicize[]=twitter&publicize[facebook]=$pub_conn_id_0,$pub_conn_id_3
+				* EG: array( 'linkedin', 'facebook') will only publicize to those, ignoring the other available services
+				*      Form data: publicize[]=linkedin&publicize[]=facebook
+				* EG: array( 'linkedin' => '(int) $pub_conn_id_0, (int) $pub_conn_id_3', 'facebook' => (int) $pub_conn_id_7 ) will publicize to two LinkedIn accounts, and one Facebook connection, of potentially many.
+				*      Form data: publicize[linkedin]=$pub_conn_id_0,$pub_conn_id_3&publicize[facebook]=$pub_conn_id_7
+				* EG: array( 'linkedin', 'facebook' => '(int) $pub_conn_id_0, (int) $pub_conn_id_3' ) will publicize to all available LinkedIn accounts, but only 2 of potentially many Facebook connections
+				*      Form data: publicize[]=linkedin&publicize[facebook]=$pub_conn_id_0,$pub_conn_id_3
 				*/
 
 				// Delete any stale SKIP value for the service by name. We'll add it back by ID.
@@ -761,7 +756,10 @@ class WPCOM_JSON_API_Update_Post_Endpoint extends WPCOM_JSON_API_Post_Endpoint {
 
 				$meta = (object) $meta;
 
-				if ( Jetpack_SEO_Posts::DESCRIPTION_META_KEY === $meta->key && ! Jetpack_SEO_Utils::is_enabled_jetpack_seo() ) {
+				if (
+					in_array( $meta->key ?? null, Jetpack_SEO_Posts::POST_META_KEYS_ARRAY, true ) &&
+					! Jetpack_SEO_Utils::is_enabled_jetpack_seo()
+				) {
 					return new WP_Error( 'unauthorized', __( 'SEO tools are not enabled for this site.', 'jetpack' ), 403 );
 				}
 
@@ -789,10 +787,10 @@ class WPCOM_JSON_API_Update_Post_Endpoint extends WPCOM_JSON_API_Post_Endpoint {
 					}
 				}
 
-				$unslashed_meta_key           = wp_unslash( $meta->key ); // should match what the final key will be.
-				$meta->key                    = wp_slash( $meta->key );
-				$unslashed_existing_meta_key  = wp_unslash( $existing_meta_item->meta_key );
-				$existing_meta_item->meta_key = wp_slash( $existing_meta_item->meta_key );
+				$unslashed_meta_key           = isset( $meta->key ) ? wp_unslash( $meta->key ) : null; // should match what the final key will be.
+				$meta->key                    = isset( $meta->key ) ? wp_slash( $meta->key ) : null;
+				$unslashed_existing_meta_key  = isset( $existing_meta_item->meta_key ) ? wp_unslash( $existing_meta_item->meta_key ) : null;
+				$existing_meta_item->meta_key = isset( $existing_meta_item->meta_key ) ? wp_slash( $existing_meta_item->meta_key ) : null;
 
 				// make sure that the meta id passed matches the existing meta key.
 				if ( ! empty( $meta->id ) && ! empty( $meta->key ) ) {

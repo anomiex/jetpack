@@ -1,6 +1,5 @@
 import { Spinner } from '@wordpress/components';
 import Button from 'components/button';
-import React from 'react';
 import './style.scss';
 
 const InstallButton = props => {

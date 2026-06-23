@@ -1,17 +1,29 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 set -eo pipefail
+
+# Signal to jetpack CLI that we're part of a CI run, so it doesn't try to prompt for tracking.
+export CI=1
 
 BASE="$PWD"
 BRANCH="$1"
 CHANGEFILE="$(sed 's/[<>:"/\\|?*]/-/g' <<<"$BRANCH")"
+EXIT=0
 
+. "$BASE/tools/includes/changelogger.sh"
 . "$BASE/tools/includes/alpha-tag.sh"
 
 function die {
 	echo "::error::$*"
 	exit 1
 }
+
+# Renovate has a bug where they modify `.npmrc` and don't clean up after themselves,
+# resulting in those modifications being included in the diff.
+# https://github.com/renovatebot/renovate/discussions/23489
+# So work around it by manually reverting the file and deleting any new copies they may have created.
+git restore .npmrc
+git clean -f '*/.npmrc'
 
 # Renovate may get confused if we leave installed node_modules or the like behind.
 # So delete everything that's git-ignored on exit.
@@ -27,55 +39,45 @@ if [[ "$HOME" == "/" ]]; then
 	mkdir /var/tmp/home
 	export HOME=/var/tmp/home
 fi
-pnpm config set --location=user store-dir /tmp/renovate/cache/others/pnpm
-composer config --global cache-dir /tmp/renovate/cache/others/composer
 
-# Do the pnpm and changelogger installs.
-cd "$BASE"
-pnpm --quiet install
-cd projects/packages/changelogger
-composer --quiet update
-cd "$BASE"
-CL="$BASE/projects/packages/changelogger/bin/changelogger"
+#pnpm config set --global store-dir /tmp/renovate/cache/others/pnpm
+#composer config --global cache-dir /tmp/renovate/cache/others/composer
 
-# Add change files for anything that changed. But ignore .npmrc, renovate mangles those.
+# Do the pnpm install. Turn off some strictness settings to make it more likely this will work.
+cd "$BASE"
+TMP=$(< pnpm-workspace.yaml )
+pnpm config set --location project strictPeerDependencies false
+pnpm config set --location project strictDepBuilds false
+pnpm config set --location project allowUnusedPatches true
+pnpm install || EXIT=$?
+echo "$TMP" > pnpm-workspace.yaml
+
+# Install changelogger too.
+cd "$BASE/projects/packages/changelogger"
+composer update
+
+# Add change files for anything that changed.
+cd "$BASE"
 echo "Changed files:"
-git -c core.quotepath=off diff --name-only HEAD | grep -E -v '(^|/)\.npmrc'
+git -c core.quotepath=off diff --name-only HEAD
 ANY=false
-for DIR in $(git -c core.quotepath=off diff --name-only HEAD | grep -E -v '(^|/)\.npmrc' | sed -nE 's!^(projects/[^/]+/[^/]+)/.*!\1!p' | sort -u); do
+for DIR in $(git -c core.quotepath=off diff --name-only HEAD | sed -nE 's!^(projects/[^/]+/[^/]+)/.*!\1!p' | sort -u); do
 	ANY=true
 	SLUG="${DIR#projects/}"
 	echo "Adding change file for $SLUG"
 	cd "$DIR"
 
-	ARGS=()
-	ARGS=( add --filename="${CHANGEFILE}" --no-interaction --filename-auto-suffix --significance=patch )
-
-	CLTYPE="$(jq -r '.extra["changelogger-default-type"] // "changed"' composer.json)"
-	if [[ -n "$CLTYPE" ]]; then
-		ARGS+=( "--type=$CLTYPE" )
-	fi
-
-	ARGS+=( --entry="Updated package dependencies." )
-
-	CHANGES_DIR="$(jq -r '.extra.changelogger["changes-dir"] // "changelog"' composer.json)"
-	if [[ -d "$CHANGES_DIR" && "$(ls -- "$CHANGES_DIR")" ]]; then
-		"$CL" "${ARGS[@]}"
-	else
-		"$CL" "${ARGS[@]}"
-		echo "Updating version for $SLUG"
-		PRERELEASE=$(alpha_tag "$CL" composer.json 0)
-		VER=$("$CL" version next --default-first-version --prerelease="$PRERELEASE") || { echo "$VER"; exit 1; }
-		"$BASE/tools/project-version.sh" -u "$VER" "$SLUG"
-	fi
+	changelogger_add 'Update package dependencies.' '' --filename="${CHANGEFILE}" --filename-auto-suffix
 	cd "$BASE"
 done
 
 if ! $ANY; then
 	echo "No projects are touched in this renovate PR, so nothing to do."
-	exit 0
+	exit $EXIT
 fi
 
 # Update deps and lock files.
 echo "Updating dependencies on changed projects"
 tools/check-intra-monorepo-deps.sh -ua -n "${CHANGEFILE}"
+
+exit $EXIT

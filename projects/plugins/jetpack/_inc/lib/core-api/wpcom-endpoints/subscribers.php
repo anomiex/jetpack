@@ -6,6 +6,10 @@
  */
 use Automattic\Jetpack\Constants;
 
+if ( ! defined( 'ABSPATH' ) ) {
+	exit( 0 );
+}
+
 /**
  * Subscribers: Get subscriber count
  *
@@ -39,13 +43,26 @@ class WPCOM_REST_API_V2_Endpoint_Subscribers extends WP_REST_Controller {
 				),
 			)
 		);
+		// GET /sites/<blog_id>/subscriber/counts - Return splitted number of subscribers for this site
+		register_rest_route(
+			$this->namespace,
+			'/' . $this->rest_base . '/counts',
+			array(
+				array(
+					'methods'             => WP_REST_Server::READABLE,
+					'callback'            => array( $this, 'get_subscriber_counts' ),
+					'permission_callback' => array( $this, 'readable_permission_check' ),
+				),
+			)
+		);
 	}
 
 	/**
 	 * Permission check. Only authors can access this endpoint.
 	 */
 	public function readable_permission_check() {
-		if ( ! current_user_can_for_blog( get_current_blog_id(), 'edit_posts' ) ) {
+
+		if ( ! current_user_can_for_site( get_current_blog_id(), 'edit_posts' ) ) {
 			return new WP_Error( 'authorization_required', 'Only users with the permission to edit posts can see the subscriber count.', array( 'status' => 401 ) );
 		}
 
@@ -62,14 +79,29 @@ class WPCOM_REST_API_V2_Endpoint_Subscribers extends WP_REST_Controller {
 		// Get the most up to date subscriber count when request is not a test.
 		if ( ! Constants::is_defined( 'TESTING_IN_JETPACK' ) ) {
 			delete_transient( 'wpcom_subscribers_total' );
+			delete_transient( 'wpcom_subscribers_total_no_publicize' );
 		}
-
-		$subscriber_info  = Jetpack_Subscriptions_Widget::fetch_subscriber_count();
-		$subscriber_count = $subscriber_info['value'];
+		$subscriber_count = Jetpack_Subscriptions_Widget::fetch_subscriber_count();
 
 		return array(
 			'count' => $subscriber_count,
 		);
+	}
+
+	/**
+	 * Retrieves splitted subscriber counts
+	 *
+	 * @return array data object containing subscriber counts.
+	 */
+	public function get_subscriber_counts() {
+		if ( ! Constants::is_defined( 'TESTING_IN_JETPACK' ) ) {
+			delete_transient( 'wpcom_subscribers_totals' );
+		}
+
+		$subscriber_info   = Automattic\Jetpack\Extensions\Subscriptions\fetch_subscriber_counts();
+		$subscriber_counts = $subscriber_info['value'];
+
+		return array( 'counts' => $subscriber_counts );
 	}
 }
 

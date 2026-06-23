@@ -3,7 +3,6 @@ import { Button } from '@wordpress/components';
 import { createInterpolateElement } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 import PropTypes from 'prop-types';
-import React from 'react';
 import disconnectImage from '../images/disconnect-confirm.jpg';
 
 /**
@@ -11,7 +10,7 @@ import disconnectImage from '../images/disconnect-confirm.jpg';
  * Will only show option to provide feedback if the canProvideFeedback prop is true.
  *
  * @param {object} props - The properties.
- * @returns {React.Component} - StepDisconnectConfirm Component
+ * @return {import('react').Component} - StepDisconnectConfirm Component
  */
 const StepDisconnectConfirm = props => {
 	const { onExit, canProvideFeedback, onProvideFeedback } = props;
@@ -23,7 +22,7 @@ const StepDisconnectConfirm = props => {
 			<div className="jp-connection__disconnect-dialog__step-copy jp-connection__disconnect-dialog__step-copy--narrow">
 				<h1>
 					{ createInterpolateElement(
-						__( 'Jetpack has been <br/>successfully disconnected.', 'jetpack' ),
+						__( 'Jetpack has been <br/>successfully disconnected.', 'jetpack-connection-js' ),
 						{
 							br: <br />,
 						}
@@ -35,7 +34,7 @@ const StepDisconnectConfirm = props => {
 						<p>
 							{ __(
 								'We’re sorry to see you go. Here at Jetpack, we’re always striving to provide the best experience for our customers. Please take our short survey (2 minutes, promise).',
-								'jetpack'
+								'jetpack-connection-js'
 							) }
 						</p>
 						<p>
@@ -44,7 +43,7 @@ const StepDisconnectConfirm = props => {
 								onClick={ onProvideFeedback }
 								className="jp-connection__disconnect-dialog__btn-back-to-wp"
 							>
-								{ __( 'Help us improve', 'jetpack' ) }
+								{ __( 'Help us improve', 'jetpack-connection-js' ) }
 							</Button>
 						</p>
 						<a
@@ -52,7 +51,7 @@ const StepDisconnectConfirm = props => {
 							href="#"
 							onClick={ onExit }
 						>
-							{ __( 'No thank you', 'jetpack' ) }
+							{ __( 'No thank you', 'jetpack-connection-js' ) }
 						</a>
 					</>
 				) }
@@ -65,7 +64,7 @@ const StepDisconnectConfirm = props => {
 								onClick={ onExit }
 								className="jp-connection__disconnect-dialog__btn-back-to-wp"
 							>
-								{ __( 'Back to my website', 'jetpack' ) }
+								{ __( 'Back to my website', 'jetpack-connection-js' ) }
 							</Button>
 						</p>
 					</>

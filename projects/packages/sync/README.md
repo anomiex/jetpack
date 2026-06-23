@@ -66,6 +66,10 @@ the following modules will be enabled no matter the configuration:
 - `Automattic\\Jetpack\\Sync\\Modules\\Callables`
 - `Automattic\\Jetpack\\Sync\\Modules\\Constants`
 - `Automattic\\Jetpack\\Sync\\Modules\\Full_Sync_Immediately`
+- `Automattic\\Jetpack\\Sync\\Modules\\Stats`
+- `Automattic\\Jetpack\\Sync\\Modules\\Updates`
+
+**Attention**: Sync currently only supports configuring the list of [default Sync modules](https://github.com/Automattic/jetpack/blob/trunk/projects/packages/sync/src/class-modules.php#L25). Any modules that Sync already loads conditionally, such as `WooCommerce` or `Search` are **NOT** configurable.
 
 ##### `jetpack_sync_options_whitelist` / `jetpack_sync_options_contentless`
 
@@ -90,7 +94,6 @@ It's important to note that we consider a list of certain options required for S
 - `jetpack_sync_settings_post_types_blacklist`, // Sync related option
 - `jetpack_sync_settings_taxonomies_blacklist`, // Sync related option
 - `jetpack_sync_settings_dedicated_sync_enabled`, // Sync related option
-- `jetpack_connection_active_plugins`, // Connection related option
 - `blog_charset`, // Generic site option
 - `blog_public`, // Generic site option
 - `blogdescription`, // Generic site option
@@ -99,6 +102,7 @@ It's important to note that we consider a list of certain options required for S
 - `stylesheet`, // Generic site option
 - `time_format`, // Generic site option
 - `timezone_string`, // Generic site option
+- `active_plugins`, // Generic site option
 
 Passing a list of options will result in syncing those options plus the required ones.
 
@@ -142,6 +146,9 @@ It's important to note that we consider a list of certain callables required for
 - `wp_get_environment_type`
 - `wp_max_upload_size`
 - `wp_version`
+- `jetpack_connection_active_plugins` // Connection related callable
+- `jetpack_package_versions` // Connection related callable
+- `jetpack_sync_active_modules`
 
 Passing a list of callables will result in syncing those callables plus the required ones.
 
@@ -279,3 +286,15 @@ An initial full sync of the site is started when the site is registered or when 
 The `Actions::do_only_first_initial_sync` method can be used to start an initial full sync when a site has not already had a full sync started. This is useful for situations in which a plugin needs to start an initial full sync only if no other plugin has already started one.
 
 ## Examples
+
+## Using this package in your WordPress plugin
+
+If you plan on using this package in your WordPress plugin, we would recommend that you use [Jetpack Autoloader](https://packagist.org/packages/automattic/jetpack-autoloader) as your autoloader. This will allow for maximum interoperability with other plugins that use this package as well.
+
+## Security
+
+Need to report a security vulnerability? Go to [https://automattic.com/security/](https://automattic.com/security/) or directly to our security bug bounty site [https://hackerone.com/automattic](https://hackerone.com/automattic).
+
+## License
+
+jetpack-sync is licensed under [GNU General Public License v2 (or later)](./LICENSE.txt)

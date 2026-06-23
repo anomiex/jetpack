@@ -1,6 +1,7 @@
-@import '../../../scss/mixin_breakpoint.scss';
+@use "../../../scss/mixins/breakpoints";
 
 .jp-recommendations-one-click-restores {
+
 	h2 {
 		margin-top: 2rem;
 	}
@@ -19,15 +20,16 @@
 	display: grid;
 	padding: 1.125rem 0;
 	grid-template-columns: minmax(0, 130px) minmax(0, 150px);
-	grid-gap: 1rem;
+	gap: 1rem;
 
-	@include breakpoint( '660px-1040px' ) {
+	@include breakpoints.breakpoint( "660px-1040px" ) {
 		grid-template-columns: 1fr;
 	}
 
 	h2 {
 		margin: 0 0 0.2rem;
 		font-size: 0.75rem;
+		// stylelint-disable-next-line declaration-property-unit-allowed-list -- this should be changed to a unitless value: https://developer.wordpress.org/coding-standards/wordpress-coding-standards/css/#values
 		line-height: 1rem;
 		letter-spacing: -0.02em;
 	}
@@ -35,6 +37,7 @@
 	p {
 		margin: 0;
 		font-size: 0.625rem;
+		// stylelint-disable-next-line declaration-property-unit-allowed-list -- this should be changed to a unitless value: https://developer.wordpress.org/coding-standards/wordpress-coding-standards/css/#values
 		line-height: 1rem;
 		letter-spacing: -0.02em;
 	}

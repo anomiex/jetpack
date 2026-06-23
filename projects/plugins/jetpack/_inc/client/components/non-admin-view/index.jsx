@@ -1,9 +1,7 @@
-import AtAGlance from 'at-a-glance/index.jsx';
-import Navigation from 'components/navigation';
-import NavigationSettings from 'components/navigation-settings';
 import PropTypes from 'prop-types';
-import React from 'react';
+import { Component } from 'react';
 import { connect } from 'react-redux';
+import AtAGlance from 'at-a-glance/index.jsx';
 import SearchableSettings from 'settings/index.jsx';
 import { getSiteConnectionStatus } from 'state/connection';
 import {
@@ -13,7 +11,7 @@ import {
 } from 'state/initial-state';
 import { isModuleActivated as _isModuleActivated } from 'state/modules';
 
-class NonAdminView extends React.Component {
+class NonAdminView extends Component {
 	shouldComponentUpdate( nextProps ) {
 		return (
 			nextProps.siteConnectionStatus !== this.props.siteConnectionStatus ||
@@ -22,12 +20,12 @@ class NonAdminView extends React.Component {
 	}
 
 	renderMainContent = route => {
-		let pageComponent,
-			navComponent = <Navigation { ...this.props } />;
+		let pageComponent;
+
 		switch ( route ) {
 			case '/dashboard':
 			default:
-				this.props.history.replace( '/dashboard' );
+				this.props.navigate( '/dashboard', { replace: true } );
 				pageComponent = <AtAGlance { ...this.props } />;
 				break;
 			case '/settings':
@@ -35,7 +33,6 @@ class NonAdminView extends React.Component {
 			case '/sharing':
 			case '/performance':
 				if ( ! this.props.isSubscriber ) {
-					navComponent = <NavigationSettings { ...this.props } />;
 					pageComponent = (
 						<SearchableSettings
 							siteAdminUrl={ this.props.siteAdminUrl }
@@ -50,12 +47,7 @@ class NonAdminView extends React.Component {
 
 		window.wpNavMenuClassChange();
 
-		return (
-			<div>
-				{ navComponent }
-				{ pageComponent }
-			</div>
-		);
+		return <div>{ pageComponent }</div>;
 	};
 
 	render() {

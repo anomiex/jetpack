@@ -1,6 +1,6 @@
 <?php
 // don't call the file directly
-defined( 'ABSPATH' ) or die();
+defined( 'ABSPATH' ) || die( 0 );
 
 class VaultPress_Filesystem {
 
@@ -68,17 +68,20 @@ class VaultPress_Filesystem {
 		while ( !feof( $fp ) )
 			echo @fread( $fp, 8192 );
 		@fclose( $fp );
-		die();
+		die( 0 );
 	}
 
 	function exec_checksum( $file, $method ) {
 		if ( !function_exists( 'exec' ) )
 			return false;
 		$out = array();
-		if ( 'md5' == $method )
+		if ( 'md5' === $method ) {
 			$method_bin = 'md5sum';
-		if ( 'sha1' == $method )
+		} elseif ( 'sha1' === $method ) {
 			$method_bin = 'sha1sum';
+		} else {
+			return false;
+		}
 		$checksum = '';
 		exec( sprintf( '%s %s', escapeshellcmd( $method_bin ), escapeshellarg( $file ) ), $out );
 		if ( !empty( $out ) )
@@ -173,7 +176,7 @@ class VaultPress_Filesystem {
 			foreach ( (array)$this->scan_dir( $path ) as $i ) {
 				if ( !$full_list && !$this->should_backup_file( $i ) )
 					continue;
-				$current++;
+				++$current;
 				if ( $offset >= $current )
 					continue;
 				if ( $limit && $limit < $current )
@@ -298,7 +301,7 @@ class VaultPress_Filesystem {
 	function scan_dir( $path ) {
 		$files = array();
 
-		if ( false === is_readable( $path ) ) {
+		if ( ! is_readable( $path ) ) {
 			return array();
 		}
 

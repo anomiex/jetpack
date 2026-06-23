@@ -14,6 +14,7 @@ These tests are using the [e2e commons package](../../../../../tools/e2e-commons
   - [Docker environment](#docker-environment)
   - [Tunnel](#local-tunnel)
 - [Running tests](#running-tests)
+  - [Test Data](#test-data)
 - [Tests Architecture](#tests-architecture)
 - [CI configuration](#ci-configuration)
 - [Test reports](#test-reports)
@@ -88,16 +89,10 @@ Once your target WP environment is running on `localhost:8889` you can run the t
 
 Run all tests: `pnpm test:run`
 
-Playwright runs headless by default (i.e. browser is not visible). However, sometimes it's useful to observe the browser while running tests. To see the browser window, and the running tests you can use the `--headed` flag:
+Playwright runs headless by default (i.e. browser is not visible). When developing or debugging tests it's usually useful to see what's happening. Playwright's [UI Mode](https://playwright.dev/docs/test-ui-mode) is a good option, it allows running individual or groups of tests, watching tests and has handy time travel feature. To launch it use the `--ui` flag:
 
 ```bash
-pnpm test:run --headed
-```
-
-To run an individual test, use the direct path to the spec. For example:
-
-```bash
-pnpm test:run ./specs/search.test.js
+pnpm test:run --ui
 ```
 
 To run in debug mode, use the `--debug` flag. Debug mode uses a headed browser and opens the [Playwright inspector](https://playwright.dev/docs/inspector/).
@@ -106,21 +101,58 @@ To run in debug mode, use the `--debug` flag. Debug mode uses a headed browser a
 pnpm test:run --debug
 ```
 
+A simpler option is `headed` mode, which runs tests in your regular browser window:
+
+```bash
+pnpm test:run --headed
+```
+
+To run an individual test, use the direct path to the spec. This can be done in conjunction with any of the previously mentioned flags. For example:
+
+```bash
+pnpm test:run ./specs/search.test.ts
+```
+
+### Test Data
+
+The search tests use predefined mock data located in `fixtures/test.ts`:
+- `searchResultForTest1` - Mock response for "test1" queries (3 results)
+- `searchResultForTest2` - Mock response for other queries (3 results) 
+
+This mock data includes realistic search result structures with highlights, categories, tags, and WooCommerce product data.
+
 ## Tests Architecture
+
+### Fixtures
+
+The tests use custom Playwright fixtures to provide specialized functionality:
+
+- **`fixtures/test.ts`** - Main test fixture that extends the base e2e-commons test with:
+  - **Search API mocking** - Intercepts search API calls and returns mock data for consistent testing
+  - **Test data** - Provides `searchResultForTest1` and `searchResultForTest2` mock search responses
+  - **SearchUtils fixture** - Available in tests via `{ searchUtils }` parameter for enabling/disabling search, configuring settings, and managing search plan data
+
+### Mocked Search API
+
+Tests use mocked search API responses instead of real WordPress.com API calls:
+
+- Query `"test1"` returns `searchResultForTest1` mock data
+- All other queries return `searchResultForTest2` mock data  
+- Supports sorting simulation (by date ascending/descending)
+- Supports filtering simulation (by category and tag)
+
+This ensures consistent, fast, and reliable test execution without external dependencies.
 
 ### Specs
 
-Tests are kept in `/specs` folder. Every file represents a test suite, which is designed around specific feature under test.
-Every test suite is responsible for setting up the environment configuration for the suite. [e2e-commons' prerequisites APIs](../../../../../tools/e2e-commons/env/prerequisites.js) provide an abstraction to set up the site the way is needed.
+Tests are in `/specs` folder using TypeScript (`.test.ts` files). Each test suite:
 
-### Pages
+- Extends the custom search fixture (`fixtures/test.ts`) which provides search-specific utilities
+- Uses the `searchUtils` fixture for WordPress configuration
+- Automatically mocks search API calls for consistent results
+- Tests search functionality including overlay behavior, sorting, filtering, and different result formats
 
-The tests are using the `PageObject` pattern, which is a way to separate test logic from implementation. Page objects are basically abstractions around specific pages and page components.
-Most common pages are already modeled in [e2e-commons' pages module](../../../../../tools/e2e-commons/pages).
-
-If you need to add a new page, please add it in the `pages` folder.
-Each page should extend e2e-commons's [`WpPage`](../../../../../tools/e2e-commons/pages/wp-page.js) or [`PageActions`](../../../../../tools/e2e-commons/pages/page-actions.js).
-`WpPage` should be extended by all page objects that represent full pages. Rule of thumb: if it has a URL it should extend `WpPage`. Otherwise, it's probably representing a page component (like a block) and should directly extend `PageActions`.
+Test suites use the `searchUtils` fixture instead of direct helper imports for better organization and type safety.
 
 ## CI Configuration
 

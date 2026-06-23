@@ -1,16 +1,21 @@
-import { getRedirectUrl, PricingCard, ActionButton } from '@automattic/jetpack-components';
+import { getRedirectUrl, PricingCard, TermsOfService } from '@automattic/jetpack-components';
+import { Spinner } from '@wordpress/components';
 import { createInterpolateElement } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
+import { Button } from '@wordpress/ui';
+import clsx from 'clsx';
+import debugFactory from 'debug';
 import PropTypes from 'prop-types';
-import React from 'react';
 import ConnectScreenLayout from '../layout';
 import './style.scss';
+
+const debug = debugFactory( 'jetpack:connection:ConnectScreenRequiredPlanVisual' );
 
 /**
  * The Connection Screen Visual component for consumers that require a Plan.
  *
  * @param {object} props -- The properties.
- * @returns {React.Component} The `ConnectScreenRequiredPlanVisual` component.
+ * @return {import('react').Component} The `ConnectScreenRequiredPlanVisual` component.
  */
 const ConnectScreenRequiredPlanVisual = props => {
 	const {
@@ -21,53 +26,60 @@ const ConnectScreenRequiredPlanVisual = props => {
 		priceAfter,
 		pricingIcon,
 		pricingTitle,
-		pricingCurrencyCode,
-		isLoading,
-		handleButtonClick,
-		showConnectButton,
-		displayButtonError,
-		buttonIsLoading,
+		pricingCurrencyCode = 'USD',
+		isLoading = false,
+		handleButtonClick = () => {},
+		displayButtonError = false,
+		buttonIsLoading = false,
+		logo,
+		isOfflineMode,
+		rna = false,
 	} = props;
 
-	const tos = createInterpolateElement(
-		__(
-			'By clicking the button above, you agree to our <tosLink>Terms of Service</tosLink> and to <shareDetailsLink>share details</shareDetailsLink> with WordPress.com.',
-			'jetpack'
-		),
+	debug( 'props are %o', props );
+
+	const withSubscription = createInterpolateElement(
+		__( 'Already have a subscription? <connectButton/>', 'jetpack-connection-js' ),
 		{
-			tosLink: (
-				<a href={ getRedirectUrl( 'wpcom-tos' ) } rel="noopener noreferrer" target="_blank" />
-			),
-			shareDetailsLink: (
-				<a
-					href={ getRedirectUrl( 'jetpack-support-what-data-does-jetpack-sync' ) }
-					rel="noopener noreferrer"
-					target="_blank"
-				/>
+			connectButton: (
+				<Button
+					variant="unstyled"
+					className="jp-connection__connect-screen__inline-action"
+					onClick={ handleButtonClick }
+					disabled={ buttonIsLoading }
+					aria-busy={ buttonIsLoading }
+				>
+					{ buttonIsLoading ? <Spinner /> : __( 'Log in to get started', 'jetpack-connection-js' ) }
+				</Button>
 			),
 		}
 	);
 
-	const withSubscription = createInterpolateElement(
-		__( 'Already have a subscription? <connectButton/>', 'jetpack' ),
-		{
-			connectButton: (
-				<ActionButton
-					label={ __( 'Log in to get started', 'jetpack' ) }
-					onClick={ handleButtonClick }
-					isLoading={ buttonIsLoading }
-				/>
-			),
-		}
-	);
+	const errorMessage = isOfflineMode
+		? createInterpolateElement(
+				__( 'Unavailable in <a>Offline Mode</a>', 'jetpack-connection-js' ),
+				{
+					a: (
+						<a
+							href={ getRedirectUrl( 'jetpack-support-development-mode' ) }
+							target="_blank"
+							rel="noopener noreferrer"
+						/>
+					),
+				}
+		  )
+		: undefined;
 
 	return (
 		<ConnectScreenLayout
 			title={ title }
-			className={
-				'jp-connection__connect-screen-required-plan' +
-				( isLoading ? ' jp-connection__connect-screen-required-plan__loading' : '' )
-			}
+			className={ clsx(
+				'jp-connection__connect-screen-required-plan',
+				isLoading ? 'jp-connection__connect-screen-required-plan__loading' : '',
+				rna ? 'rna' : ''
+			) }
+			logo={ logo }
+			rna={ rna }
 		>
 			<div className="jp-connection__connect-screen-required-plan__content">
 				{ children }
@@ -79,20 +91,26 @@ const ConnectScreenRequiredPlanVisual = props => {
 						priceBefore={ priceBefore }
 						currencyCode={ pricingCurrencyCode }
 						priceAfter={ priceAfter }
-						infoText={ showConnectButton ? tos : '' }
 					>
-						{ showConnectButton && (
-							<ActionButton
-								label={ buttonLabel }
-								onClick={ handleButtonClick }
-								displayError={ displayButtonError }
-								isLoading={ buttonIsLoading }
-							/>
+						<TermsOfService agreeButtonLabel={ buttonLabel } />
+						<Button
+							className="jp-connection__connect-screen__action-button"
+							onClick={ handleButtonClick }
+							loading={ buttonIsLoading }
+							disabled={ isOfflineMode }
+						>
+							{ buttonLabel }
+						</Button>
+						{ ( displayButtonError || isOfflineMode ) && (
+							<p className="jp-connection__connect-screen__error">
+								{ errorMessage ||
+									__( 'An error occurred. Please try again.', 'jetpack-connection-js' ) }
+							</p>
 						) }
 					</PricingCard>
 				</div>
 
-				{ showConnectButton && (
+				{ ! isOfflineMode && (
 					<div className="jp-connection__connect-screen-required-plan__with-subscription">
 						{ withSubscription }
 					</div>
@@ -116,26 +134,19 @@ ConnectScreenRequiredPlanVisual.propTypes = {
 	/** The Connect Button label. */
 	buttonLabel: PropTypes.string,
 	/** The Pricing Card Icon. */
-	pricingIcon: PropTypes.string,
+	pricingIcon: PropTypes.oneOfType( [ PropTypes.string, PropTypes.element ] ),
 	/** Whether the connection status is still loading. */
 	isLoading: PropTypes.bool,
 	/** Callback that is applied into click for all buttons. */
 	handleButtonClick: PropTypes.func,
-	/** Whether the connection button is enable or not. */
-	showConnectButton: PropTypes.bool,
 	/** Whether the button error is active or not. */
 	displayButtonError: PropTypes.bool,
 	/** Whether the button loading state is active or not. */
 	buttonIsLoading: PropTypes.bool,
-};
-
-ConnectScreenRequiredPlanVisual.defaultProps = {
-	pricingCurrencyCode: 'USD',
-	showConnectButton: true,
-	isLoading: false,
-	buttonIsLoading: false,
-	displayButtonError: false,
-	handleButtonClick: () => {},
+	/** The logo to display at the top of the component. */
+	logo: PropTypes.element,
+	/** Whether the site is in offline mode. */
+	isOfflineMode: PropTypes.bool,
 };
 
 export default ConnectScreenRequiredPlanVisual;

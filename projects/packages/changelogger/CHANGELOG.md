@@ -3,6 +3,223 @@ All notable changes to this project will be documented in this file.
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [6.0.17] - 2026-06-15
+### Changed
+- Internal updates.
+
+## [6.0.16] - 2026-06-08
+### Changed
+- Internal updates.
+
+## [6.0.15] - 2026-05-19
+### Changed
+- Internal updates.
+
+## [6.0.14] - 2026-02-12
+### Changed
+- Internal updates.
+
+### Fixed
+- Tests: Fix tests for PHPUnit 12.5.11 breakage.
+
+## [6.0.13] - 2026-02-02
+### Changed
+- Update package dependencies. [#46836]
+
+## [6.0.12] - 2025-12-16
+### Changed
+- Internal updates.
+
+## [6.0.11] - 2025-12-04
+### Fixed
+- Ensure proper flags are used with `json_encode()`. [#46092]
+
+## [6.0.10] - 2025-12-01
+### Changed
+- Update tests to use addCommand() instead of deprecated add() method. [#46126]
+
+## [6.0.9] - 2025-11-12
+### Changed
+- Internal updates.
+
+## [6.0.8] - 2025-11-10
+### Fixed
+- Tests: Improve compatibility with PHP 8.5. [#45771]
+
+## [6.0.7] - 2025-09-15
+### Changed
+- Internal updates.
+
+## [6.0.6] - 2025-08-13
+### Changed
+- Update package dependencies. [#44725]
+
+## [6.0.5] - 2025-04-28
+### Changed
+- Internal updates.
+
+## [6.0.4] - 2025-04-02
+### Added
+- Allow beta.2 in WordPress-style versioning. [#42838]
+
+## [6.0.3] - 2025-03-31
+### Changed
+- Internal updates.
+
+## [6.0.2] - 2025-03-21
+### Changed
+- Internal updates.
+
+## [6.0.1] - 2025-03-12
+### Changed
+- Internal updates.
+
+## [6.0.0] - 2025-02-24
+### Removed
+- Drop support for installation with Composer < 2.2. [#41876]
+
+## [5.1.0] - 2024-11-25
+### Changed
+- Bump minimum PHP version from implicitly-7.2.0 to 7.2.5. [#40297]
+
+### Deprecated
+- Using getChangesBySubheading() with a param now throws an exception. [#40200]
+
+## [5.0.0] - 2024-11-14
+### Removed
+- General: Update minimum PHP version to 7.2. [#40147]
+
+## [4.2.8] - 2024-11-04
+### Added
+- Enable test coverage. [#39961]
+
+## [4.2.7] - 2024-10-25
+### Fixed
+- When amending, do not preserve a default link. We'll want the link to be updated to the new default. [#39868]
+
+## [4.2.6] - 2024-08-22
+### Changed
+- Updated package dependencies. [#39004]
+
+## [4.2.5] - 2024-06-27
+### Changed
+- Skip querying `git` in `changelogger version` command. We don't need the timestamp or PR number for that operation. [#38074]
+
+## [4.2.4] - 2024-05-20
+### Changed
+- Internal updates.
+
+## [4.2.3] - 2024-05-06
+### Changed
+- Internal updates.
+
+## [4.2.2] - 2024-04-22
+### Changed
+- Internal updates.
+
+## [4.2.1] - 2024-04-15
+### Changed
+- Support symfony/console 7.0. [#36861]
+
+## [4.2.0] - 2024-04-11
+### Deprecated
+- Deprecated the `$subheading` parameter to `ChangelogEntry::getChangesBySubheading()` to make the return value clearer. [#36755]
+
+## [4.1.2] - 2024-03-18
+### Changed
+- Internal updates.
+
+## [4.1.1] - 2024-03-12
+### Changed
+- Internal updates.
+
+## [4.1.0] - 2024-01-22
+### Changed
+- Default for `--deduplicate` is now 0, as 1 caused unexpected behavior for some cases and so should be opted in to. [#35138]
+
+## [4.0.5] - 2023-12-11
+### Changed
+- Updated package dependencies. [#34492]
+
+## [4.0.4] - 2023-11-30
+### Changed
+- Internal updates.
+
+## [4.0.3] - 2023-11-24
+
+## [4.0.2] - 2023-11-21
+### Removed
+- Removed `Utils::error_clear_last()`, the function can be called directly now. [#34222]
+
+## [4.0.1] - 2023-11-21
+### Added
+- Added `symfony/*` v4.4 as an option, for use with PHP 7.1. [#34217]
+
+### Removed
+- Removed use of `wikimedia/at-ease` package as PHP 7 improved the behavior of `@`. [#34217]
+
+## [4.0.0] - 2023-11-20
+### Changed
+- Updated required PHP version to >= 7.0. [#34126]
+
+## [3.3.11] - 2023-09-28
+### Changed
+- Minor internal updates.
+
+## [3.3.10] - 2023-09-25
+
+- Minor internal updates.
+
+## [3.3.9] - 2023-09-19
+
+- Minor internal updates.
+
+## [3.3.8] - 2023-08-23
+### Changed
+- Updated package dependencies. [#32605]
+
+## [3.3.7] - 2023-07-17
+### Added
+- When omitting `--entry` for `changelogger add` in non-interactive mode for a patch-significance change, provide a hint on how to successfully create an empty entry. [#31630]
+
+## [3.3.6] - 2023-07-10
+
+- Minor internal updates.
+
+## [3.3.5] - 2023-06-26
+
+## [3.3.4] - 2023-05-22
+### Added
+- Set keywords to have `composer require` prompt for `--dev` on installation. [#30756]
+
+## [3.3.3] - 2023-05-12
+
+## [3.3.2] - 2023-02-20
+### Changed
+- Minor internal updates.
+
+## [3.3.1] - 2023-01-11
+### Changed
+- Updated package dependencies.
+
+## [3.3.0] - 2022-12-26
+### Changed
+- Support merge strategy for jetpack changelogger, assuming that merge commits contains the pr number in the merge commit with format (#{pr_number}) towards the end. [#27881]
+
+## [3.2.3] - 2022-12-19
+### Changed
+- `Utils::loadChangeFile()` now throws a custom subclass of `RuntimeException` instead of `RuntimeException` itself. [#27949]
+
+## [3.2.2] - 2022-12-02
+### Changed
+- Updated package dependencies. [#27688]
+
+## [3.2.1] - 2022-08-26
+
+## [3.2.0] - 2022-07-26
+### Added
+- Added support for Symfony 6. [#25158]
+
 ## [3.1.3] - 2022-06-21
 ### Changed
 - Renaming `master` references to `trunk` in tests.
@@ -121,6 +338,60 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Added
 - Initial version.
 
+[6.0.17]: https://github.com/Automattic/jetpack-changelogger/compare/6.0.16...6.0.17
+[6.0.16]: https://github.com/Automattic/jetpack-changelogger/compare/6.0.15...6.0.16
+[6.0.15]: https://github.com/Automattic/jetpack-changelogger/compare/6.0.14...6.0.15
+[6.0.14]: https://github.com/Automattic/jetpack-changelogger/compare/6.0.13...6.0.14
+[6.0.13]: https://github.com/Automattic/jetpack-changelogger/compare/6.0.12...6.0.13
+[6.0.12]: https://github.com/Automattic/jetpack-changelogger/compare/6.0.11...6.0.12
+[6.0.11]: https://github.com/Automattic/jetpack-changelogger/compare/6.0.10...6.0.11
+[6.0.10]: https://github.com/Automattic/jetpack-changelogger/compare/6.0.9...6.0.10
+[6.0.9]: https://github.com/Automattic/jetpack-changelogger/compare/6.0.8...6.0.9
+[6.0.8]: https://github.com/Automattic/jetpack-changelogger/compare/6.0.7...6.0.8
+[6.0.7]: https://github.com/Automattic/jetpack-changelogger/compare/6.0.6...6.0.7
+[6.0.6]: https://github.com/Automattic/jetpack-changelogger/compare/6.0.5...6.0.6
+[6.0.5]: https://github.com/Automattic/jetpack-changelogger/compare/6.0.4...6.0.5
+[6.0.4]: https://github.com/Automattic/jetpack-changelogger/compare/6.0.3...6.0.4
+[6.0.3]: https://github.com/Automattic/jetpack-changelogger/compare/6.0.2...6.0.3
+[6.0.2]: https://github.com/Automattic/jetpack-changelogger/compare/6.0.1...6.0.2
+[6.0.1]: https://github.com/Automattic/jetpack-changelogger/compare/6.0.0...6.0.1
+[6.0.0]: https://github.com/Automattic/jetpack-changelogger/compare/5.1.0...6.0.0
+[5.1.0]: https://github.com/Automattic/jetpack-changelogger/compare/5.0.0...5.1.0
+[5.0.0]: https://github.com/Automattic/jetpack-changelogger/compare/4.2.8...5.0.0
+[4.2.8]: https://github.com/Automattic/jetpack-changelogger/compare/4.2.7...4.2.8
+[4.2.7]: https://github.com/Automattic/jetpack-changelogger/compare/4.2.6...4.2.7
+[4.2.6]: https://github.com/Automattic/jetpack-changelogger/compare/4.2.5...4.2.6
+[4.2.5]: https://github.com/Automattic/jetpack-changelogger/compare/4.2.4...4.2.5
+[4.2.4]: https://github.com/Automattic/jetpack-changelogger/compare/4.2.3...4.2.4
+[4.2.3]: https://github.com/Automattic/jetpack-changelogger/compare/4.2.2...4.2.3
+[4.2.2]: https://github.com/Automattic/jetpack-changelogger/compare/4.2.1...4.2.2
+[4.2.1]: https://github.com/Automattic/jetpack-changelogger/compare/4.2.0...4.2.1
+[4.2.0]: https://github.com/Automattic/jetpack-changelogger/compare/4.1.2...4.2.0
+[4.1.2]: https://github.com/Automattic/jetpack-changelogger/compare/4.1.1...4.1.2
+[4.1.1]: https://github.com/Automattic/jetpack-changelogger/compare/4.1.0...4.1.1
+[4.1.0]: https://github.com/Automattic/jetpack-changelogger/compare/4.0.5...4.1.0
+[4.0.5]: https://github.com/Automattic/jetpack-changelogger/compare/4.0.4...4.0.5
+[4.0.4]: https://github.com/Automattic/jetpack-changelogger/compare/4.0.3...4.0.4
+[4.0.3]: https://github.com/Automattic/jetpack-changelogger/compare/4.0.2...4.0.3
+[4.0.2]: https://github.com/Automattic/jetpack-changelogger/compare/4.0.1...4.0.2
+[4.0.1]: https://github.com/Automattic/jetpack-changelogger/compare/4.0.0...4.0.1
+[4.0.0]: https://github.com/Automattic/jetpack-changelogger/compare/3.3.11...4.0.0
+[3.3.11]: https://github.com/Automattic/jetpack-changelogger/compare/3.3.10...3.3.11
+[3.3.10]: https://github.com/Automattic/jetpack-changelogger/compare/3.3.9...3.3.10
+[3.3.9]: https://github.com/Automattic/jetpack-changelogger/compare/3.3.8...3.3.9
+[3.3.8]: https://github.com/Automattic/jetpack-changelogger/compare/3.3.7...3.3.8
+[3.3.7]: https://github.com/Automattic/jetpack-changelogger/compare/3.3.6...3.3.7
+[3.3.6]: https://github.com/Automattic/jetpack-changelogger/compare/3.3.5...3.3.6
+[3.3.5]: https://github.com/Automattic/jetpack-changelogger/compare/3.3.4...3.3.5
+[3.3.4]: https://github.com/Automattic/jetpack-changelogger/compare/3.3.3...3.3.4
+[3.3.3]: https://github.com/Automattic/jetpack-changelogger/compare/3.3.2...3.3.3
+[3.3.2]: https://github.com/Automattic/jetpack-changelogger/compare/3.3.1...3.3.2
+[3.3.1]: https://github.com/Automattic/jetpack-changelogger/compare/3.3.0...3.3.1
+[3.3.0]: https://github.com/Automattic/jetpack-changelogger/compare/3.2.3...3.3.0
+[3.2.3]: https://github.com/Automattic/jetpack-changelogger/compare/3.2.2...3.2.3
+[3.2.2]: https://github.com/Automattic/jetpack-changelogger/compare/3.2.1...3.2.2
+[3.2.1]: https://github.com/Automattic/jetpack-changelogger/compare/3.2.0...3.2.1
+[3.2.0]: https://github.com/Automattic/jetpack-changelogger/compare/3.1.3...3.2.0
 [3.1.3]: https://github.com/Automattic/jetpack-changelogger/compare/3.1.2...3.1.3
 [3.1.2]: https://github.com/Automattic/jetpack-changelogger/compare/3.1.1...3.1.2
 [3.1.1]: https://github.com/Automattic/jetpack-changelogger/compare/3.1.0...3.1.1

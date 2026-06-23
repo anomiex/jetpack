@@ -1,17 +1,85 @@
-// This document contains styles that influence the styles of Stats & At a Glance, overall.
+// This document contains styles that influence Stats & At a Glance overall.
 // For more precise styles, dig into the styles of each component. ie. dash-item
-@import '../scss/calypso-colors';
+@use "sass:color";
+@use "../scss/functions/rem";
+@use "../scss/calypso-colors";
+@use "../scss/mixins/breakpoints";
+@use "../scss/mixins/ui";
+@use "../scss/typography";
+@use "../scss/variables/colors";
 
 .jp-at-a-glance {
-	margin-bottom: rem( 48px );
+	margin-bottom: rem.convert(48px);
 
 	&__pinned-bundle {
 		margin-bottom: 1rem;
+	}
+
+	.dops-card.is-compact {
+		box-shadow: none;
+		margin-top: 0;
+
+		&.is-card-link {
+			padding-top: 0;
+
+			.gridicon {
+				width: 1em;
+				position: relative;
+				margin-left: 5px;
+			}
+		}
+	}
+
+	.dops-button .dashicons-no {
+		color: colors.$black;
+	}
+
+	.dops-banner__title {
+		padding: 0 rem.convert(8px);
+	}
+
+	.dops-banner__description {
+		padding-left: 8px;
+
+		.jp-link-button {
+			padding: 0;
+		}
+	}
+
+	.jp-dash-item__content .jp-support-info {
+		top: auto;
+	}
+}
+
+.jp-dash-section-header.jp-dash-section-header-stats {
+	margin-bottom: 0;
+
+	.jp-dash-section-header__name {
+		margin-bottom: rem.convert(12px);
 	}
 }
 
 .jp-at-a-glance__stats-card {
 	padding: 0;
+
+	@include ui.dashboard-card-shadow;
+	margin-bottom: 24px;
+
+	.jp-link-button {
+		background: colors.$white;
+		border: none;
+		padding: 2px 0;
+	}
+}
+
+.dops-banner__content {
+
+	.jp-link-button {
+		background: colors.$white;
+		border: none;
+		font-size: 0.75rem;
+		padding: 1px 0;
+	}
 }
 
 .jp-at-a-glance__stats-empty {
@@ -19,15 +87,15 @@
 	margin-bottom: 0;
 
 	p {
-		font-size: $font-body-small;
-		color: $gray-text-min;
+		font-size: typography.$font-body-small;
+		color: calypso-colors.$gray-80;
 	}
 }
 
 .jp-at-a-glance__stats-inactive {
-	padding: rem( 16px );
+	padding: rem.convert(16px);
 
-	@include breakpoint( '>660px' ) {
+	@include breakpoints.breakpoint( ">660px" ) {
 		display: flex;
 		flex-wrap: nowrap;
 		flex-direction: row;
@@ -36,40 +104,62 @@
 }
 
 .jp-at-a-glance__stats-inactive-icon {
-	@include breakpoint( '<660px' ) {
-		display: none;
-	}
+	padding: 0;
+	display: flex;
+	flex-grow: 0;
 
-	@include breakpoint( '>660px' ) {
-		flex-basis: 10%;
+	@include breakpoints.breakpoint( "<660px" ) {
+		display: none;
 	}
 }
 
 .jp-at-a-glance__stats-inactive-text {
-	font-size: $font-body-small;
+	font-size: typography.$font-body-small;
 	line-height: 1.5;
+	letter-spacing: -0.3px;
+	color: calypso-colors.$gray-80;
+	flex-grow: 1;
 
-	@include breakpoint( '<660px' ) {
-		padding: 0 0 rem( 16px );
+	h3 {
+		margin: 0;
+		font-size: 15px;
+		font-weight: 700;
+		// stylelint-disable-next-line declaration-property-unit-allowed-list -- this should be changed to a unitless value: https://developer.wordpress.org/coding-standards/wordpress-coding-standards/css/#values
+		line-height: 136%;
+		color: colors.$black;
 	}
 
-	@include breakpoint( '>660px' ) {
+	@include breakpoints.breakpoint( "<660px" ) {
+		padding: 0 0 rem.convert(16px);
+	}
+
+	@include breakpoints.breakpoint( ">660px" ) {
 		flex-basis: 50%;
-		padding: 0 rem( 16px );
+		padding: 0 rem.convert(16px);
 	}
 }
 
 .jp-at-a-glance__stats-inactive-button {
 	text-align: left;
 
-	@include breakpoint( '>660px' ) {
-		flex-basis: 40%;
-		text-align: right;
+	button.dops-button.is-primary {
+		padding: 4px 20px;
+		font-size: typography.$font-body-small;
+
+		&:focus {
+			border: 1px solid colors.$white;
+			box-shadow: 0 0 0 1px colors.$black;
+		}
+	}
+
+	@include breakpoints.breakpoint( ">660px" ) {
+		flex-grow: 0;
+		margin-left: 64px;
 	}
 }
 
 .jp-at-a-glance__stats-chart {
-	padding: rem( 16px );
+	padding: rem.convert(16px) 0;
 	position: relative;
 }
 
@@ -77,105 +167,142 @@
 	position: absolute;
 	top: 50%;
 	left: 50%;
-	transform: translate( -50%, -50% );
+	transform: translate(-50%, -50%);
 }
 
 .jp-at-a-glance__stats-bottom {
-	margin: rem( 32px ) 0 0;
+	margin: rem.convert(8px) 0 0;
 
-	@include breakpoint( '<480px' ) {
-		box-shadow: 0 0 0 1px $light-gray-700;
+	@include breakpoints.breakpoint( "<480px" ) {
+		box-shadow: 0 0 0 1px calypso-colors.$light-gray-700;
+	}
+}
+
+.jp-at-a-glance__stats-container-empty {
+	position: relative;
+
+	.jp-at-a-glance__stats-empty-container {
+		position: absolute;
+		width: 100%;
+		height: 100%;
+		z-index: 999;
+		background: none;
+		display: flex;
+		justify-content: center;
+		align-items: center;
+
+		.jp-at-a-glance__stats-empty {
+			background: #fff;
+			border-radius: 4px;
+			box-shadow: 0 0 40px rgba(0, 0, 0, 0.08);
+			padding: 30px;
+		}
+	}
+
+	.jp-at-a-glance__stats-chart-container {
+		filter: blur(2px);
 	}
 }
 
 .jp-at-a-glance__stats-summary {
 	text-align: center;
-	border-bottom: 1px $light-gray-700 solid;
 
-	@include breakpoint( '>660px' ) {
+	@include breakpoints.breakpoint( ">660px" ) {
 		flex-wrap: nowrap;
 		display: flex;
 		flex-direction: row;
 	}
-	@include breakpoint( '<660px' ) {
+
+	@include breakpoints.breakpoint( "<660px" ) {
 		display: block;
 	}
 }
 
 .jp-at-a-glance__stats-summary-today,
-.jp-at-a-glance__stats-summary-bestday {
+.jp-at-a-glance__stats-summary-bestday,
+.jp-at-a-glance__stats-summary-alltime-views,
+.jp-at-a-glance__stats-summary-alltime-comments {
 	flex-basis: 25%;
-	padding: rem( 16px );
-	box-shadow: 0 0 0 1px $light-gray-700;
+	padding: rem.convert(13px) 0 rem.convert(17px);
 }
 
 .jp-at-a-glance__stats-summary-today {
-	@include breakpoint( '<660px' ) {
-		margin-top: rem( -1px );
+	border-width: 1px 1px 1px 0;
+	border-style: solid;
+	border-color: #dcdcde;
+
+	@include breakpoints.breakpoint( "<660px" ) {
+		margin-top: rem.convert(-1px);
 	}
 }
 
 .jp-at-a-glance__stats-summary-bestday {
-	@include breakpoint( '>660px' ) {
-		margin: 0 rem( 1px );
+	border-width: 1px 1px 1px 0;
+	border-style: solid;
+	border-color: #dcdcde;
+
+	@include breakpoints.breakpoint( ">660px" ) {
+		margin: 0 rem.convert(1px);
 	}
+}
+
+.jp-at-a-glance__stats-summary-alltime-views {
+	border-width: 1px 0;
+	border-style: solid;
+	border-color: #dcdcde;
+}
+
+.jp-at-a-glance__stats-summary-alltime-comments {
+	border-width: 1px 0 1px 1px;
+	border-style: solid;
+	border-color: #dcdcde;
 }
 
 .jp-at-a-glance__stats-summary-bestday,
-.jp-at-a-glance__stats-summary-alltime {
-	@include breakpoint( '<660px' ) {
-		margin-top: rem( 1px );
+.jp-at-a-glance__stats-summary-alltime-views,
+.jp-at-a-glance__stats-summary-alltime-comments {
+
+	@include breakpoints.breakpoint( "<660px" ) {
+		margin-top: rem.convert(1px);
 	}
-}
-
-.jp-at-a-glance__stats-summary-alltime {
-	flex-basis: 50%;
-	padding: rem( 16px );
-	box-shadow: 0 0 0 1px $light-gray-700;
-
-	@include breakpoint( '>660px' ) {
-		max-width: 50%; // for IE 10 since it doesn't recognize flex-basis
-		display: flex;
-		flex-grow: 1;
-		flex-shrink: 1;
-	}
-}
-
-.jp-at-a-glance__stats-alltime-views,
-.jp-at-a-glance__stats-alltime-comments {
-	flex-basis: 50%;
 }
 
 .jp-at-a-glance__stats-cta {
-	padding: rem( 16px );
-	background-color: lighten( $gray, 35% );
+	padding: rem.convert(12px);
 
-	@include breakpoint( '>660px' ) {
+	@include breakpoints.breakpoint( ">660px" ) {
 		display: flex;
 		flex-direction: row;
 		flex-wrap: nowrap;
 		align-items: center;
 	}
-	@include breakpoint( '<660px' ) {
+
+	@include breakpoints.breakpoint( "<660px" ) {
 		display: block;
 	}
 }
 
 .jp-at-a-glance__stats-cta-description {
-	@include breakpoint( '>660px' ) {
+
+	@include breakpoints.breakpoint( ">660px" ) {
 		flex-basis: 30%;
 	}
 }
 
 .jp-at-a-glance__stat-details {
 	margin: 0;
-	font-size: $font-body-small;
+	font-size: typography.$font-body;
+	line-height: 24px;
+	color: calypso-colors.$gray-80;
+	letter-spacing: -0.02em;
 }
 
 .jp-at-a-glance__stat-number {
-	font-size: $font-title-medium;
-	font-weight: 400;
-	margin: rem( 8px ) 0;
+	color: colors.$black;
+	font-size: typography.$font-title-small;
+	line-height: 30px;
+	font-weight: 500;
+	margin: rem.convert(6px) 0 rem.convert(4px);
 }
 
 .jp-at-a-glance__stats-ctas {
@@ -184,28 +311,29 @@
 	align-items: center;
 	justify-content: flex-end;
 
-	@include breakpoint( '>660px' ) {
+	@include breakpoints.breakpoint( ">660px" ) {
 		text-align: right;
 		flex-basis: 70%;
 	}
 
-	@include breakpoint( '<660px' ) {
+	@include breakpoints.breakpoint( "<660px" ) {
 		text-align: center;
 		flex-direction: column;
 
 		.dops-button {
 			width: 100%;
-			margin-bottom: rem( 4px );
+			margin-bottom: rem.convert(4px);
 		}
 	}
 
 	.jp-at-a-glance__stats-ctas-wpcom-stats {
-		margin-right: rem( 8px );
+		margin-left: 16px;
 	}
 
 	.dops-button {
 		text-align: center;
-		margin: rem( 4px );
+		text-decoration: none;
+		margin: rem.convert(4px);
 	}
 }
 
@@ -218,41 +346,48 @@
 	display: inline-block;
 	margin-top: 0;
 	margin-bottom: 0;
-	margin-left: rem( 16px );
+	margin-left: rem.convert(12px);
 
 	&:focus {
 		outline: 0;
 	}
 
-	@include breakpoint( '<480px' ) {
+	@include breakpoints.breakpoint("<480px") {
 		margin-left: 0;
-		margin-right: rem( 16px );
+		margin-right: rem.convert(16px);
 	}
-}
 
-.jp-at-a-glance__stats-view-link,
-.jp-at-a-glance__stats-view-link:visited {
-	color: $gray;
-	text-decoration: underline;
-
-	&.is-current,
-	&:visited.is-current,
-	&:focus.is-current {
-		color: #1d2327;
+	.jp-at-a-glance__stats-view-link,
+	.jp-at-a-glance__stats-view-link:hover,
+	.jp-at-a-glance__stats-view-link:visited {
+		color: calypso-colors.$gray-60;
 		text-decoration: none;
+		font-size: 16px;
+		line-height: 24px;
+		letter-spacing: -0.02em;
+		padding: 0 4px;
+
+		&.is-current,
+		&:visited.is-current,
+		&:focus.is-current {
+			color: colors.$black;
+			text-decoration: none;
+			padding-bottom: rem.convert(11px);
+			border-bottom: 2px solid colors.$black;
+		}
 	}
 }
 
 .jp-at-a-glance__stats-view-link:focus {
 	outline: 0;
-	box-shadow: 0 0 0 1px #4f94d4, 0 0 2px 1px rgba( 30, 140, 190, 0.8 );
+	box-shadow: none;
 }
 
 // heavy flexbox nesting below, careful! – @jeffgolenski
 .jp-at-a-glance__item-grid {
 	display: flex;
 
-	@include breakpoint( '<660px' ) {
+	@include breakpoints.breakpoint( "<660px" ) {
 		display: block; // don't need flexbox on smaller screens
 	}
 }
@@ -262,12 +397,13 @@
 	display: flex;
 	min-width: 0;
 
-	@include breakpoint( '>660px' ) {
+	@include breakpoints.breakpoint( ">660px" ) {
 		flex-basis: 50%;
-		margin-bottom: rem( 16px );
+		margin-bottom: rem.convert(16px);
 	}
-	@include breakpoint( '<660px' ) {
-		margin-bottom: rem( 12px );
+
+	@include breakpoints.breakpoint( "<660px" ) {
+		margin-bottom: rem.convert(12px);
 	}
 
 	> div, // Sorry. not sure how to class this. Thanks, React.
@@ -277,24 +413,36 @@
 		display: flex;
 		flex-direction: column;
 	}
+
 	> div {
 		flex-basis: 100%;
 	}
+
 	.jp-dash-item {
+
 		.dops-card {
 			flex-grow: 1;
+			align-items: flex-start;
+
+			&.dops-section-header {
+				align-items: center;
+			}
 		}
+
 		.dops-card.is-compact {
 			flex-grow: 0;
+
 			a.dops-notice__action {
 				margin-left: 0;
 				padding-left: 0;
-				@include breakpoint( '<480px' ) {
+
+				@include breakpoints.breakpoint( "<480px" ) {
 					text-transform: none;
 				}
 			}
 		}
 	}
+
 	.jp-dash-item__card {
 		display: flex;
 	}
@@ -307,11 +455,11 @@
 .jp-at-a-glance__left {
 	display: flex;
 
-	@include breakpoint( '>660px' ) {
-		margin-right: rem( 16px );
+	@include breakpoints.breakpoint( ">660px" ) {
+		margin-right: rem.convert(16px);
 
 		&:last-child {
-			flex-basis: calc( 50% - 0.5rem ); // rem function doesn't work in calc()
+			flex-basis: calc(50% - 0.5rem); // rem function doesn't work in calc()
 		}
 	}
 }
@@ -323,115 +471,110 @@
 
 // Connection Settings
 .jp-connection-type {
+
 	.jp-dash-item__card {
 		align-items: flex-start;
-	}
-}
-.jp-connection-settings__info {
-	display: flex;
-}
-
-.jp-connection-settings__actions {
-	margin: 1em 0 0;
-
-	a {
-		cursor: pointer;
+		padding: 24px;
 	}
 }
 
 .jp-connection-settings__text {
-	margin-left: rem( 16px );
-	word-break: break-word;
+	margin-left: rem.convert(16px);
+	overflow-wrap: break-word;
+	color: calypso-colors.$gray-80;
+	font-size: typography.$font-body-small;
+	line-height: 24px;
+	letter-spacing: -0.02em;
+
+	.jp-connection-settings__is-owner {
+		display: block;
+	}
 }
+
 .jp-connection-settings__info {
+	display: flex;
+
 	.gridicon {
 		opacity: 0.6;
+		margin: 4px 0;
 	}
+
 	.gridicon,
 	.jp-connection-settings__site-icon {
 		background: #c8d7e1;
 		color: #fff;
-		min-width: rem( 64px );
+		min-width: rem.convert(64px);
 	}
+
 	.jp-connection-settings__gravatar {
 		display: inline-block;
-		min-width: rem( 64px );
-		background: $gray;
+		min-width: rem.convert(64px);
+		background: colors.$gray;
 		border-radius: 50%;
 		margin-bottom: 0;
 	}
-}
-
-.jp-connection-settings__username {
-	font-weight: 600;
-}
-
-.jp-connection-settings__email {
-	color: $gray;
-	font-size: $font-body-small;
-	font-style: italic;
-	font-weight: 400;
 }
 
 .jp-connection-settings__modal.dops-modal {
 	max-width: 635px;
 	min-height: 400px;
 
-	@include breakpoint( '>660px' ) {
+	@include breakpoints.breakpoint( ">660px" ) {
 		min-height: auto;
 	}
 }
 
 .jp-connection-settings__modal-body {
 	margin: 0;
-	padding: rem( 24px ) rem( 32px );
-	font-size: $font-body-small;
-	color: $blue-dark-text;
+	padding: rem.convert(24px) rem.convert(32px);
+	font-size: typography.$font-body-small;
+	color: colors.$blue-dark-text;
 	text-align: center;
 
 	h2 {
-		margin: rem( 32px ) 0 rem( 24px );
-		font-size: $font-title-large;
+		margin: rem.convert(32px) 0 rem.convert(24px);
+		font-size: typography.$font-title-large;
 		font-weight: 300;
-		color: $blue-dark-text;
+		color: colors.$blue-dark-text;
 	}
 
 	h4 {
-		margin: rem( 16px ) rem( 24px ) 0;
-		font-size: $font-body;
+		margin: rem.convert(16px) rem.convert(24px) 0;
+		font-size: typography.$font-body;
 		font-weight: 400;
+		// stylelint-disable-next-line declaration-property-unit-allowed-list -- this should be changed to a unitless value: https://developer.wordpress.org/coding-standards/wordpress-coding-standards/css/#values
 		line-height: 1.5em;
-		color: $blue-heading;
+		color: colors.$blue-heading;
 	}
 
 	p {
-		font-size: $font-body-small;
+		font-size: typography.$font-body-small;
 	}
 
 	ul {
-		margin: rem( 24px ) 0 rem( 36px );
-		color: $blue-text;
+		margin: rem.convert(24px) 0 rem.convert(36px);
+		color: colors.$blue-text;
 	}
 
 	li {
 		position: relative;
 		display: block;
 		margin: 0;
-		padding: rem( 16px ) rem( 8px ) rem( 16px ) rem( 44px );
-		border-bottom: 1px solid lighten( $gray, 25% );
+		padding: rem.convert(16px) rem.convert(8px) rem.convert(16px) rem.convert(44px);
+		border-bottom: 1px solid color.adjust(colors.$gray, $lightness: 25%);
 		text-align: left;
 
 		&:first-of-type {
-			border-top: 1px solid lighten( $gray, 25% );
+			border-top: 1px solid color.adjust(colors.$gray, $lightness: 25%);
 		}
 	}
 
 	.gridicon {
 		position: absolute;
-		left: rem( 16px );
-		top: rem( 16px );
+		left: rem.convert(16px);
+		top: rem.convert(16px);
 		vertical-align: text-bottom;
-		color: $blue-text;
+		color: colors.$blue-text;
 	}
 }
 
@@ -440,7 +583,7 @@
 }
 
 .jp-connection-settings__modal-more a {
-	color: $blue-wordpress;
+	color: colors.$blue-wordpress;
 	text-decoration: underline;
 }
 
@@ -449,9 +592,11 @@
 	width: 100%;
 }
 
-.jp-dash-item .dops-banner.dops-banner {
+.jp-dash-item .dops-banner {
 	width: 100%;
 	margin-bottom: 0;
+	border: 0;
+	box-shadow: none;
 }
 
 .jp-dash-item__videopress .jp-dash-item__card {
@@ -459,11 +604,200 @@
 }
 
 .jp-dash-item__videopress-storage {
-	margin-top: 1em;
+	margin-top: rem.convert(16px);
+
+	> div {
+		height: 12px;
+	}
+
+	span {
+		margin-top: rem.convert(10px);
+		display: block;
+	}
 }
 
 .jp-dash-item__action-links {
 	display: flex;
 	flex-wrap: wrap;
 	gap: 8px 26px;
+}
+
+.jp-dash-item__action-links a,
+a.jp-dash-item__manage-in-wpcom,
+.dops-banner__title a,
+.jp-connection-settings__actions a,
+.jp-dash-item a:not(.dops-button),
+.dops-banner__description .jp-link-button,
+.jp-at-a-glance__stats-inactive-text a.components-external-link {
+
+	&,
+	&:active,
+	&:visited,
+	&:hover,
+	&:focus {
+		cursor: pointer;
+		font-weight: 400;
+		font-size: typography.$font-body-small;
+		line-height: 24px;
+		letter-spacing: -0.02em;
+		text-decoration: underline;
+		color: colors.$black;
+
+		&:hover {
+			text-decoration-thickness: 3px;
+		}
+
+		&:focus {
+			text-decoration-line: none;
+			border-radius: 2px;
+			box-shadow: 0 0 0 var(--wp-admin-border-width-focus) #000;
+			outline: 3px solid transparent;
+		}
+	}
+}
+
+.jp-connection-settings__actions a {
+
+	&,
+	&:active,
+	&:visited,
+	&:hover,
+	&:focus {
+		color: calypso-colors.$gray-80;
+	}
+}
+
+.jp-dash-item.dash-backups {
+
+	@include ui.dashboard-card-shadow;
+
+	.dops-section-header {
+		box-shadow: none;
+		border: 0;
+		border-bottom: 1px solid calypso-colors.$gray-5;
+		margin: 0;
+	}
+
+	.jp-dash-upgrade-backup {
+		box-shadow: none;
+		border: 0;
+	}
+
+	.dops-banner {
+		box-shadow: none;
+		border: 0;
+		border-top: 1px solid calypso-colors.$gray-5;
+	}
+
+	.dash-backup-undo {
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+		border-bottom: 1px solid calypso-colors.$gray-5;
+	}
+
+	.dash-backup-undo__activity-log {
+		display: flex;
+		flex-direction: column;
+		flex: 1;
+		justify-content: space-between;
+		font-size: 0.75rem;
+
+		.dash-backup-undo__activity-log-date {
+			color: calypso-colors.$gray-60;
+		}
+
+		.dash-backup-undo__activity-log-action,
+		.dash-backup-undo__activity-log-description,
+		.dash-backup-undo__activity-log-user-meta {
+			margin-top: 8px;
+		}
+
+		.dash-backup-undo__activity-log-action {
+			font-size: typography.$font-body;
+			font-weight: 600;
+		}
+
+		.dash-backup-undo__activity-log-description {
+			font-size: typography.$font-body-small;
+		}
+
+		.dash-backup-undo__activity-log-user-meta {
+			display: flex;
+			flex-direction: row;
+		}
+
+		.dash-backup-undo__activity-log-user-meta-avatar {
+			display: flex;
+			margin-right: 8px;
+
+			img {
+				border-radius: 100%;
+				width: 30px;
+				height: 30px;
+			}
+		}
+
+		.dash-backup-undo__activity-log-user-meta-name {
+			display: flex;
+			align-items: center;
+		}
+	}
+
+	.dash-backup-undo__cta svg {
+		fill: colors.$white;
+		position: relative;
+		top: 5px;
+		margin-top: -6px;
+	}
+}
+
+.jp-support-card {
+
+	.dops-banner {
+		margin-bottom: 0;
+		border-top: 1px solid calypso-colors.$gray-5;
+	}
+}
+
+.jp-dash-item.jp-connection-type {
+	border: 1px solid transparent;
+	border-radius: 4px;
+
+	.jp-dash-item__card {
+		padding: 16px 16px 16px 24px;
+	}
+
+	.jp-dash-item__content {
+		display: block;
+	}
+
+	.jp-connection-settings__text {
+		flex-grow: 1;
+	}
+
+	.jp-dash-item__content,
+	.jp-connection-settings__text {
+		align-self: center;
+	}
+
+	.dops-banner {
+		padding: 0;
+
+		&__title {
+			padding: 0 0.5rem 0 0;
+		}
+	}
+
+	.dops-banner.dops-card {
+		display: block;
+	}
+}
+
+// We only underline part of the link to Critical CSS info.
+.dops-banner__title {
+
+	a.dash-boost-critical-css-info__text {
+		text-decoration: none;
+	}
 }

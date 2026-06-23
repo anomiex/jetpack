@@ -22,7 +22,10 @@ import { upload } from '@wordpress/icons';
 
 const DEFAULT_KIND = 'subtitles';
 
-const ACCEPTED_FILE_TYPES = '.vtt,text/vtt';
+const ACCEPTED_FILE_TYPES = {
+	'.vtt': 'text/vtt',
+	'.srt': 'application/x-subrip',
+};
 
 const KIND_OPTIONS = [
 	{ label: __( 'Subtitles', 'jetpack' ), value: 'subtitles' },
@@ -52,7 +55,7 @@ const captionIcon = (
 /**
  * Determines if api requests should be made via the `gutenberg-video-upload` script (Jetpack only).
  *
- * @returns {boolean} if the upload script should be used or not.
+ * @return {boolean} if the upload script should be used or not.
  */
 const shouldUseJetpackVideoFetch = () => {
 	return 'videoPressUploadTrack' in window;
@@ -63,10 +66,10 @@ const shouldUseJetpackVideoFetch = () => {
  * Uses different methods depending on Jetpack or WPCOM.
  *
  * @param {object} track - the track file
- * @param {string} guid - the video guid
- * @returns {Promise} the api request promise
+ * @param {string} guid  - the video guid
+ * @return {Promise} the api request promise
  */
-const uploadTrackForGuid = ( track, guid ) => {
+export const uploadTrackForGuid = ( track, guid ) => {
 	if ( shouldUseJetpackVideoFetch() ) {
 		return window.videoPressUploadTrack(
 			guid,
@@ -99,8 +102,8 @@ const uploadTrackForGuid = ( track, guid ) => {
  * -Uses different methods depending on Jetpack or WPCOM.
  *
  * @param {object} track - the track file
- * @param {string} guid - the video guid
- * @returns {Promise} the api request promise.
+ * @param {string} guid  - the video guid
+ * @return {Promise} the api request promise.
  */
 const deleteTrackForGuid = ( track, guid ) => {
 	if ( shouldUseJetpackVideoFetch() ) {
@@ -259,7 +262,7 @@ function SingleTrackEditor( { track, guid, onChange, onClose, onCancel, trackExi
 									track.tmpFile = files[ 0 ];
 									onChange( track );
 								} }
-								accept={ ACCEPTED_FILE_TYPES }
+								accept={ Object.entries( ACCEPTED_FILE_TYPES ).join() }
 								render={ ( { openFileDialog } ) => {
 									return (
 										<Button
@@ -283,10 +286,11 @@ function SingleTrackEditor( { track, guid, onChange, onClose, onCancel, trackExi
 						</MediaUploadCheck>
 					</div>
 					<div className="videopress-block-tracks-editor__single-track-editor-upload-file-help">
-						{
+						{ sprintf(
 							/* translators: %s: The allowed file types to be uploaded as a video text track." */
-							sprintf( __( 'Allowed formats: %s', 'jetpack' ), ACCEPTED_FILE_TYPES )
-						}
+							__( 'Allowed formats: %s', 'jetpack' ),
+							Object.keys( ACCEPTED_FILE_TYPES ).join( ', ' )
+						) }
 					</div>
 				</div>
 				<div className="videopress-block-tracks-editor__single-track-editor-label-language">
@@ -301,6 +305,8 @@ function SingleTrackEditor( { track, guid, onChange, onClose, onCancel, trackExi
 						value={ label }
 						help={ __( 'Title of track', 'jetpack' ) }
 						disabled={ isSavingTrack }
+						__nextHasNoMarginBottom={ true }
+						__next40pxDefaultSize={ true }
 					/>
 					<TextControl
 						onChange={ newSrcLang =>
@@ -313,6 +319,8 @@ function SingleTrackEditor( { track, guid, onChange, onClose, onCancel, trackExi
 						value={ srcLang }
 						help={ __( 'Language tag (en, fr, etc.)', 'jetpack' ) }
 						disabled={ isSavingTrack }
+						__nextHasNoMarginBottom={ true }
+						__next40pxDefaultSize={ true }
 					/>
 				</div>
 				<SelectControl
@@ -330,6 +338,8 @@ function SingleTrackEditor( { track, guid, onChange, onClose, onCancel, trackExi
 						} );
 					} }
 					disabled={ isSavingTrack }
+					__nextHasNoMarginBottom={ true }
+					__next40pxDefaultSize={ true }
 				/>
 				<div className="videopress-block-tracks-editor__single-track-editor-buttons-container">
 					{ isSavingTrack ? (
@@ -414,6 +424,7 @@ export default function TracksEditor( { tracks = [], onChange, guid } ) {
 									} )
 								);
 							} }
+							__next40pxDefaultSize={ true }
 						/>
 					);
 				}

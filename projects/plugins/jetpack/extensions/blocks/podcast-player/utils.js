@@ -1,9 +1,8 @@
-import classnames from 'classnames';
-import { memoize } from 'lodash';
+import clsx from 'clsx';
 
 /**
  * Returns a class based on the context a color is being used and its slug.
- * Note: This helper function was copied from core @wordpress/block-editor lib,
+ * Note: This helper function was copied from core `@wordpress/block-editor` lib,
  * in order to avoid requiring not-needed dependencies to reduce the size of
  * compiled files used in the front-end.
  *
@@ -11,10 +10,10 @@ import { memoize } from 'lodash';
  * const className = getColorClassName( 'color', canvasPrimaryColor );
  *
  * @param {string} colorContextName - Context/place where color is being used
- * e.g: background, text etc...
- * @param {string} colorSlug - Slug of the color.
+ *                                  e.g: background, text etc...
+ * @param {string} colorSlug        - Slug of the color.
  *
- * @returns {string|undefined} String with the class corresponding to the color
+ * @return {string|undefined} String with the class corresponding to the color
  * in the provided context. Undefined if either colorContextName or colorSlug
  * are not provided.
  */
@@ -38,7 +37,7 @@ export function getColorClassName( colorContextName, colorSlug ) {
  *
  * @param {Promise} promise - the Promise to make cancelable
  *
- * @returns {object} Object containing original promise object and cancel
+ * @return {object} Object containing original promise object and cancel
  * method.
  */
 export function makeCancellable( promise ) {
@@ -67,8 +66,14 @@ export function makeCancellable( promise ) {
  *   primaryColor: '…',
  *   customPrimaryColor: '…',
  * } );
- * @param Object config with all color-related block attributes.
- * @returns Object with color details.
+ * @param {object} config                         - with all color-related block attributes.
+ * @param {string} [config.primaryColor]          - Primary color name.
+ * @param {string} [config.customPrimaryColor]    - Primary color.
+ * @param {string} [config.secondaryColor]        - Secondary color name.
+ * @param {string} [config.customSecondaryColor]  - Secondary color.
+ * @param {string} [config.backgroundColor]       - Background color name.
+ * @param {string} [config.customBackgroundColor] - Background color.
+ * @return {object} with color details.
  */
 const generateColorsObject = ( {
 	primaryColor,
@@ -88,7 +93,7 @@ const generateColorsObject = ( {
 		primary: {
 			name: primaryColor,
 			custom: customPrimaryColor,
-			classes: classnames( {
+			classes: clsx( {
 				'has-primary': primaryColorClass || customPrimaryColor,
 				[ primaryColorClass ]: primaryColorClass,
 			} ),
@@ -96,7 +101,7 @@ const generateColorsObject = ( {
 		secondary: {
 			name: secondaryColor,
 			custom: customSecondaryColor,
-			classes: classnames( {
+			classes: clsx( {
 				'has-secondary': secondaryColorClass || customSecondaryColor,
 				[ secondaryColorClass ]: secondaryColorClass,
 			} ),
@@ -104,7 +109,7 @@ const generateColorsObject = ( {
 		background: {
 			name: backgroundColor,
 			custom: customBackgroundColor,
-			classes: classnames( {
+			classes: clsx( {
 				'has-background': backgroundColorClass || customBackgroundColor,
 				[ backgroundColorClass ]: backgroundColorClass,
 			} ),
@@ -112,11 +117,16 @@ const generateColorsObject = ( {
 	};
 };
 
+const getColorsObjectCache = {};
+
 /**
  * Memoized version of generateColorsObject.
+ * @param {object} config - See generateColorsObject
+ * @return {object} with color details.
  * @see {@link generateColorsObject} for params and return type.
  */
-export const getColorsObject = memoize( generateColorsObject, config => {
+export const getColorsObject = config => {
 	// Cache key is a string with all arguments joined into one string.
-	return Object.values( config ).join();
-} );
+	const key = Object.values( config ).join();
+	return ( getColorsObjectCache[ key ] ??= generateColorsObject( config ) );
+};

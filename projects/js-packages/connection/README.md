@@ -17,7 +17,7 @@ use Automattic\Jetpack\Connection\Initial_State as Connection_Initial_State;
 function my_app_enqueue_script() {
 	// ...
 	wp_enqueue_script( 'my-app-script' );
-	wp_add_inline_script( 'my-app-script', Connection_Initial_State::render(), 'before' );
+	Connection_Initial_State::render_script( 'my-app-script' );
 }
 ```
 
@@ -40,7 +40,7 @@ The component implements the connection screen page, and loads the `ConnectButto
 
 ### Usage
 ```jsx
-import React, { useState, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { ConnectScreen } from '@automattic/jetpack-connection';
 
 const [ connectionStatus, setConnectionStatus ] = useState( {} );
@@ -56,7 +56,7 @@ const statusCallback = useCallback(
 	apiRoot="https://example.org/wp-json/" 
 	apiNonce="12345"
 	registrationNonce="54321"
-	from="connection-ui"
+	from="my-jetpack"
 	redirectUri="tools.php?page=wpcom-connection-manager"
 	statusCallback={ statusCallback }
 >
@@ -81,7 +81,7 @@ The component displays the connection button and handles the connection process,
 
 ### Basic Usage
 ```jsx
-import React, { useCallback } from 'react';
+import { useCallback } from 'react';
 import { ConnectButton } from '@automattic/jetpack-connection';
 
 const onUserConnected = useCallback( () => alert( 'User Connected' ) );
@@ -90,7 +90,7 @@ const onUserConnected = useCallback( () => alert( 'User Connected' ) );
 	apiRoot="https://example.org/wp-json/" 
 	apiNonce="12345"
 	registrationNonce="54321"
-	from="connection-ui"
+	from="my-jetpack"
 	redirectUri="tools.php?page=wpcom-connection-manager"
 	connectionStatus={ connectionStatus }
 	connectionStatusIsFetching={ isFetching }
@@ -117,7 +117,7 @@ import { ConnectUser } from '@automattic/jetpack-connection';
 <ConnectUser
 	connectUrl="https://jetpack.wordpress.com/jetpack.authorize/1/"
 	redirectUri="tools.php?page=wpcom-connection-manager"
-	from="connection-ui"
+	from="my-jetpack"
 />
 ```
 
@@ -176,7 +176,7 @@ If an error occurs while trying to disconnect, a custmomizable error message wil
 - *errorMessage* - string, error message to display when an error occurs while disconnecting. Defaults to: "Failed to disconnect. Please try again."
 
 ### Important Notes
-It's important to note that the `onDisconnected` callback will not immediately trigger upon receiving a successfull API response. This happens because we want to display a success message to the user first within the `DisconnectDialog`.
+It's important to note that the `onDisconnected` callback will not immediately trigger upon receiving a successful API response. This happens because we want to display a success message to the user first within the `DisconnectDialog`.
 If a parent consumer for example, were to update their connection status using this event, the `DisconnectDialog` would be hidden before showing the success message to the user.
 Because we made this design decision, and to ensure a non-breaking UX, the `Modal` (see `wordpress/components/modal`) used by the `DisconnectDialog` will not close (as usual) using either ESC key or clicking outside of the Dialog.
 This way we ensure that `onDisconnected` will always be called via clicking the "Return to WordPress" button, after successfully disconnecting the site.
@@ -184,7 +184,7 @@ This way we ensure that `onDisconnected` will always be called via clicking the 
 
 ### Basic Usage
 ```jsx
-import React, { useCallback } from 'react';
+import { useCallback } from 'react';
 import { DisconnectDialog } from '@automattic/jetpack-connection';
 
 const onDisconnectedCallback = useCallback( () => alert( 'Successfully Disconnected' ) );
@@ -230,7 +230,7 @@ The `Disconnect` functionality is **temporary**. In the future, it will be repla
 
 ### Basic Usage
 ```jsx
-import React, { useCallback } from 'react';
+import { useCallback } from 'react';
 import { ConnectionStatusCard } from '@automattic/jetpack-connection';
 
 const onDisconnectedCallback = useCallback( () => alert( 'Successfully Disconnected' ) );

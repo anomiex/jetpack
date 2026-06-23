@@ -6,11 +6,15 @@
  * @package automattic/jetpack
  */
 
+if ( ! defined( 'ABSPATH' ) ) {
+	exit( 0 );
+}
+
 /**
  * Gutenberg: List Available Gutenberg Extensions (Blocks and Plugins)
  *
  * [
- *   { # Availabilty Object. See schema for more detail.
+ *   { # Availability Object. See schema for more detail.
  *     available:          (boolean) Whether the extension is available
  *     unavailable_reason: (string)  Reason for the extension not being available
  *   },

@@ -1,14 +1,18 @@
-import { __experimentalGetSpacingClassesAndStyles as getSpacingClassesAndStyles } from '@wordpress/block-editor'; // eslint-disable-line wpcalypso/no-unsafe-wp-apis
+import { __experimentalGetSpacingClassesAndStyles as getSpacingClassesAndStyles } from '@wordpress/block-editor'; // eslint-disable-line @wordpress/no-unsafe-wp-apis
 import { RawHTML } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 import MarkdownIt from 'markdown-it';
+import footnote_plugin from 'markdown-it-footnote';
 
 /**
  * Module variables
  */
-const markdownConverter = new MarkdownIt();
+const markdownConverter = new MarkdownIt( {
+	typographer: true,
+} ).use( footnote_plugin );
 const handleLinkClick = event => {
 	if ( event.target.nodeName === 'A' ) {
+		// eslint-disable-next-line no-alert -- Needs a blocking dialog.
 		const hasConfirmed = window.confirm(
 			__( 'Are you sure you wish to leave this page?', 'jetpack' )
 		);

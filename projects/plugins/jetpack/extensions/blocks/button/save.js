@@ -1,9 +1,11 @@
 import {
 	getColorClassName,
-	__experimentalGetGradientClass as getGradientClass, // eslint-disable-line wpcalypso/no-unsafe-wp-apis
+	__experimentalGetGradientClass as getGradientClass, // eslint-disable-line @wordpress/no-unsafe-wp-apis
+	__experimentalGetBorderClassesAndStyles as getBorderClassesAndStyles, // eslint-disable-line @wordpress/no-unsafe-wp-apis
 	RichText,
+	useBlockProps,
 } from '@wordpress/block-editor';
-import classnames from 'classnames';
+import clsx from 'clsx';
 import { IS_GRADIENT_AVAILABLE } from './constants';
 
 export default function ButtonSave( { attributes, blockName, uniqueId } ) {
@@ -20,21 +22,33 @@ export default function ButtonSave( { attributes, blockName, uniqueId } ) {
 		textColor,
 		url,
 		width,
+		fontSize,
 	} = attributes;
 
 	if ( ! saveInPostContent ) {
 		return null;
 	}
 
+	const blockProps = useBlockProps.save();
+
+	const borderProps = getBorderClassesAndStyles( attributes );
+
 	const backgroundClass = getColorClassName( 'background-color', backgroundColor );
 	const gradientClass = IS_GRADIENT_AVAILABLE ? getGradientClass( gradient ) : undefined;
 	const textClass = getColorClassName( 'color', textColor );
 
-	const blockClasses = classnames( 'wp-block-button', 'jetpack-submit-button', className, {
-		[ `wp-block-jetpack-${ blockName }` ]: blockName,
-	} );
+	const blockClasses = clsx(
+		'wp-block-button',
+		'jetpack-submit-button',
+		className,
+		blockProps?.className,
+		borderProps.className,
+		{
+			[ `wp-block-jetpack-${ blockName }` ]: blockName,
+		}
+	);
 
-	const buttonClasses = classnames( 'wp-block-button__link', {
+	const buttonClasses = clsx( 'wp-block-button__link', {
 		'has-text-color': textColor || customTextColor,
 		[ textClass ]: textClass,
 		'has-background': backgroundColor || gradient || customBackgroundColor || customGradient,
@@ -42,19 +56,23 @@ export default function ButtonSave( { attributes, blockName, uniqueId } ) {
 		[ gradientClass ]: gradientClass,
 		'no-border-radius': 0 === borderRadius,
 		'has-custom-width': !! width,
+		[ `has-${ fontSize }-font-size` ]: !! fontSize,
+		'has-custom-font-size': !! fontSize,
 	} );
 
 	const buttonStyle = {
 		background: customGradient || undefined,
 		backgroundColor:
 			backgroundClass || customGradient || gradient ? undefined : customBackgroundColor,
+		fontSize: attributes.style?.typography?.fontSize,
 		color: textClass ? undefined : customTextColor,
 		borderRadius: borderRadius ? borderRadius + 'px' : undefined,
 		width,
+		...borderProps.style,
 	};
 
 	return (
-		<div className={ blockClasses }>
+		<div { ...blockProps } className={ blockClasses }>
 			<RichText.Content
 				className={ buttonClasses }
 				data-id-attr={ uniqueId || 'placeholder' }

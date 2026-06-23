@@ -1,7 +1,7 @@
 <?php
 /**
  * Module Name: Gravatar Hovercards
- * Module Description: Enable pop-up business cards over commenters’ Gravatars.
+ * Module Description: Show a user’s Gravatar profile when visitors hover over their name or image.
  * Sort Order: 11
  * Recommendation Order: 13
  * First Introduced: 1.1
@@ -13,6 +13,10 @@
  *
  * @package automattic/jetpack
  */
+
+if ( ! defined( 'ABSPATH' ) ) {
+	exit( 0 );
+}
 
 define( 'GROFILES__CACHE_BUSTER', gmdate( 'YW' ) );
 
@@ -184,7 +188,7 @@ function grofiles_get_avatar( $avatar, $author ) {
 	if ( is_numeric( $author ) ) {
 		grofiles_gravatars_to_append( $author );
 	} elseif ( is_string( $author ) ) {
-		if ( false !== strpos( $author, '@' ) ) {
+		if ( str_contains( $author, '@' ) ) {
 			grofiles_gravatars_to_append( $author );
 		} else {
 			$user = get_user_by( 'slug', $author );
@@ -201,18 +205,17 @@ function grofiles_get_avatar( $avatar, $author ) {
 
 				$response_body = wp_cache_get( $cache_key, $cache_group );
 				if ( false === $response_body ) {
-					$response = wp_remote_get( esc_url_raw( 'https://en.gravatar.com/' . $email_hash . '.json' ) );
-
+					$response = wp_remote_get( esc_url_raw( 'https://gravatar.com/' . $email_hash . '.json' ) );
 					if ( is_array( $response ) && ! is_wp_error( $response ) ) {
 						$response_body = json_decode( $response['body'] );
 						wp_cache_set( $cache_key, $response_body, $cache_group, 60 * MINUTE_IN_SECONDS );
 					}
 				}
 
-				$profile      = $response_body->entry[0];
-				$display_name = $profile->displayName; // phpcs:ignore WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
-				$location     = isset( $profile->currentLocation ) ? $profile->currentLocation : ''; // phpcs:ignore WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
-				$description  = isset( $profile->aboutMe ) ? $profile->aboutMe : ''; // phpcs:ignore WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
+				$profile      = $response_body->entry[0] ?? null;
+				$display_name = $profile->displayName ?? ''; // phpcs:ignore WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
+				$location     = $profile->currentLocation ?? ''; // phpcs:ignore WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
+				$description  = $profile->aboutMe ?? ''; // phpcs:ignore WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
 
 				$avatar = '
 					<figure data-amp-lightbox="true">
@@ -246,8 +249,6 @@ function grofiles_get_avatar( $avatar, $author ) {
 
 /**
  * Loads Gravatar Hovercard script.
- *
- * @todo is_singular() only?
  */
 function grofiles_attach_cards() {
 
@@ -258,6 +259,11 @@ function grofiles_attach_cards() {
 
 	// Is the display of Gravatar Hovercards disabled?
 	if ( 'disabled' === Jetpack_Options::get_option_and_ensure_autoload( 'gravatar_disable_hovercards', '0' ) ) {
+		return;
+	}
+
+	// Hovercards are only relevant on pages that render avatars.
+	if ( ! is_singular() && ! is_home() && ! is_front_page() && ! is_archive() && ! is_search() ) {
 		return;
 	}
 
@@ -364,7 +370,7 @@ function grofiles_hovercards_data_html( $author ) {
  *
  * 'grofiles_hovercards_data_callbacks' filter
  *
- * @return array( data_key => data_callback, ... )
+ * @return array<string,callable> ( data_key => data_callback, ... )
  */
 function grofiles_hovercards_data_callbacks() {
 	/**
@@ -382,9 +388,9 @@ function grofiles_hovercards_data_callbacks() {
 /**
  * Keyed JSON object containing all profile data provided by registered callbacks
  *
- * @param int|strung $author User ID or email address.
+ * @param int|string $author User ID or email address.
  *
- * @return array( data_key => data, ... )
+ * @return array<string,mixed> ( data_key => data, ... )
  */
 function grofiles_hovercards_data( $author ) {
 	$r = array();

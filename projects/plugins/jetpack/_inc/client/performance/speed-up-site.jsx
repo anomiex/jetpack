@@ -1,14 +1,14 @@
 import { getRedirectUrl } from '@automattic/jetpack-components';
+import { ToggleControl } from '@wordpress/components';
 import { __, sprintf } from '@wordpress/i18n';
-import CompactFormToggle from 'components/form/form-toggle/compact';
+import { Component } from 'react';
+import { connect } from 'react-redux';
 import { FormFieldset } from 'components/forms';
 import { withModuleSettingsFormHelpers } from 'components/module-settings/with-module-settings-form-helpers';
 import { ModuleToggle } from 'components/module-toggle';
 import SettingsCard from 'components/settings-card';
 import SettingsGroup from 'components/settings-group';
 import analytics from 'lib/analytics';
-import React, { Component } from 'react';
-import { connect } from 'react-redux';
 import { isOfflineMode } from 'state/connection';
 import { getModule, getModuleOverride } from 'state/modules';
 import { isModuleFound as _isModuleFound } from 'state/search';
@@ -59,7 +59,7 @@ const SpeedUpSite = withModuleSettingsFormHelpers(
 					success: __( 'Site accelerator is no longer speeding up your site!', 'jetpack' ),
 					error: error =>
 						sprintf(
-							/* translators: placeholder is an error code. */
+							/* translators: %s: an error code. */
 							__( 'Error disabling site accelerator. %s', 'jetpack' ),
 							error
 						),
@@ -88,7 +88,7 @@ const SpeedUpSite = withModuleSettingsFormHelpers(
 					success: __( 'Site accelerator is now speeding up your site!', 'jetpack' ),
 					error: error =>
 						sprintf(
-							/* translators: placeholder is an error code. */
+							/* translators: %s: an error code. */
 							__( 'Error enabling Site accelerator. %s', 'jetpack' ),
 							error
 						),
@@ -148,13 +148,10 @@ const SpeedUpSite = withModuleSettingsFormHelpers(
 		render() {
 			const foundPhoton = this.props.isModuleFound( 'photon' );
 			const foundAssetCdn = this.props.isModuleFound( 'photon-cdn' );
-			const foundLazyImages = this.props.isModuleFound( 'lazy-images' );
 
-			if ( ! foundPhoton && ! foundLazyImages && ! foundAssetCdn ) {
+			if ( ! foundPhoton && ! foundAssetCdn ) {
 				return null;
 			}
-
-			const lazyImages = this.props.module( 'lazy-images' );
 
 			// Check if any of the CDN options are on.
 			const siteAcceleratorStatus =
@@ -237,86 +234,63 @@ const SpeedUpSite = withModuleSettingsFormHelpers(
 					module="performance-speed"
 				>
 					{ ( foundPhoton || foundAssetCdn ) && (
-						<SettingsGroup
-							hasChild
-							support={ {
-								link: getRedirectUrl( 'jetpack-support-site-accelerator' ),
-							} }
-						>
-							<p>
-								{ __(
-									'Load pages faster by allowing Jetpack to optimize your images and serve your images and static files (like CSS and JavaScript) from our global network of servers.',
-									'jetpack'
-								) }
-							</p>
-							{ canAppearInSearch && (
-								<CompactFormToggle
-									checked={ siteAcceleratorStatus }
-									toggling={ togglingSiteAccelerator }
-									onChange={ this.handleSiteAcceleratorChange }
-									disabled={ ! canDisplaySiteAcceleratorSettings }
-								>
-									<span className="jp-form-toggle-explanation">
-										{ __( 'Enable site accelerator', 'jetpack' ) }
-									</span>
-								</CompactFormToggle>
-							) }
-							<FormFieldset>
-								{ foundPhoton && (
-									<ModuleToggle
-										slug="photon"
-										disabled={ this.props.isUnavailableInOfflineMode( 'photon' ) }
-										activated={ this.props.getOptionValue( 'photon' ) }
-										toggling={ this.props.isSavingAnyOption( 'photon' ) }
-										toggleModule={ this.toggleModule }
-									>
-										<span className="jp-form-toggle-explanation">
-											{ __( 'Speed up image load times', 'jetpack' ) }
-										</span>
-									</ModuleToggle>
-								) }
-								{ foundAssetCdn && (
-									<ModuleToggle
-										slug="photon-cdn"
-										activated={ this.props.getOptionValue( 'photon-cdn' ) }
-										toggling={ this.props.isSavingAnyOption( 'photon-cdn' ) }
-										toggleModule={ this.toggleModule }
-									>
-										<span className="jp-form-toggle-explanation">
-											{ __( 'Speed up static file load times', 'jetpack' ) }
-										</span>
-									</ModuleToggle>
-								) }
-							</FormFieldset>
-						</SettingsGroup>
-					) }
-
-					{ foundLazyImages && (
-						<SettingsGroup
-							hasChild
-							module={ lazyImages }
-							support={ {
-								link: getRedirectUrl( 'jetpack-support-lazy-images' ),
-							} }
-						>
-							<p>
-								{ __(
-									'Lazy-loading images will improve your site’s speed and create a smoother viewing experience. Images will load as visitors scroll down the screen, instead of all at once.',
-									'jetpack'
-								) }
-							</p>
-							<ModuleToggle
-								slug="lazy-images"
-								disabled={ this.props.isUnavailableInOfflineMode( 'lazy-images' ) }
-								activated={ this.props.getOptionValue( 'lazy-images' ) }
-								toggling={ this.props.isSavingAnyOption( 'lazy-images' ) }
-								toggleModule={ this.toggleModule }
+						<>
+							<SettingsGroup
+								hasChild
+								support={ {
+									link: getRedirectUrl( 'jetpack-support-site-accelerator' ),
+								} }
 							>
-								<span className="jp-form-toggle-explanation">
-									{ __( 'Enable Lazy Loading for images', 'jetpack' ) }
-								</span>
-							</ModuleToggle>
-						</SettingsGroup>
+								<p>
+									{ __(
+										'Load pages faster by allowing Jetpack to optimize your images and serve your images and static files (like CSS and JavaScript) from our global network of servers.',
+										'jetpack'
+									) }
+								</p>
+								{ canAppearInSearch && (
+									<ToggleControl
+										__nextHasNoMarginBottom
+										checked={ siteAcceleratorStatus }
+										onChange={ this.handleSiteAcceleratorChange }
+										disabled={ ! canDisplaySiteAcceleratorSettings || togglingSiteAccelerator }
+										label={
+											<span className="jp-form-toggle-explanation">
+												{ __( 'Enable site accelerator', 'jetpack' ) }
+											</span>
+										}
+									/>
+								) }
+								<FormFieldset>
+									{ foundPhoton && (
+										<ModuleToggle
+											slug="photon"
+											disabled={
+												this.props.isUnavailableInOfflineMode( 'photon' ) ||
+												this.props.isSavingAnyOption( 'photon' )
+											}
+											activated={ this.props.getOptionValue( 'photon' ) }
+											toggleModule={ this.toggleModule }
+										>
+											<span className="jp-form-toggle-explanation">
+												{ __( 'Speed up image load times', 'jetpack' ) }
+											</span>
+										</ModuleToggle>
+									) }
+									{ foundAssetCdn && (
+										<ModuleToggle
+											slug="photon-cdn"
+											disabled={ this.props.isSavingAnyOption( 'photon-cdn' ) }
+											activated={ this.props.getOptionValue( 'photon-cdn' ) }
+											toggleModule={ this.toggleModule }
+										>
+											<span className="jp-form-toggle-explanation">
+												{ __( 'Speed up static file load times', 'jetpack' ) }
+											</span>
+										</ModuleToggle>
+									) }
+								</FormFieldset>
+							</SettingsGroup>
+						</>
 					) }
 				</SettingsCard>
 			);

@@ -10,28 +10,34 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+along with this program; if not, see <https://www.gnu.org/licenses/>.
 */
+
+// Ensure that module augmentation is applied
+export {} from './declarations.d.ts';
 
 /**
  * Components.
  */
 export { default as ConnectScreen } from './components/connect-screen/basic';
-export { ToS } from './components/connect-screen/basic/visual';
+export { default as ConnectScreenLayout } from './components/connect-screen/layout';
 export { default as ConnectScreenRequiredPlan } from './components/connect-screen/required-plan';
 export { default as ConnectButton } from './components/connect-button';
 export { default as InPlaceConnection } from './components/in-place-connection';
 export { default as ConnectUser } from './components/connect-user';
-export { default as ConnectionStatusCard } from './components/connection-status-card';
+export { default as ConnectionErrorNotice } from './components/connection-error-notice';
+export { ConnectionError } from './hooks/use-connection-error-notice';
 export { default as DisconnectDialog } from './components/disconnect-dialog';
 export { default as DisconnectCard } from './components/disconnect-card';
 export { default as useConnection } from './components/use-connection';
+export { default as ManageConnectionDialog } from './components/manage-connection-dialog';
 
 /**
  * Helpers.
  */
 export { default as thirdPartyCookiesFallbackHelper } from './helpers/third-party-cookies-fallback';
+export { default as getCalypsoOrigin } from './helpers/get-calypso-origin';
+export * from './helpers/get-user-connection-url.ts';
 
 /**
  * Store
@@ -42,3 +48,5 @@ export { STORE_ID as CONNECTION_STORE_ID } from './state/store';
  * Hooks
  */
 export { default as useProductCheckoutWorkflow } from './hooks/use-product-checkout-workflow';
+export { default as useRestoreConnection } from './hooks/use-restore-connection';
+export { default as useConnectionErrorNotice } from './hooks/use-connection-error-notice';

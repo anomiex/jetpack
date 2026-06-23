@@ -1,19 +1,20 @@
-import { constants as fsconstants } from 'fs';
+import { constants as fsconstants, createReadStream } from 'fs';
 import fs from 'fs/promises';
+import { once } from 'node:events';
+import { createInterface as rlcreateInterface } from 'node:readline';
 import npath from 'path';
-import readline from 'readline';
 import chalk from 'chalk';
-import execa from 'execa';
-import inquirer from 'inquirer';
+import enquirer from 'enquirer';
+import { execa } from 'execa';
 import Listr from 'listr';
+import ListrState from 'listr/lib/state.js';
 import SilentRenderer from 'listr-silent-renderer';
 import UpdateRenderer from 'listr-update-renderer';
-import ListrState from 'listr/lib/state.js';
 import pLimit from 'p-limit';
 import { getDependencies, filterDeps, getBuildOrder } from '../helpers/dependencyAnalysis.js';
-import FilterStream from '../helpers/filter-stream.js';
 import formatDuration from '../helpers/format-duration.js';
 import { getInstallArgs, projectDir } from '../helpers/install.js';
+import { listProjectFiles } from '../helpers/list-project-files.js';
 import { coerceConcurrency } from '../helpers/normalizeArgv.js';
 import PrefixStream from '../helpers/prefix-stream.js';
 import { allProjects, allProjectsByType } from '../helpers/projectHelpers.js';
@@ -27,7 +28,7 @@ export const describe = 'Builds one or more monorepo projects';
  * Options definition for the build subcommand.
  *
  * @param {object} yargs - The Yargs dependency.
- * @returns {object} Yargs with the build commands defined.
+ * @return {object} Yargs with the build commands defined.
  */
 export function builder( yargs ) {
 	return yargs
@@ -61,6 +62,7 @@ export function builder( yargs ) {
 			type: 'boolean',
 			description: 'Build for production.',
 		} )
+		.option( 'pnpm-install', { type: 'boolean', hidden: true } )
 		.option( 'no-pnpm-install', {
 			type: 'boolean',
 			description: 'Skip execution of `pnpm install` before the build.',
@@ -106,7 +108,25 @@ export async function handler( argv ) {
 		argv.project = allProjects();
 	}
 
+	// Check for unknown projects.
+	let missing = new Set();
+	argv.project = [ ...new Set( argv.project ) ];
+	if ( argv.project.length > 0 ) {
+		missing = new Set( argv.project.filter( p => ! dependencies.has( p ) ) );
+		if ( missing.size > 0 ) {
+			argv.project = argv.project.filter( p => dependencies.has( p ) );
+			// If there are no projects left, print now (then the next block will prompt).
+			// If run with `-v`, also print now in case the user wants to Ctrl+C. Without `-v`, rely on them paying attention to the listr list.
+			if ( argv.project.length === 0 || argv.v ) {
+				for ( const project of missing ) {
+					console.error( chalk.red( `Project ${ project } does not exist!` ) );
+				}
+			}
+		}
+	}
+
 	if ( argv.project.length === 0 ) {
+		missing.clear();
 		if ( argv.forMirrors ) {
 			console.error( 'Please specify projects on the command line with --for-mirrors' );
 			process.exit( 1 );
@@ -115,16 +135,6 @@ export async function handler( argv ) {
 		argv = await promptForProject( argv );
 		argv = await promptForDeps( argv );
 		argv.project = [ argv.project ];
-	}
-
-	// Check for unknown projects.
-	argv.project = [ ...new Set( argv.project ) ];
-	const missing = new Set( argv.project.filter( p => ! dependencies.has( p ) ) );
-	if ( missing.size ) {
-		for ( const project of missing ) {
-			console.error( chalk.red( `Project ${ project } does not exist!` ) );
-		}
-		argv.project = argv.project.filter( p => dependencies.has( p ) );
 	}
 
 	// Filter to just what we want to build.
@@ -154,7 +164,34 @@ export async function handler( argv ) {
 				await t.setStatus( 'installing' );
 				await t.execa( 'pnpm', await getInstallArgs( 'monorepo', 'pnpm', argv ), {
 					cwd: process.cwd(),
+					stdio: [ 'ignore', 'inherit', 'inherit' ],
+					buffer: false,
 				} );
+			} )
+		);
+	}
+
+	// Add `changelogger install` task, so the "centralized" binary is available before any project build.
+	if ( argv.forMirrors ) {
+		for ( const [ k, v ] of dependencies ) {
+			// Skip pnpm.
+			if ( k !== 'pnpm install' ) {
+				v.add( 'changelogger install' );
+			}
+		}
+		dependencies.set( 'changelogger install', new Set() );
+		listr.add(
+			createBuildTask( 'changelogger install', argv, `Install changelogger`, async t => {
+				await t.setStatus( 'installing' );
+				await t.execa(
+					'composer',
+					await getInstallArgs( 'packages/changelogger', 'composer', argv ),
+					{
+						cwd: projectDir( 'packages/changelogger' ),
+						stdio: [ 'ignore', 'inherit', 'inherit' ],
+						buffer: false,
+					}
+				);
 			} )
 		);
 	}
@@ -179,27 +216,43 @@ export async function handler( argv ) {
 		mirrorMutex: pLimit( 1 ),
 		versions: {},
 	};
-	await listr.run( ctx ).catch( err => {
-		if ( argv.v && ctx.concurrent ) {
-			console.error( '\nThe following builds failed:' );
-			for ( const pkg of Object.keys( ctx.promises ).sort() ) {
-				if ( ctx.promises[ pkg ].status === 'rejected' && ctx.promises[ pkg ].buildStarted ) {
-					console.error( ` - ${ pkg }` );
+	await listr
+		.run( ctx )
+		.finally( () => {
+			if ( missing.size ) {
+				console.error( '' );
+				const wrap = argv.v ? v => v : chalk.red;
+				for ( const project of missing ) {
+					console.error( wrap( `Project ${ project } was ignored as it does not exist.` ) );
 				}
 			}
-		}
-		process.exit( err.exitCode || 1 );
-	} );
+		} )
+		.catch( err => {
+			if ( argv.v && ctx.concurrent ) {
+				console.error( '\nThe following builds failed:' );
+				for ( const pkg of Object.keys( ctx.promises ).sort() ) {
+					if ( ctx.promises[ pkg ].status === 'rejected' && ctx.promises[ pkg ].buildStarted ) {
+						console.error( ` - ${ pkg }` );
+					}
+				}
+			}
+			if ( ! argv.v ) {
+				console.error(
+					chalk.yellow( 'You might try running with `-v` to get more information on the failure' )
+				);
+			}
+			process.exit( err.exitCode || 1 );
+		} );
 }
 
 /**
  * Create a build task.
  *
- * @param {string} project - Project slug.
- * @param {object} argv - Command line arguments.
- * @param {string} title - Task title.
- * @param {Function} build - Build function.
- * @returns {object} Listr task.
+ * @param {string}   project - Project slug.
+ * @param {object}   argv    - Command line arguments.
+ * @param {string}   title   - Task title.
+ * @param {Function} build   - Build function.
+ * @return {object} Listr task.
  */
 function createBuildTask( project, argv, title, build ) {
 	return {
@@ -272,28 +325,15 @@ function createBuildTask( project, argv, title, build ) {
 						ctx,
 						cwd: projectDir( project ),
 					};
+
+					let stdout, stderr;
 					if ( argv.v ) {
 						const streamArgs = { prefix: ctx.concurrent ? project : null, time: !! argv.timing };
-						const stdout = new PrefixStream( streamArgs );
-						const stderr = new PrefixStream( streamArgs );
+						stdout = new PrefixStream( streamArgs );
+						stderr = new PrefixStream( streamArgs );
 						stdout.pipe( process.stdout, { end: false } );
 						stderr.pipe( process.stderr, { end: false } );
 
-						t.execa = ( file, args = [], options = {} ) => {
-							const stdio = options.stdio || [];
-							stdio[ 0 ] ||= 'ignore';
-							const p = execa( file, args, {
-								...options,
-								stdio,
-							} );
-							if ( ! stdio[ 1 ] ) {
-								p.stdout.pipe( stdout, { end: false } );
-							}
-							if ( ! stdio[ 2 ] ) {
-								p.stderr.pipe( stderr, { end: false } );
-							}
-							return p;
-						};
 						t.output = m =>
 							new Promise( resolve => {
 								stdout.write( m, 'utf8', resolve );
@@ -301,20 +341,43 @@ function createBuildTask( project, argv, title, build ) {
 						t.setStatus = s =>
 							t.output( '\n' + chalk.bold( `== ${ title } [${ s }] ==` ) + '\n\n' );
 					} else {
-						t.execa = ( file, args = [], options = {} ) => {
-							const stdio = options.stdio || [];
-							stdio[ 0 ] ||= 'ignore';
-							stdio[ 1 ] ||= 'ignore';
-							stdio[ 2 ] ||= 'ignore';
-							const p = execa( file, args, {
-								...options,
-								stdio,
-							} );
-							return p;
-						};
 						t.output = () => Promise.resolve();
 						t.setStatus = setStatus;
 					}
+
+					t.execa = ( file, args = [], options = {} ) => {
+						// Match `child_process` default behavior.
+						let stdio = options.stdio || [];
+						if ( typeof stdio === 'string' ) {
+							stdio = [ stdio, stdio, stdio ];
+						}
+						stdio[ 0 ] ||= 'pipe';
+						stdio[ 1 ] ||= 'pipe';
+						stdio[ 2 ] ||= 'pipe';
+
+						// For actually passing to execa, though, map "inherit" to either piping to our PrefixStreams or ignoring.
+						const estdio = [ ...stdio ];
+						if ( stdio[ 1 ] === 'inherit' ) {
+							estdio[ 1 ] = stdout ? 'pipe' : 'ignore';
+						}
+						if ( stdio[ 2 ] === 'inherit' ) {
+							estdio[ 2 ] = stderr ? 'pipe' : 'ignore';
+						}
+
+						const p = execa( file, args, {
+							...options,
+							stdio: estdio,
+						} );
+
+						if ( stdout && stdio[ 1 ] === 'inherit' ) {
+							p.stdout.pipe( stdout, { end: false } );
+						}
+						if ( stderr && stdio[ 2 ] === 'inherit' ) {
+							p.stderr.pipe( stderr, { end: false } );
+						}
+
+						return p;
+					};
 
 					// Build!
 					const t0 = Date.now();
@@ -364,18 +427,19 @@ function createBuildTask( project, argv, title, build ) {
  * Prompt for whether dependencies should be built too.
  *
  * @param {object} options - Passthrough of the argv object.
- * @returns {object} argv object with the project property.
+ * @return {object} argv object with the project property.
  */
 async function promptForDeps( options ) {
 	if ( typeof options.deps !== 'undefined' ) {
 		return options;
 	}
 
-	const answers = await inquirer.prompt( [
+	const answers = await enquirer.prompt( [
 		{
 			type: 'confirm',
 			name: 'deps',
 			message: `Build dependencies of ${ options.project } too?`,
+			initial: true,
 		},
 	] );
 	return {
@@ -388,7 +452,7 @@ async function promptForDeps( options ) {
  * Set up the environment for building for mirrors.
  *
  * @param {object} argv - Arguments. Will be modified in place.
- * @returns {boolean} Whether to proceed.
+ * @return {boolean} Whether to proceed.
  */
 async function setupForMirroring( argv ) {
 	if ( ! argv.forMirrors ) {
@@ -397,18 +461,21 @@ async function setupForMirroring( argv ) {
 
 	if ( ! process.env.CI || process.env.CI === '' ) {
 		try {
-			await execa( 'git', [ 'diff', '--quiet' ], { stdio: 'inherit', cwd: process.cwd() } );
+			await execa( 'git', [ 'diff', '--quiet' ], {
+				stdio: [ 'ignore', 'inherit', 'inherit' ],
+				buffer: false,
+				cwd: process.cwd(),
+			} );
 		} catch {
 			console.error( chalk.bgRed( 'The working tree has unstaged changes!' ) );
 			console.error( 'Please stage, merge, or revert them before trying to use --for-mirrors.' );
 			return false;
 		}
-		const answers = await inquirer.prompt( [
+		const answers = await enquirer.prompt( [
 			{
 				type: 'confirm',
 				name: 'ok',
 				message: `Build with --for-mirrors is intended for a CI environment and will leave changes in the working tree. Proceed anyway?`,
-				default: false,
 			},
 		] );
 		if ( ! answers.ok ) {
@@ -430,6 +497,7 @@ async function setupForMirroring( argv ) {
 	if ( ! stats.isDirectory() ) {
 		throw new Error( `${ argv.forMirrors } is not a directory` );
 	}
+	// eslint-disable-next-line no-bitwise
 	await fs.access( argv.forMirrors, fsconstants.R_OK | fsconstants.W_OK | fsconstants.X_OK );
 	if ( ( await fs.readdir( argv.forMirrors ).then( a => a.length ) ) > 0 ) {
 		throw new Error( `Directory ${ argv.forMirrors } is not empty` );
@@ -447,7 +515,7 @@ async function setupForMirroring( argv ) {
  * Test if a given path exists.
  *
  * @param {string|Buffer|URL} path - Path to check.
- * @returns {boolean} Whether it exists.
+ * @return {boolean} Whether it exists.
  */
 async function fsExists( path ) {
 	return fs.access( path ).then(
@@ -459,7 +527,7 @@ async function fsExists( path ) {
 /**
  * Copy directories recursively.
  *
- * @param {string} src - Directory to copy from.
+ * @param {string} src  - Directory to copy from.
  * @param {string} dest - Directory to copy to.
  */
 async function copyDirectory( src, dest ) {
@@ -480,8 +548,8 @@ async function copyDirectory( src, dest ) {
  *
  * Writes to a temporary file then renames, on the assumption that the latter is an atomic operation.
  *
- * @param {string} file - File name.
- * @param {string} data - Contents to write.
+ * @param {string} file    - File name.
+ * @param {string} data    - Contents to write.
  * @param {object} options - Options.
  */
 async function writeFileAtomic( file, data, options = {} ) {
@@ -502,7 +570,7 @@ async function writeFileAtomic( file, data, options = {} ) {
  *
  * Copies to a temporary file then renames, on the assumption that the latter is an atomic operation.
  *
- * @param {string} src - Source file.
+ * @param {string} src  - Source file.
  * @param {string} dest - Dest file.
  */
 async function copyFileAtomic( src, dest ) {
@@ -519,6 +587,27 @@ async function copyFileAtomic( src, dest ) {
 }
 
 /**
+ * Check for filename collisions.
+ *
+ * @param {string} basedir - Base directory.
+ * @return {string[]} Colliding file names.
+ */
+async function checkCollisions( basedir ) {
+	const files = await fs.readdir( basedir, { recursive: true } );
+	const collisions = new Set();
+	const compare = Intl.Collator( 'und', { sensitivity: 'accent' } ).compare;
+	let prev = null;
+	for ( const file of files.sort( compare ) ) {
+		if ( prev !== null && compare( file, prev ) === 0 ) {
+			collisions.add( prev );
+			collisions.add( file );
+		}
+		prev = file;
+	}
+	return [ ...collisions ];
+}
+
+/**
  * Build a project.
  *
  * @param {object} t - Task object.
@@ -526,92 +615,13 @@ async function copyFileAtomic( src, dest ) {
 async function buildProject( t ) {
 	await t.setStatus( 'installing' );
 
-	const composerJson = JSON.parse(
+	let composerJson = JSON.parse(
 		await fs.readFile( `${ t.cwd }/composer.json`, { encoding: 'utf8' } )
 	);
 
-	if ( t.argv.forMirrors ) {
-		// Mirroring needs to munge the project's composer.json to point to the built files..
-		const idx = composerJson.repositories?.findIndex( r => r.options?.monorepo );
-		if ( typeof idx === 'number' && idx >= 0 ) {
-			// Extract only the versions this project actually depends on, in a consistent order,
-			// to avoid vendor/composer/installed.json changing randomly every build.
-			const deps = new Set( t.ctx.dependencies.get( t.project ) );
-			for ( const dep of deps ) {
-				for ( const d of t.ctx.dependencies.get( dep ) ) {
-					deps.add( d );
-				}
-			}
-			const versions = {};
-			for ( const dep of [ ...deps ].sort() ) {
-				if ( t.ctx.versions[ dep ] ) {
-					versions[ t.ctx.versions[ dep ].name ] = t.ctx.versions[ dep ].version;
-				}
-			}
-
-			if ( Object.keys( versions ).length > 0 ) {
-				t.output( `\n=== Munging composer.json to fetch built packages ===\n\n` );
-				composerJson.repositories.splice( idx, 0, {
-					type: 'path',
-					url: t.argv.forMirrors + '/*/*',
-					options: {
-						monorepo: true,
-						versions,
-					},
-				} );
-				await writeFileAtomic(
-					`${ t.cwd }/composer.json`,
-					JSON.stringify( composerJson, null, '\t' ) + '\n',
-					{ encoding: 'utf8' }
-				);
-				// Update composer.lock too, if any.
-				if ( await fsExists( `${ t.cwd }/composer.lock` ) ) {
-					await t.execa( 'composer', [ 'update', '--no-install', ...Object.keys( versions ) ], {
-						cwd: t.cwd,
-					} );
-				}
-			}
-		}
-		t.output( `\n=== Building ===\n\n` );
-	}
-
-	// Install.
-	await t.execa( 'composer', await getInstallArgs( t.project, 'composer', t.argv ), {
-		cwd: t.cwd,
-	} );
-
-	await t.setStatus( 'building' );
-	// Determine the composer script to run.
-	const scripts = t.argv.production
-		? [ 'build-production', 'build-development' ]
-		: [ 'build-development', 'build-production' ];
-	let script = null;
-	for ( const s of scripts ) {
-		if ( composerJson.scripts?.[ s ] ) {
-			script = s;
-			break;
-		}
-	}
-
-	// Build.
-	if ( script === null ) {
-		await t.output( `No build scripts are defined for ${ t.project }\n` );
-	} else {
-		await t.execa( 'composer', [ 'run', '--timeout=0', script ], { cwd: t.cwd } );
-	}
-
-	// If we're not mirroring, the build is done. Mirroring has a bunch of stuff to do yet.
-	if ( ! t.argv.forMirrors ) {
-		return;
-	}
-
 	// Update the changelog, if applicable.
-	if (
-		t.project === 'packages/changelogger' ||
-		composerJson.require?.[ 'automattic/jetpack-changelogger' ] ||
-		composerJson[ 'require-dev' ]?.[ 'automattic/jetpack-changelogger' ]
-	) {
-		const changelogger = npath.resolve( 'projects/packages/changelogger/bin/changelogger' );
+	if ( t.argv.forMirrors ) {
+		const changelogger = npath.resolve( 'projects/packages/changelogger/vendor/bin/changelogger' );
 		const changesDir = npath.resolve(
 			t.cwd,
 			composerJson.extra?.changelogger?.[ 'changes-dir' ] || 'changelog'
@@ -628,9 +638,10 @@ async function buildProject( t ) {
 				const m = (
 					await t.execa( changelogger, [ 'version', 'current', '--default-first-version' ], {
 						cwd: t.cwd,
-						stdio: [ null, 'pipe', null ],
+						stdio: [ 'ignore', 'pipe', 'inherit' ],
 					} )
-				 ).stdout.match( /^.*-a\.(\d+)$/ );
+				).stdout.match( /^.*-a\.(\d+)$/ );
+				// eslint-disable-next-line no-bitwise
 				prerelease = 'a.' + ( m ? ( parseInt( m[ 1 ] ) & ~1 ) + 2 : 0 );
 			}
 			await t.execa(
@@ -645,24 +656,143 @@ async function buildProject( t ) {
 					`--yes`,
 					`-vvv`,
 				],
-				{ cwd: t.cwd }
+				{ cwd: t.cwd, stdio: [ 'ignore', 'inherit', 'inherit' ], buffer: false }
 			);
 
-			t.output( '\n=== Updating $$next-version$$ ===\n\n' );
+			t.output( '\n=== Updating version numbers ===\n\n' );
 			const ver = (
 				await t.execa( changelogger, [ 'version', 'current' ], {
 					cwd: t.cwd,
-					stdio: [ null, 'pipe', null ],
+					stdio: [ 'ignore', 'pipe', 'inherit' ],
 				} )
-			 ).stdout;
-			await t.execa( npath.resolve( 'tools/replace-next-version-tag.sh' ), [
-				'-v',
-				t.project,
-				ver,
-			] );
+			).stdout;
+			await t.execa( npath.resolve( 'tools/project-version.sh' ), [ '-v', '-u', ver, t.project ], {
+				stdio: [ 'ignore', 'inherit', 'inherit' ],
+				buffer: false,
+			} );
+			await t.execa(
+				npath.resolve( 'tools/replace-next-version-tag.sh' ),
+				[ '-v', t.project, ver ],
+				{ stdio: [ 'ignore', 'inherit', 'inherit' ], buffer: false }
+			);
+
+			// Reload composer.json after the above may have changed it.
+			composerJson = JSON.parse(
+				await fs.readFile( `${ t.cwd }/composer.json`, { encoding: 'utf8' } )
+			);
 		} else {
 			t.output( 'Not updating changelog, there are no change files\n' );
 		}
+	}
+
+	// Determine the composer script to run.
+	const scripts = t.argv.production
+		? [ 'build-production', 'build-development' ]
+		: [ 'build-development', 'build-production' ];
+	let script = null;
+	for ( const s of scripts ) {
+		if ( composerJson.scripts?.[ s ] ) {
+			script = s;
+			if (
+				t.argv.forMirrors &&
+				composerJson.scripts[ script ] === "echo 'Add your build step to composer.json, please!'"
+			) {
+				script = null;
+			}
+			break;
+		}
+	}
+
+	// We don't need to `composer install` if it's a CI build of a non-plugin with no build script. Except for changelogger.
+	const skipInstall = t.argv.forMirrors && script === null && ! t.project.startsWith( 'plugins/' );
+
+	if ( t.argv.forMirrors ) {
+		// Mirroring needs to munge the project's composer.json to point to the built files..
+		const idx = composerJson.repositories?.findIndex( r => r.options?.monorepo );
+		if ( typeof idx === 'number' && idx >= 0 ) {
+			// Extract only the versions this project actually depends on, in a consistent order,
+			// to avoid vendor/composer/installed.json changing randomly every build.
+			const deps = new Set( t.ctx.dependencies.get( t.project ) );
+			for ( const dep of deps ) {
+				for ( const d of t.ctx.dependencies.get( dep ) ) {
+					deps.add( d );
+				}
+			}
+			const versions = {};
+			for ( const dep of [ ...deps ].sort() ) {
+				if ( t.ctx.versions[ dep ] ) {
+					versions[ t.ctx.versions[ dep ].name ] = t.ctx.versions[ dep ].runversion;
+				}
+			}
+
+			if (
+				Object.keys( versions ).length > 0 ||
+				composerJson.extra?.dependencies?.[ 'test-only' ]?.length > 0
+			) {
+				t.output(
+					`\n=== Munging composer.json to fetch built packages and/or remove test-only deps ===\n\n`
+				);
+				if ( Object.keys( versions ).length > 0 ) {
+					composerJson.repositories.splice( idx, 0, {
+						type: 'path',
+						url: t.argv.forMirrors + '/*/*',
+						options: {
+							monorepo: true,
+							versions,
+						},
+					} );
+				}
+				if ( composerJson.extra?.dependencies?.[ 'test-only' ]?.length > 0 ) {
+					for ( const dep of composerJson.extra.dependencies[ 'test-only' ] ) {
+						const depName = JSON.parse(
+							await fs.readFile( `projects/${ dep }/composer.json`, { encoding: 'utf8' } )
+						).name;
+						delete composerJson[ 'require-dev' ]?.[ depName ];
+					}
+				}
+				await writeFileAtomic(
+					`${ t.cwd }/composer.json`,
+					JSON.stringify( composerJson, null, '\t' ) + '\n',
+					{ encoding: 'utf8' }
+				);
+				// Update composer.lock too, if any and if we're installing.
+				if ( ! skipInstall && ( await fsExists( `${ t.cwd }/composer.lock` ) ) ) {
+					await t.execa( 'composer', [ 'update', '--no-install', ...Object.keys( versions ) ], {
+						cwd: t.cwd,
+						stdio: [ 'ignore', 'inherit', 'inherit' ],
+						buffer: false,
+					} );
+				}
+			}
+		}
+	}
+
+	// Install. Unless we skip it.
+	if ( skipInstall ) {
+		await t.output( `Skipping composer install for CI build of non-plugin with no build script\n` );
+	} else {
+		await t.execa( 'composer', await getInstallArgs( t.project, 'composer', t.argv ), {
+			cwd: t.cwd,
+			stdio: [ 'ignore', 'inherit', 'inherit' ],
+			buffer: false,
+		} );
+	}
+
+	// Build.
+	await t.setStatus( 'building' );
+	if ( script === null ) {
+		await t.output( `No build scripts are defined for ${ t.project }\n` );
+	} else {
+		await t.execa( 'composer', [ 'run', '--timeout=0', script ], {
+			cwd: t.cwd,
+			stdio: [ 'ignore', 'inherit', 'inherit' ],
+			buffer: false,
+		} );
+	}
+
+	// If we're not mirroring, the build is done. Mirroring has a bunch of stuff to do yet.
+	if ( ! t.argv.forMirrors ) {
+		return;
 	}
 
 	// Read mirror repo from composer.json.
@@ -681,6 +811,7 @@ async function buildProject( t ) {
 
 	// Copy standard .github.
 	await copyDirectory( '.github/files/mirror-.github', npath.join( buildDir, '.github' ) );
+	await fs.unlink( npath.join( buildDir, '.github/.gitkeep' ) );
 
 	// Copy autotagger, autorelease, wp-svn-autopublish, and/or npmjs-autopublisher if enabled.
 	if ( composerJson.extra?.autotagger ) {
@@ -697,6 +828,11 @@ async function buildProject( t ) {
 			'.github/files/gh-npmjs-autopublisher',
 			npath.join( buildDir, '.github' )
 		);
+	}
+
+	// Copy e2e tests workflow if tests exist
+	if ( await fsExists( `${ t.cwd }/tests/e2e` ) ) {
+		await copyDirectory( '.github/files/gh-e2e', npath.join( buildDir, '.github' ) );
 	}
 
 	// Copy license.
@@ -769,6 +905,26 @@ async function buildProject( t ) {
 		if ( composerJson.repositories.length === 0 ) {
 			delete composerJson.repositories;
 		}
+
+		// Update '@dev' dependency version numbers in composer.json.
+		const composerDepTyes = [ 'require', 'require-dev' ];
+		for ( const key of composerDepTyes ) {
+			if ( composerJson[ key ] ) {
+				for ( const [ pkg, ver ] of Object.entries( composerJson[ key ] ) ) {
+					if ( ver === '@dev' ) {
+						for ( const ctxPkg of Object.values( t.ctx.versions ) ) {
+							if ( ctxPkg.name === pkg ) {
+								let massagedVer = ctxPkg.version;
+								massagedVer = `^${ massagedVer }`;
+								composerJson[ key ][ pkg ] = massagedVer;
+								break;
+							}
+						}
+					}
+				}
+			}
+		}
+
 		await writeFileAtomic(
 			`${ buildDir }/composer.json`,
 			JSON.stringify( composerJson, null, '\t' ) + '\n',
@@ -776,14 +932,12 @@ async function buildProject( t ) {
 		);
 	}
 
-	// Remove engines and workspace refs from package.json.
+	// Remove workspace refs and jetpack:src from package.json.
+	let packageJson;
 	if ( await fsExists( `${ buildDir }/package.json` ) ) {
-		const packageJson = JSON.parse(
+		packageJson = JSON.parse(
 			await fs.readFile( `${ buildDir }/package.json`, { encoding: 'utf8' } )
 		);
-
-		packageJson.engines = packageJson.publish_engines; // May be undefined, that's ok.
-		delete packageJson.publish_engines;
 
 		const depTypes = [
 			'dependencies',
@@ -794,13 +948,40 @@ async function buildProject( t ) {
 		for ( const key of depTypes ) {
 			if ( packageJson[ key ] ) {
 				for ( const [ pkg, ver ] of Object.entries( packageJson[ key ] ) ) {
-					if ( ver.startsWith( 'workspace:* || ' ) ) {
-						packageJson[ key ][ pkg ] = ver.substring( 15 );
-					} else if ( ver === 'workspace:*' ) {
-						delete packageJson[ key ][ pkg ];
+					if ( ver === 'workspace:*' ) {
+						for ( const ctxPkg of Object.values( t.ctx.versions ) ) {
+							if ( ctxPkg.jsName === pkg ) {
+								let massagedVer = ctxPkg.version;
+								massagedVer = `^${ massagedVer }`;
+								packageJson[ key ][ pkg ] = massagedVer;
+								break;
+							}
+						}
 					}
 				}
 			}
+		}
+
+		if ( packageJson.exports ) {
+			const filterJetpackSrc = obj => {
+				if ( typeof obj !== 'object' ) {
+					return obj;
+				}
+				let ret = { ...obj };
+				delete ret[ 'jetpack:src' ];
+				const keys = Object.keys( ret );
+				if ( keys.length === 0 ) {
+					ret = undefined;
+				} else if ( keys.length === 1 && keys[ 0 ] === 'default' ) {
+					ret = filterJetpackSrc( ret.default );
+				} else {
+					for ( const key of keys ) {
+						ret[ key ] = filterJetpackSrc( ret[ key ] );
+					}
+				}
+				return ret;
+			};
+			packageJson.exports = filterJetpackSrc( packageJson.exports );
 		}
 
 		await writeFileAtomic(
@@ -812,7 +993,8 @@ async function buildProject( t ) {
 
 	// If npmjs-autopublish is active, default to ignoring .github and composer.json (and not ignoring anything else) in the publish.
 	if ( composerJson.extra?.[ 'npmjs-autopublish' ] ) {
-		let ignore = '# Automatically generated ignore rules.\n/.github/\n/composer.json\n';
+		let ignore =
+			'# Automatically generated ignore rules.\n/.gitattributes\n/.github/\n/composer.json\n';
 		if ( await fsExists( `${ buildDir }/.npmignore` ) ) {
 			ignore +=
 				'\n# Package ignore file.\n' +
@@ -821,83 +1003,94 @@ async function buildProject( t ) {
 		await fs.writeFile( `${ buildDir }/.npmignore`, ignore, { encoding: 'utf8' } );
 	}
 
-	// If autorelease is active, flag .git files to be excluded from the archive.
-	if ( composerJson.extra?.autorelease ) {
+	// Flag .git* files to be excluded from the archive, and strip any production-exclude and production-include attributes.
+	{
 		let rules = '# Automatically generated rules.\n/.git*\texport-ignore\n';
 		if ( await fsExists( `${ buildDir }/.gitattributes` ) ) {
-			rules +=
-				'\n# Package attributes file.\n' +
-				( await fs.readFile( `${ buildDir }/.gitattributes`, { encoding: 'utf8' } ) );
+			const pkgrules = ( await fs.readFile( `${ buildDir }/.gitattributes`, { encoding: 'utf8' } ) )
+				.split( /(?<=\n)/ )
+				.reduce(
+					( [ kept, pending ], line ) => {
+						if ( /^\s*$|^#/.test( line ) ) {
+							pending += line;
+							return [ kept, pending ];
+						}
+						if ( ! /\sproduction-(?:include|exclude)\s*$/.test( line ) ) {
+							kept += pending + line;
+						}
+						return [ kept, '' ];
+					},
+					[ '', '' ]
+				)[ 0 ]
+				.replace( /\n\n+|\n*$/g, '\n' );
+			if ( ! pkgrules.match( /^\s*$/ ) ) {
+				rules += '\n# Package attributes file.\n' + pkgrules;
+			}
 		}
 		await fs.writeFile( `${ buildDir }/.gitattributes`, rules, { encoding: 'utf8' } );
+	}
+
+	// Check directory for filenames that differ only in case, as this will likely break.
+	const collisions = await checkCollisions( buildDir );
+	if ( collisions.length > 0 ) {
+		throw new Error(
+			'Build output constains files that differ only in case. This will be a compatibility issue.\n- ' +
+				collisions.join( '\n- ' )
+		);
+	}
+
+	// Get the project version number from the changelog.md file.
+	let projectVersionNumber = '',
+		projectRunVersionNumber;
+	const changelogFileName = composerJson.extra?.changelogger?.changelog || 'CHANGELOG.md';
+	const rl = rlcreateInterface( {
+		input: createReadStream( `${ t.cwd }/${ changelogFileName }`, {
+			encoding: 'utf8',
+		} ),
+		crlfDelay: Infinity,
+	} );
+
+	rl.on( 'line', line => {
+		const match = line.match( /^## +(\[?[^\] ]+\]?)/ );
+		if ( match && match[ 1 ] ) {
+			projectRunVersionNumber = projectVersionNumber = match[ 1 ].replace( /[[\]]/g, '' );
+			rl.close();
+			rl.removeAllListeners();
+		}
+	} );
+	await once( rl, 'close' );
+
+	if ( ! projectVersionNumber ) {
+		const dir = npath.relative(
+			process.cwd(),
+			npath.resolve( t.cwd, composerJson.extra?.changelogger?.[ 'changes-dir' ] || 'changelog' )
+		);
+		throw new Error(
+			`\nFailed to fetch latest version number from ${ changelogFileName }\n\nIf this is the initial commit of a new project, be sure there's a change entry in ${ dir }/\n`
+		);
+	}
+
+	if ( t.project.startsWith( 'packages/' ) && projectVersionNumber.endsWith( 'alpha' ) ) {
+		const ts = (
+			await t.execa( 'git', [ 'log', '-1', '--format=%ct', '.' ], {
+				cwd: t.cwd,
+				stdio: [ 'ignore', 'pipe', 'inherit' ],
+			} )
+		).stdout;
+		if ( ts.match( /^\d+$/ ) ) {
+			projectRunVersionNumber += '.' + ts;
+		}
 	}
 
 	// Build succeeded! Now do some bookkeeping.
 	t.ctx.versions[ t.project ] = {
 		name: composerJson.name,
-		version: composerJson.extra?.[ 'branch-alias' ]?.[ 'dev-trunk' ] || 'dev-trunk',
+		jsName: packageJson?.name,
+		version: projectVersionNumber,
+		runversion: projectRunVersionNumber,
 	};
 	await t.ctx.mirrorMutex( async () => {
 		// prettier-ignore
 		await fs.appendFile( `${ t.argv.forMirrors }/mirrors.txt`, `${ gitSlug }\n`, { encoding: 'utf8' } );
 	} );
-}
-
-/**
- * List project files to be mirrored.
- *
- * @param {string} src - Source directory.
- * @param {Function} spawn - `execa` spawn function.
- * @yields {string} File name.
- */
-async function* listProjectFiles( src, spawn ) {
-	// Lots of process plumbing going on here.
-	//  {
-	//    ls-files
-	//    ls-files --ignored | check-attr production-include | filter
-	//  } | check-attr production-exclude | filter
-
-	const lsFiles = spawn( 'git', [ '-c', 'core.quotepath=off', 'ls-files' ], {
-		cwd: src,
-		stdio: [ 'ignore', 'pipe', null ],
-	} );
-	const lsIgnoredFiles = spawn(
-		'git',
-		[ '-c', 'core.quotepath=off', 'ls-files', '--others', '--ignored', '--exclude-standard' ],
-		{ cwd: src, stdio: [ 'ignore', 'pipe', null ] }
-	);
-	const checkAttrInclude = spawn(
-		'git',
-		[ '-c', 'core.quotepath=off', 'check-attr', '--stdin', 'production-include' ],
-		{ cwd: src, stdio: [ lsIgnoredFiles.stdout, 'pipe', null ] }
-	);
-	const checkAttrExclude = spawn(
-		'git',
-		[ '-c', 'core.quotepath=off', 'check-attr', '--stdin', 'production-exclude' ],
-		{ cwd: src, stdio: [ 'pipe', 'pipe', null ] }
-	);
-	const filterProductionInclude = new FilterStream(
-		s => s.match( /^(.*): production-include: (?!unspecified|unset)/ )?.[ 1 ]
-	);
-	const filterProductionExclude = new FilterStream(
-		s => s.match( /^(.*): production-exclude: (?:unspecified|unset)/ )?.[ 1 ]
-	);
-
-	// Pipe lsFiles to checkAttrExclude first, then lsIgnoredFiles+checkAttrInclude+filterProductionInclude after that.
-	lsFiles.stdout.on( 'end', () => {
-		// prettier-ignore
-		checkAttrInclude.stdout
-			.pipe( filterProductionInclude )
-			.pipe( checkAttrExclude.stdin, { end: true } );
-	} );
-	lsFiles.stdout.pipe( checkAttrExclude.stdin, { end: false } );
-
-	const rl = readline.createInterface( {
-		input: checkAttrExclude.stdout.pipe( filterProductionExclude ),
-		crlfDelay: Infinity,
-	} );
-
-	yield* rl;
-
-	await Promise.all( [ lsFiles, lsIgnoredFiles, checkAttrInclude, checkAttrExclude ] );
 }

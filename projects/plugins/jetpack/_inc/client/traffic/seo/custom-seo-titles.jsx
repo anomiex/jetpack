@@ -1,8 +1,8 @@
 import { sprintf, __ } from '@wordpress/i18n';
+import { createRef, useState, useCallback } from 'react';
 import Button from 'components/button';
 import { FormLabel } from 'components/forms';
 import TextInput from 'components/text-input';
-import React, { useState, useCallback } from 'react';
 
 // For context on the seo-tools module's custom SEO title formats, refer to:
 // projects/plugins/jetpack/modules/seo-tools/jetpack-seo-titles.php
@@ -37,8 +37,8 @@ export const customSeoTitleFormats = {
  * for storage into the `advanced_seo_title_formats` option.
  *
  * @param {string} inputValue - The value of an input for one of the custom SEO title inputs/pageTypes.
- * @param {string} pageType - Type of page the title is being customized for (e.g front_page, archives)
- * @returns {Array} An array of token/string objects and their values.
+ * @param {string} pageType   - Type of page the title is being customized for (e.g front_page, archives)
+ * @return {Array} An array of token/string objects and their values.
  */
 export const stringToTokenizedArray = ( inputValue, pageType ) => {
 	const inputArray = inputValue.split(
@@ -46,18 +46,14 @@ export const stringToTokenizedArray = ( inputValue, pageType ) => {
 	);
 
 	return inputArray
-		.filter( value => {
-			if ( value ) {
-				return value;
-			}
-		} )
+		.filter( value => value )
 		.map( value => {
 			let matchedToken = null;
-			Object.keys( customSeoTitleFormats.insertableTokens ).map( token => {
+			for ( const token of Object.keys( customSeoTitleFormats.insertableTokens ) ) {
 				if ( value === `[${ token }]` ) {
 					matchedToken = token;
 				}
-			} );
+			}
 
 			if (
 				matchedToken &&
@@ -81,7 +77,7 @@ export const stringToTokenizedArray = ( inputValue, pageType ) => {
  * Objects with type of 'token' have their values enclosed by '[]'
  *
  * @param {Array} arr - An array of token/string objects and their values.
- * @returns {string} A concatenated string of values from the token/string objects supplied.
+ * @return {string} A concatenated string of values from the token/string objects supplied.
  */
 export const tokenizedArrayToString = arr => {
 	if ( Array.isArray( arr ) ) {
@@ -141,7 +137,7 @@ const SEOTokenButton = ( {
 		inputRef.focus();
 
 		const textToInsert = `[${ token }]`;
-		const cursorPos = inputRef.refs.textField.selectionStart;
+		const cursorPos = inputRef.textFieldRef.current.selectionStart;
 		const strBeforeCursor = inputRef.props.value.substring( 0, cursorPos );
 		const strAfterCursor = inputRef.props.value.substring( cursorPos, inputRef.props.value.length );
 		const newString = strBeforeCursor + textToInsert + strAfterCursor;
@@ -151,6 +147,7 @@ const SEOTokenButton = ( {
 
 	return (
 		<Button
+			rna
 			className="jp-seo-custom-titles-input-button"
 			compact
 			onClick={ handleTokenButtonClick }
@@ -174,6 +171,7 @@ const SEOTokenButtonList = ( pageType, customSeoTitleInputRef, handleCustomSeoTi
 				customSeoTitleInputRef={ customSeoTitleInputRef }
 				handleCustomSeoTitleInput={ handleCustomSeoTitleInput }
 				token={ token }
+				key={ token }
 			/>
 		);
 	} );
@@ -187,10 +185,7 @@ const CustomSeoTitleInput = ( {
 	siteData,
 } ) => {
 	return (
-		<div
-			className={ `jp-seo-custom-titles-input-container-${ pageType.name }` }
-			key={ pageType.name }
-		>
+		<div className={ `jp-seo-custom-titles-input-container-${ pageType.name }` }>
 			<div className={ `jp-seo-custom-titles-input-controls` }>
 				<FormLabel
 					className={ `jp-seo-custom-titles-input-label` }
@@ -223,15 +218,15 @@ const CustomSeoTitleInput = ( {
  * Renders the `advanced_seo_title_formats` inputs.
  *
  * @param {object} props - Parent props.
- * @returns {object} React component.
+ * @return {object} React component.
  */
 const CustomSeoTitles = props => {
 	const [ customSeoTitleInputRefs ] = useState( {
-		front_page: React.createRef(),
-		posts: React.createRef(),
-		pages: React.createRef(),
-		groups: React.createRef(),
-		archives: React.createRef(),
+		front_page: createRef(),
+		posts: createRef(),
+		pages: createRef(),
+		groups: createRef(),
+		archives: createRef(),
 	} );
 
 	const customSeoTitlesAsStrings = customSeoTitleFormats.pageTypes.reduce( ( acc, pageType ) => {
@@ -270,6 +265,7 @@ const CustomSeoTitles = props => {
 						handleCustomSeoTitleInput={ handleCustomSeoTitleInput }
 						customSeoTitleInputRef={ customSeoTitleInputRefs[ pageType.name ] }
 						siteData={ props.siteData }
+						key={ pageType.name }
 					/>
 				);
 			} ) }

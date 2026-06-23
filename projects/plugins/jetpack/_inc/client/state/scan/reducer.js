@@ -1,4 +1,3 @@
-import { assign, get } from 'lodash';
 import { combineReducers } from 'redux';
 import {
 	SCAN_STATUS_FETCH,
@@ -10,7 +9,7 @@ import {
 export const data = ( state = {}, action ) => {
 	switch ( action.type ) {
 		case SCAN_STATUS_FETCH_RECEIVE:
-			return assign( {}, state, { status: action.status } );
+			return Object.assign( {}, state, { status: action.status } );
 		case MOCK_SWITCH_SCAN_STATE:
 			return {
 				status: {
@@ -30,12 +29,12 @@ export const initialRequestsState = {
 export const requests = ( state = initialRequestsState, action ) => {
 	switch ( action.type ) {
 		case SCAN_STATUS_FETCH:
-			return assign( {}, state, {
+			return Object.assign( {}, state, {
 				isFetchingScanStatus: true,
 			} );
 		case SCAN_STATUS_FETCH_RECEIVE:
 		case SCAN_STATUS_FETCH_FAIL:
-			return assign( {}, state, {
+			return Object.assign( {}, state, {
 				isFetchingScanStatus: false,
 			} );
 		default:
@@ -51,8 +50,8 @@ export const reducer = combineReducers( {
 /**
  * Returns true if currently requesting scan. status. Otherwise false.
  *
- * @param  {object}  state - Global state tree
- * @returns {boolean}      Whether rewind status is being requested
+ * @param {object} state - Global state tree
+ * @return {boolean}      Whether rewind status is being requested
  */
 export function isFetchingScanStatus( state ) {
 	return !! state.jetpack.scan.requests.isFetchingScanStatus;
@@ -61,9 +60,9 @@ export function isFetchingScanStatus( state ) {
 /**
  * Returns the current status of scan.
  *
- * @param  {object}  state - Global state tree
- * @returns {object}  Features
+ * @param {object} state - Global state tree
+ * @return {object}  Features
  */
 export function getScanStatus( state ) {
-	return get( state.jetpack.scan, [ 'data', 'status' ], {} );
+	return state.jetpack.scan?.data?.status ?? {};
 }

@@ -1,14 +1,14 @@
 import { Button } from '@wordpress/components';
 import { __ } from '@wordpress/i18n';
 import PropTypes from 'prop-types';
-import React, { useCallback, useState } from 'react';
+import { Fragment, useCallback, useState } from 'react';
 import SurveyChoice from './survey-choice';
 
 /**
  * Handles showing the disconnect survey.
  *
  * @param {object} props - The component props.
- * @returns {React.Component} - DisconnectSurvey component.
+ * @return {import('react').Component} - DisconnectSurvey component.
  */
 const DisconnectSurvey = props => {
 	const { onSubmit, isSubmittingFeedback } = props;
@@ -18,23 +18,26 @@ const DisconnectSurvey = props => {
 	const options = [
 		{
 			id: 'troubleshooting',
-			answerText: __( "Troubleshooting - I'll be reconnecting afterwards.", 'jetpack' ),
+			answerText: __(
+				"Troubleshooting - I'll be reconnecting afterwards.",
+				'jetpack-connection-js'
+			),
 		},
 		{
 			id: 'not-working',
-			answerText: __( "I can't get it to work.", 'jetpack' ),
+			answerText: __( "I can't get it to work.", 'jetpack-connection-js' ),
 		},
 		{
 			id: 'slowed-down-site',
-			answerText: __( 'It slowed down my site.', 'jetpack' ),
+			answerText: __( 'It slowed down my site.', 'jetpack-connection-js' ),
 		},
 		{
 			id: 'buggy',
-			answerText: __( "It's buggy.", 'jetpack' ),
+			answerText: __( "It's buggy.", 'jetpack-connection-js' ),
 		},
 		{
 			id: 'what-does-it-do',
-			answerText: __( "I don't know what it does.", 'jetpack' ),
+			answerText: __( "I don't know what it does.", 'jetpack-connection-js' ),
 		},
 	];
 
@@ -68,8 +71,8 @@ const DisconnectSurvey = props => {
 	/**
 	 * Checks to see if an option is the currently selected option, returns a css class name if it matches.
 	 *
-	 * @param {string} optionId   - ID of the option to check for.
-	 * @returns {string} - The "selected" class if this option is currently selected.
+	 * @param {string} optionId - ID of the option to check for.
+	 * @return {string} - The "selected" class if this option is currently selected.
 	 */
 	const selectedClass = optionId => {
 		if ( optionId === selectedAnswer ) {
@@ -83,7 +86,7 @@ const DisconnectSurvey = props => {
 	 * Event handler for keyboard events on the answer blocks.
 	 *
 	 * @param {string} answerId - The slug of the answer that has been selected.
-	 * @param {object} e - Keydown event.
+	 * @param {object} e        - Keydown event.
 	 */
 	const handleAnswerKeyDown = useCallback(
 		( answerId, e ) => {
@@ -102,12 +105,13 @@ const DisconnectSurvey = props => {
 	/**
 	 * Show all the survey options from the options array.
 	 *
-	 * @returns {React.ElementType []} - Mapped array of rendered survey options.
+	 * @return {import('react').ElementType []} - Mapped array of rendered survey options.
 	 */
 	const renderOptions = () => {
 		return options.map( option => {
 			return (
 				<SurveyChoice
+					key={ option.id }
 					id={ option.id }
 					onClick={ setSelectedAnswer }
 					onKeyDown={ handleAnswerKeyDown }
@@ -123,20 +127,21 @@ const DisconnectSurvey = props => {
 	 * Show the custom input survey option.
 	 * Contains an input field for a custom response.
 	 *
-	 * @returns {React.ElementType} - The custom survey option with an input field.
+	 * @return {import('react').ElementType} - The custom survey option with an input field.
 	 */
 	const renderCustomOption = () => {
 		return (
 			<SurveyChoice
 				id={ customOption.id }
+				key={ customOption.id }
 				onClick={ setSelectedAnswer }
 				onKeyDown={ handleAnswerKeyDown }
 				className={ 'card jp-connect__disconnect-survey-card ' + selectedClass( customOption.id ) }
 			>
 				<p className="jp-connect__disconnect-survey-card__answer">
-					{ __( 'Other:', 'jetpack' ) }{ ' ' }
+					{ __( 'Other:', 'jetpack-connection-js' ) }{ ' ' }
 					<input
-						placeholder={ __( 'share your experience', 'jetpack' ) }
+						placeholder={ __( 'share your experience', 'jetpack-connection-js' ) }
 						className="jp-connect__disconnect-survey-card__input"
 						type="text"
 						value={ customResponse }
@@ -149,7 +154,7 @@ const DisconnectSurvey = props => {
 	};
 
 	return (
-		<React.Fragment>
+		<Fragment>
 			<div className="jp-connection__disconnect-dialog__survey">
 				{ renderOptions() }
 				{ renderCustomOption() }
@@ -162,11 +167,15 @@ const DisconnectSurvey = props => {
 					className="jp-connection__disconnect-dialog__btn-back-to-wp"
 				>
 					{ isSubmittingFeedback
-						? __( 'Submitting…', 'jetpack' )
-						: __( 'Submit Feedback', 'jetpack', /* dummy arg to avoid bad minification */ 0 ) }
+						? __( 'Submitting…', 'jetpack-connection-js' )
+						: __(
+								'Submit Feedback',
+								'jetpack-connection-js',
+								/* dummy arg to avoid bad minification */ 0
+						  ) }
 				</Button>
 			</p>
-		</React.Fragment>
+		</Fragment>
 	);
 };
 

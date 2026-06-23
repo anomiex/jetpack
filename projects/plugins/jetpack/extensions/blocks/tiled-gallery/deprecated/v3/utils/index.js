@@ -1,5 +1,4 @@
 import { isBlobURL } from '@wordpress/blob';
-import { range } from 'lodash';
 import photon from 'photon';
 import { PHOTON_MAX_RESIZE } from '../constants';
 
@@ -10,14 +9,14 @@ export function isSquareishLayout( layout ) {
 /**
  * Build src and srcSet properties which can be used on an <img />
  *
- * @param  {Object} img        - Image
- * @param  {number} img.height - Image height
- * @param  {string} img.url    - Image URL
- * @param  {number} img.width  - Image width
- * @param   {Object} galleryAtts             - Gallery attributes relevant for image optimization.
- * @param   {string} galleryAtts.layoutStyle - Gallery layout. 'rectangular', 'circle', etc.
- * @param   {number} galleryAtts.columns     - Gallery columns. Not applicable for all layouts.
- * @returns {Object} - Returns an object. If possible, the object will include `src` and `srcSet`
+ * @param {object} img                     - Image
+ * @param {number} img.height              - Image height
+ * @param {string} img.url                 - Image URL
+ * @param {number} img.width               - Image width
+ * @param {object} galleryAtts             - Gallery attributes relevant for image optimization.
+ * @param {string} galleryAtts.layoutStyle - Gallery layout. 'rectangular', 'circle', etc.
+ * @param {number} galleryAtts.columns     - Gallery columns. Not applicable for all layouts.
+ * @return {object} - Returns an object. If possible, the object will include `src` and `srcSet`
  * properties {string} for use on an image.
  */
 export function photonizedImgProps( img, galleryAtts = {} ) {
@@ -67,36 +66,35 @@ export function photonizedImgProps( img, galleryAtts = {} ) {
 	const step = 300;
 	const srcsetMinWith = 600;
 
-	let srcSet;
+	let srcSet = [];
 	if ( isSquareishLayout( layoutStyle ) ) {
 		const minWidth = Math.min( srcsetMinWith, width, height );
 		const maxWidth = Math.min( PHOTON_MAX_RESIZE, width, height );
 
-		srcSet = range( minWidth, maxWidth, step )
-			.map( srcsetWidth => {
-				const srcsetSrc = photonImplementation( url, {
-					resize: `${ srcsetWidth },${ srcsetWidth }`,
-					strip: 'info',
-				} );
-				return srcsetSrc ? `${ srcsetSrc } ${ srcsetWidth }w` : null;
-			} )
-			.filter( Boolean )
-			.join( ',' );
+		for ( let srcsetWidth = minWidth; srcsetWidth < maxWidth; srcsetWidth += step ) {
+			const srcsetSrc = photonImplementation( url, {
+				resize: `${ srcsetWidth },${ srcsetWidth }`,
+				strip: 'info',
+			} );
+			if ( srcsetSrc ) {
+				srcSet.push( `${ srcsetSrc } ${ srcsetWidth }w` );
+			}
+		}
 	} else {
 		const minWidth = Math.min( srcsetMinWith, width );
 		const maxWidth = Math.min( PHOTON_MAX_RESIZE, width );
 
-		srcSet = range( minWidth, maxWidth, step )
-			.map( srcsetWidth => {
-				const srcsetSrc = photonImplementation( url, {
-					strip: 'info',
-					width: srcsetWidth,
-				} );
-				return srcsetSrc ? `${ srcsetSrc } ${ srcsetWidth }w` : null;
-			} )
-			.filter( Boolean )
-			.join( ',' );
+		for ( let srcsetWidth = minWidth; srcsetWidth < maxWidth; srcsetWidth += step ) {
+			const srcsetSrc = photonImplementation( url, {
+				strip: 'info',
+				width: srcsetWidth,
+			} );
+			if ( srcsetSrc ) {
+				srcSet.push( `${ srcsetSrc } ${ srcsetWidth }w` );
+			}
+		}
 	}
+	srcSet = srcSet.join( ',' );
 
 	return Object.assign( { src }, srcSet && { srcSet } );
 }
@@ -121,9 +119,9 @@ function isWpcomFilesUrl( url ) {
  * If we pass all images through Photon servers, some images are unreachable. *.files.wordpress.com
  * is already photon-like so we can pass it the same parameters for image resizing.
  *
- * @param   {string} url  - Image url
- * @param   {Object} opts - Options to pass to photon
- * @returns {string}      - Url string with options applied
+ * @param {string} url  - Image url
+ * @param {object} opts - Options to pass to photon
+ * @return {string}      - Url string with options applied
  */
 function photonWpcomImage( url, opts = {} ) {
 	// Adhere to the same options API as the photon.js lib
@@ -146,7 +144,7 @@ function photonWpcomImage( url, opts = {} ) {
 	// Build query
 	for ( const [ k, v ] of Object.entries( opts ) ) {
 		urlObj.searchParams.set(
-			photonLibMappings.hasOwnProperty( k ) ? photonLibMappings[ k ] : k,
+			Object.hasOwn( photonLibMappings, k ) ? photonLibMappings[ k ] : k,
 			v
 		);
 	}

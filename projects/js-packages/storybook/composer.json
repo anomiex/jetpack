@@ -4,19 +4,9 @@
 	"type": "library",
 	"license": "GPL-2.0-or-later",
 	"require": {},
-	"require-dev": {
-		"yoast/phpunit-polyfills": "1.0.3",
-		"automattic/jetpack-changelogger": "^3.1"
-	},
-	"autoload": {
-		"classmap": [
-			"src/"
-		]
-	},
 	"scripts": {
-		"build-development": "pnpm run storybook:build",
-		"test-js": "pnpm run test",
-		"test-coverage": "pnpm run test-coverage"
+		"build-development": "NODE_ENV=development pnpm run storybook:build",
+		"build-production": "NODE_ENV=production pnpm run storybook:build"
 	},
 	"repositories": [
 		{
@@ -30,15 +20,6 @@
 	"minimum-stability": "dev",
 	"prefer-stable": true,
 	"extra": {
-		"dependencies": {
-			"build": [
-				"js-packages/components",
-				"js-packages/connection",
-				"js-packages/idc",
-				"packages/my-jetpack",
-				"plugins/protect"
-			]
-		},
 		"mirror-repo": "Automattic/jetpack-storybook"
 	}
 }

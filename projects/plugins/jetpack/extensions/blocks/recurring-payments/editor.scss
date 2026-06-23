@@ -1,8 +1,7 @@
-@import './view.scss';
-@import '@automattic/jetpack-base-styles/gutenberg-base-styles';
+@use "@automattic/jetpack-base-styles/gutenberg-base-styles" as gb;
+@use "view";
 
 .wp-block-jetpack-recurring-payments {
-	font-family: $default-font;
 	width: 100%;
 
 	.components-base-control__label {
@@ -15,6 +14,7 @@
 
 		&__fieldset {
 			max-width: 500px;
+
 			p {
 				font-size: 13px;
 				margin: 20px 0 10px;
@@ -26,6 +26,7 @@
 		}
 
 		&__instructions {
+
 			.components-select-control__input {
 				padding: 0 24px 0 8px;
 			}
@@ -44,23 +45,26 @@
 
 	.editor-rich-text__inline-toolbar {
 		pointer-events: none;
+
 		.components-toolbar {
 			pointer-events: all;
 		}
 	}
 
 	.membership-button {
+
 		&__add-amount {
 			margin-right: 4px;
 		}
 
 		&__disclaimer {
-			color: var( --color-gray-200 );
+			color: var(--color-gray-200);
 			flex-basis: 100%;
 			margin: 0;
 			font-style: italic;
+
 			a {
-				color: var( --color-gray-400 );
+				color: var(--color-gray-400);
 				line-height: 36px;
 			}
 		}
@@ -71,7 +75,7 @@
 
 		&__field-error .components-text-control__input {
 			border: 1px solid;
-			border-color: var( --color-error );
+			border-color: var(--color-error);
 		}
 
 		&__field-price {
@@ -102,17 +106,24 @@
 		margin: 0 -14px;
 		padding: 14px;
 		text-align: center;
-		transform: translateY( 14px );
+		transform: translateY(14px);
 
 		// Use opacity to work in various editor styles.
-		background: $dark-gray-placeholder;
+		background: gb.$dark-gray-placeholder;
 
 		.is-dark-theme & {
-			background: $light-gray-placeholder;
+			background: gb.$light-gray-placeholder;
 		}
 	}
 
 	.wp-block-jetpack-membership-button_notification {
 		display: block;
+	}
+
+	.wp-block-jetpack-button,
+	.wp-block[data-type="jetpack/button"] {
+		width: 100%;
+		margin-top: 0;
+		margin-bottom: 0;
 	}
 }

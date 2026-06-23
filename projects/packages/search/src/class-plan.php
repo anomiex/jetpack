@@ -12,12 +12,20 @@ use Automattic\Jetpack\Connection\Client;
 use Jetpack_Options;
 use WP_Error;
 
+if ( ! defined( 'ABSPATH' ) ) {
+	exit( 0 );
+}
+
 /**
  * Registers the REST routes for Search.
  */
 class Plan {
 	const JETPACK_SEARCH_PLAN_INFO_OPTION_KEY  = 'jetpack_search_plan_info';
 	const JETPACK_SEARCH_EVER_SUPPORTED_SEARCH = 'jetpack_search_ever_supported_search';
+
+	// The pricing update starting from August 2022.
+	const JETPACK_SEARCH_NEW_PRICING_VERSION = '202208';
+	const JETPACK_SEARCH_FREE_PRODUCT_SLUG   = 'jetpack_search_free';
 
 	/**
 	 * Whether we have hooked the actions.
@@ -60,7 +68,7 @@ class Plan {
 	/**
 	 * Get plan info.
 	 *
-	 * @param {bool} $force_refresh - Default to false. Set true to load from WPCOM.
+	 * @param bool $force_refresh - Default to false. Set true to load from WPCOM.
 	 */
 	public function get_plan_info( $force_refresh = false ) {
 		if ( $force_refresh ) {
@@ -87,7 +95,7 @@ class Plan {
 	 */
 	public function supports_instant_search() {
 		$plan_info = $this->get_plan_info();
-		return ( isset( $plan_info['supports_instant_search'] ) && $plan_info['supports_instant_search'] ) || $this->has_jetpack_search_product();
+		return ( isset( $plan_info['supports_instant_search'] ) && $plan_info['supports_instant_search'] );
 	}
 
 	/**
@@ -95,7 +103,15 @@ class Plan {
 	 */
 	public function supports_search() {
 		$plan_info = $this->get_plan_info();
-		return ( isset( $plan_info['supports_search'] ) && $plan_info['supports_search'] ) || $this->has_jetpack_search_product();
+		return ( isset( $plan_info['supports_search'] ) && $plan_info['supports_search'] );
+	}
+
+	/**
+	 * Returns true if the plan usage is exceeded and search should no longer work.
+	 */
+	public function must_upgrade() {
+		$plan_info = $this->get_plan_info();
+		return isset( $plan_info['plan_usage']['must_upgrade'] ) && $plan_info['plan_usage']['must_upgrade'];
 	}
 
 	/**
@@ -111,6 +127,14 @@ class Plan {
 	 */
 	public function ever_supported_search() {
 		return (bool) get_option( self::JETPACK_SEARCH_EVER_SUPPORTED_SEARCH ) || $this->supports_search();
+	}
+
+	/**
+	 * Returns true if the site is on free plan.
+	 */
+	public function is_free_plan() {
+		$plan_info = $this->get_plan_info();
+		return Helper::is_forced_free_plan() || ( isset( $plan_info['effective_subscription']['product_slug'] ) && $plan_info['effective_subscription']['product_slug'] === self::JETPACK_SEARCH_FREE_PRODUCT_SLUG );
 	}
 
 	/**
@@ -139,6 +163,9 @@ class Plan {
 	 * @param array $plan_info - the decoded plan info array.
 	 */
 	public function set_plan_options( $plan_info ) {
+		if ( isset( $plan_info['swap_classic_to_inline_search'] ) && is_bool( $plan_info['swap_classic_to_inline_search'] ) ) {
+			update_option( Module_Control::SEARCH_MODULE_SWAP_CLASSIC_TO_INLINE_OPTION_KEY, (bool) $plan_info['swap_classic_to_inline_search'] );
+		}
 		if ( ! isset( $plan_info['supports_instant_search'] ) ) {
 			return false;
 		}
@@ -154,5 +181,4 @@ class Plan {
 		update_option( self::JETPACK_SEARCH_PLAN_INFO_OPTION_KEY, $plan_info );
 		return true;
 	}
-
 }

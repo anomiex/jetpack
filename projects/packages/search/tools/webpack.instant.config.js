@@ -14,19 +14,19 @@ const webpack = jetpackWebpackConfig.webpack;
  * This enables us to alias Preact to all React imports.
  *
  * @param {string} request - Requested module
- * @returns {(string|string[]|undefined)} Script global
+ * @return {(string|string[]|undefined)} Script global
  */
 function requestToExternal( request ) {
 	// Ensure that React will be aliased to preact/compat by preventing externalization.
 	if ( request === 'react' || request === 'react-dom' ) {
-		return;
+		return undefined;
 	}
 	return defaultRequestToExternal( request );
 }
 
 module.exports = {
 	mode: jetpackWebpackConfig.mode,
-	devtool: jetpackWebpackConfig.isDevelopment ? 'source-map' : false,
+	devtool: jetpackWebpackConfig.devtool,
 	entry: {
 		'jp-search': path.join( __dirname, '../src/instant-search/loader.js' ),
 	},
@@ -64,7 +64,17 @@ module.exports = {
 				requestToExternal,
 				requestToHandle: defaultRequestToHandle,
 			},
-			I18nLoaderPlugin: { textdomain: 'jetpack-search-pkg' },
+			// Configure MiniCssExtractPlugin for WordPress Interactivity API compatibility
+			// Use static filenames so WordPress can enqueue the same URL
+			MiniCssExtractPlugin: {
+				filename: '[name].css',
+				chunkFilename: '[name].css', // No contenthash - WordPress handles versioning
+				// Disable runtime CSS loading - WordPress will enqueue it
+				runtime: false,
+			},
+			// Disable MiniCssWithRtlPlugin since we're not using webpack CSS runtime
+			// WordPress will handle RTL CSS loading
+			MiniCssWithRtlPlugin: false,
 		} ),
 		// Replace 'debug' module with a dummy implementation in production
 		...( jetpackWebpackConfig.isDevelopment
@@ -100,7 +110,7 @@ module.exports = {
 							postcssOptions: { config: path.join( __dirname, '../postcss.config.js' ) },
 						},
 					},
-					'sass-loader',
+					{ loader: 'sass-loader', options: { api: 'modern-compiler' } },
 				],
 			} ),
 

@@ -1,8 +1,6 @@
-// NOTE: We only import the debounce function here for reduced bundle size.
-//       Do not import the entire lodash library!
-// eslint-disable-next-line lodash/import-scope
-import debounce from 'lodash/debounce';
+import debounce from 'debounce';
 import { Component } from 'react';
+import { getPrefersReducedMotion } from '../lib/a11y';
 
 // This component is used primarily to bind DOM event handlers to elements outside of the Jetpack Search overlay.
 export default class DomEventHandler extends Component {
@@ -16,6 +14,7 @@ export default class DomEventHandler extends Component {
 			isComposing: false,
 			// `bodyScrollTop` remembers the body scroll position.
 			bodyScrollTop: 0,
+			prefersReducedMotion: getPrefersReducedMotion(),
 			previousStyle: null,
 			previousBodyStyleAttribute: '',
 		};
@@ -36,6 +35,7 @@ export default class DomEventHandler extends Component {
 		if ( this.props.isVisible !== prevProps.isVisible ) {
 			this.fixBodyScroll();
 		}
+		this.fixBodyOpacity();
 	}
 
 	disableUnnecessaryFormAndInputAttributes() {
@@ -133,18 +133,17 @@ export default class DomEventHandler extends Component {
 			return;
 		}
 
-		if ( this.props.overlayOptions.overlayTrigger === 'submit' ) {
+		if (
+			this.props.overlayOptions.overlayTrigger === 'submit' ||
+			this.state.prefersReducedMotion
+		) {
 			return;
 		}
 
 		this.props.setSearchQuery( event.target.value );
 
-		if ( this.props.overlayOptions.overlayTrigger === 'immediate' ) {
+		if ( [ 'immediate', 'results' ].includes( this.props.overlayOptions.overlayTrigger ) ) {
 			this.props.showResults();
-		}
-
-		if ( this.props.overlayOptions.overlayTrigger === 'results' ) {
-			this.props.response?.results && this.props.showResults();
 		}
 	}, 200 );
 
@@ -164,13 +163,25 @@ export default class DomEventHandler extends Component {
 	};
 
 	handleSubmit = event => {
+		// Don't intercept submissions targeting third-party domains. A form can
+		// contain an input named "s" without being a WordPress search form (e.g.
+		// ActiveCampaign sign-up embeds), so only intercept same-origin forms.
+		try {
+			if ( new URL( event.target.action ).origin !== window.location.origin ) {
+				return;
+			}
+		} catch {
+			return;
+		}
+
 		event.preventDefault();
 		this.handleInput.flush();
 
 		// handleInput didn't respawn the overlay. Do it manually -- form submission must spawn an overlay.
 		if ( ! this.props.isVisible ) {
-			const value = event.target.querySelector( this.props.themeOptions.searchInputSelector )
-				?.value;
+			const value = event.target.querySelector(
+				this.props.themeOptions.searchInputSelector
+			)?.value;
 			// Don't do a falsy check; empty string is an allowed value.
 			typeof value === 'string' && this.props.setSearchQuery( value );
 			this.props.showResults();
@@ -185,6 +196,14 @@ export default class DomEventHandler extends Component {
 			window?.scrollTo( 0, 0 );
 		} else if ( ! this.props.isVisible ) {
 			this.restoreBodyScroll();
+		}
+	};
+
+	fixBodyOpacity = () => {
+		if ( '1' !== document.body.style.opacity ) {
+			// This ensures the body is visible when the search dialog opens if
+			// the theme changes body opacity dynamically
+			document.body.style.opacity = '1';
 		}
 	};
 

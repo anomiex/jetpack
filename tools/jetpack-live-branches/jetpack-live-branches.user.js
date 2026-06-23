@@ -1,22 +1,41 @@
 // ==UserScript==
 // @name         Jetpack Live Branches
 // @namespace    https://wordpress.com/
-// @version      1.23
+// @version      1.38
 // @description  Adds links to PRs pointing to Jurassic Ninja sites for live-testing a changeset
 // @grant        GM_xmlhttpRequest
-// @connect      jurassic.ninja
+// @connect      betadownload.jetpack.me
 // @require      https://code.jquery.com/jquery-3.3.1.min.js
 // @match        https://github.com/Automattic/jetpack/pull/*
+// @updateURL    https://github.com/Automattic/jetpack/raw/trunk/tools/jetpack-live-branches/jetpack-live-branches.user.js
+// @downloadURL  https://github.com/Automattic/jetpack/raw/trunk/tools/jetpack-live-branches/jetpack-live-branches.user.js
 // ==/UserScript==
 
-// Need to declare "jQuery" for linting within TamperMonkey, but in the monorepo it's already declared.
-// eslint-disable-next-line no-redeclare
 /* global jQuery */
 
 ( function () {
 	const $ = jQuery.noConflict();
 	const markdownBodySelector = '.pull-discussion-timeline .markdown-body';
 	let pluginsList = null;
+
+	const style = document.createElement( 'style' );
+	style.innerHTML = `
+		#jetpack-live-branches .optionslist {
+			list-style: none;
+			padding-left: 0;
+			margin-top: 24px;
+			display: flex;
+			flex-wrap: wrap;
+		}
+
+		#jetpack-live-branches label {
+			font-weight: inherit;
+		}
+
+		#jetpack-live-branches label.disabled {
+			color: var( --color-fg-muted, #7d8590 );
+		}
+	`;
 
 	// Watch for relevant DOM changes that indicate we need to re-run `doit()`:
 	// - Adding a new `.markdown-body`.
@@ -53,11 +72,61 @@
 	 *
 	 * Currently looks at the URL, expecting it to match a `@match` pattern from the script header.
 	 *
-	 * @returns {string|null} Repo name.
+	 * @return {string|null} Repo name.
 	 */
 	function determineRepo() {
 		const m = location.pathname.match( /^\/([^/]+\/[^/]+)\/pull\// );
 		return m && m[ 1 ] ? decodeURIComponent( m[ 1 ] ) : null;
+	}
+
+	/**
+	 * Determine PR data, Feb 2026 version.
+	 *
+	 * @return {object|null} Data
+	 */
+	function getPRDataFeb2026() {
+		const prdatatag = document.querySelector( '[data-target="react-app.embeddedData"]' );
+		if ( ! prdatatag ) {
+			console.warn( 'Jetpack Live Branches: Did not find react-app.embeddedData' );
+			return null;
+		}
+		let prdata;
+		try {
+			prdata = JSON.parse( prdatatag.textContent );
+		} catch ( e ) {
+			console.warn( 'Jetpack Live Branches: Failed to parse react-app.embeddedData', e );
+			return null;
+		}
+
+		const currentBranch = prdata?.payload?.pullRequestsLayoutRoute?.pullRequest?.headBranch;
+		const branchStatus = prdata?.payload?.pullRequestsLayoutRoute?.pullRequest?.state;
+		if ( ! currentBranch || ! branchStatus ) {
+			console.warn( 'Jetpack Live Branches: Failed to find fields in react-app.embeddedData' );
+			return null;
+		}
+
+		return { currentBranch, branchStatus };
+	}
+
+	/**
+	 * Determine PR data, older version.
+	 *
+	 * @return {object|null} Data
+	 */
+	function getPRDataOld() {
+		const currentBranch = jQuery( '.head-ref:first' ).text();
+		if ( ! currentBranch ) {
+			console.warn( 'Jetpack Live Branches: Failed to find .head-ref:first' );
+			return null;
+		}
+
+		const branchStatus = $( '.gh-header-meta .State' ).text().trim();
+		if ( ! branchStatus ) {
+			console.warn( 'Jetpack Live Branches: Failed to find .gh-header-meta .State' );
+			return null;
+		}
+
+		return { currentBranch, branchStatus };
 	}
 
 	/** Function. */
@@ -69,29 +138,27 @@
 		}
 
 		const host = 'https://jurassic.ninja';
-		const currentBranch = jQuery( '.head-ref:first' ).text();
-		const branchIsForked = currentBranch.includes( ':' );
-		const branchStatus = $( '.gh-header-meta .State' ).text().trim();
+
+		const { currentBranch, branchStatus } = getPRDataFeb2026() ?? getPRDataOld() ?? {};
+		if ( ! currentBranch || ! branchStatus ) {
+			appendHtml(
+				markdownBody,
+				'<p><strong>Failed to find PR data. The Jetpack Live Branches script may need updating.</strong></p>'
+			);
+			return;
+		}
+
 		const repo = determineRepo();
 
-		if ( branchStatus === 'Merged' ) {
+		if ( branchStatus.toUpperCase() === 'MERGED' ) {
 			const contents = `
 				<p><strong>This branch is already merged.</strong></p>
-				<p><a target="_blank" rel="nofollow noopener" href="${ getLink() }">
+				<p><a target="_blank" rel="nofollow noopener" href="${ getLink()[ 0 ] }">
 					Test with <code>trunk</code> branch instead.
 				</a></p>
+				<p>Note: You need to be Logged in to WordPress.com to create a test site.</p>
 			`;
 			appendHtml( markdownBody, contents );
-		} else if ( branchStatus === 'Draft' ) {
-			appendHtml(
-				markdownBody,
-				'<p><strong>This branch is a draft. You can open live branches only from open pull requests.</strong></p>'
-			);
-		} else if ( branchIsForked ) {
-			appendHtml(
-				markdownBody,
-				"<p><strong>This branch can't be tested live because it comes from a forked version of this repo.</strong></p>"
-			);
 		} else if ( ! repo ) {
 			appendHtml(
 				markdownBody,
@@ -99,39 +166,43 @@
 			);
 		} else {
 			if ( ! pluginsList ) {
-				pluginsList = dofetch( `${ host }/wp-json/jurassic.ninja/jetpack-beta/plugins` );
+				pluginsList = dofetch(
+					// prettier-ignore
+					`https://betadownload.jetpack.me/query-branch.php?repo=${ encodeURIComponent( repo ) }&branch=${ encodeURIComponent( currentBranch ) }`
+				);
 			}
 			pluginsList
 				.then( body => {
 					const plugins = [];
 
-					if ( body.status === 'ok' ) {
+					if ( Object.hasOwn( body, 'plugins' ) ) {
 						const labels = new Set(
 							$.map( $( '.js-issue-labels a.IssueLabel' ), e => $( e ).data( 'name' ) )
 						);
-						Object.keys( body.data ).forEach( k => {
-							const data = body.data[ k ];
-							if ( data.repo === repo ) {
-								plugins.push( {
-									name: `branches.${ k }`,
-									value: currentBranch,
-									label: encodeHtmlEntities( data.name ),
-									checked: data.labels && data.labels.some( l => labels.has( l ) ),
-								} );
-							}
+						Object.keys( body.plugins ).forEach( k => {
+							const data = body.plugins[ k ];
+							plugins.push( {
+								name: `branches.${ k }`,
+								value: currentBranch,
+								label: encodeHtmlEntities( data.name ),
+								checked:
+									data.pr !== null && data.labels && data.labels.some( l => labels.has( l ) ),
+								disabled:
+									data.pr === null ? `${ data.name } has not been built for this PR` : false,
+							} );
 						} );
 						if ( ! plugins.length ) {
 							throw new Error( `No plugins are configured for ${ repo }` );
 						}
 						plugins.sort( ( a, b ) => a.label.localeCompare( b.label ) );
-					} else if ( body.code === 'rest_no_route' ) {
-						plugins.push( {
-							name: 'branch',
-							value: currentBranch,
-							label: 'Jetpack',
-							checked: true,
-							disabled: true,
-						} );
+
+						if ( ! plugins.some( p => ! p.disabled ) ) {
+							appendHtml(
+								markdownBody,
+								'<p><strong>No plugins have been built for this PR.</strong> (<a href="#" class="refresh">refresh</a>)</p>'
+							);
+							return;
+						}
 					} else {
 						throw new Error( 'Invalid response from server' );
 					}
@@ -154,8 +225,15 @@
 									name: 'wp-debug-log',
 								},
 								{
-									label: 'Multisite based on subdomains',
-									name: 'subdomain_multisite',
+									label: 'Enable WordPress.com Sandbox Access',
+									name: 'dev-pool',
+								},
+								{
+									checked: true,
+									label: 'Drop-in Cache Plugins',
+									name: 'cache-drop-in',
+									invert: true,
+									value: 'false',
 								},
 								{
 									label: 'Multisite based on subdirectories',
@@ -226,16 +304,8 @@
 									name: 'wp-super-cache',
 								},
 								{
-									label: 'WP Log Viewer',
-									name: 'wp-log-viewer',
-								},
-								{
 									label: 'WP Job Manager',
 									name: 'wp-job-manager',
-								},
-								{
-									label: 'Jetpack CRM',
-									name: 'zero-bs-crm',
 								},
 								{
 									label: 'Jetpack Debug Helper',
@@ -259,6 +329,7 @@
 					<p>
 						<a id="jetpack-beta-branch-link" target="_blank" rel="nofollow noopener" href="#">…</a>
 					</p>
+					<p>Note: You need to be Logged in to WordPress.com to create a test site.</p>
 					`;
 					appendHtml( markdownBody, contents );
 					updateLink();
@@ -268,7 +339,7 @@
 					appendHtml(
 						markdownBody,
 						// prettier-ignore
-						`<p><strong>Error while fetching data for live testing: ${ encodeHtmlEntities( e.message ) }.</strong></p>`
+						`<p><strong>Error while fetching data for live testing: ${ encodeHtmlEntities( e.message ) }.</strong> (<a href="#" class="refresh">retry</a>)</p>`
 					);
 				} );
 		}
@@ -279,7 +350,7 @@
 		 * TamperMonkey on Chrome can't use `fetch()` due to CSP.
 		 *
 		 * @param {string} url - URL.
-		 * @returns {Promise} Promise. Resolves with the JSON content from `url`.
+		 * @return {Promise} Promise. Resolves with the JSON content from `url`.
 		 */
 		function dofetch( url ) {
 			const do_xmlhttpRequest = window.GM_xmlhttpRequest ?? window.GM?.xmlhttpRequest ?? null;
@@ -310,7 +381,7 @@
 		 * Encode necessary HTML entities in a string.
 		 *
 		 * @param {string} s - String to encode.
-		 * @returns {string} Encoded string.
+		 * @return {string} Encoded string.
 		 */
 		function encodeHtmlEntities( s ) {
 			return s.replace( /[&<>"']/g, m => `&#${ m.charCodeAt( 0 ) };` );
@@ -319,12 +390,12 @@
 		/**
 		 * Build the JN create URI.
 		 *
-		 * @returns {string} URI.
+		 * @return {string} URI.
 		 */
 		function getLink() {
 			const query = [ 'jetpack-beta' ];
 			$(
-				'#jetpack-live-branches input[type=checkbox]:checked:not([data-invert]), #jetpack-live-branches input[type=checkbox][data-invert]:not(:checked)'
+				'#jetpack-live-branches input[type="checkbox"]:checked:not([data-invert]), #jetpack-live-branches input[type="checkbox"][data-invert]:not(:checked)'
 			).each( ( i, input ) => {
 				if ( input.value ) {
 					query.push( encodeURIComponent( input.name ) + '=' + encodeURIComponent( input.value ) );
@@ -333,21 +404,21 @@
 				}
 			} );
 			// prettier-ignore
-			return `${ host }/create?${ query.join( '&' ).replace( /%(2F|5[BD])/g, m => decodeURIComponent( m ) ) }`;
+			return [ `${ host }/create?${ query.join( '&' ).replace( /%(2F|5[BD])/g, m => decodeURIComponent( m ) ) }`, query ];
 		}
 
 		/**
 		 * Build HTML for a single option checkbox.
 		 *
-		 * @param {object} opts - Options.
-		 * @param {string} opts.label - Checkbox label HTML.
-		 * @param {string} opts.name - Checkbox name.
-		 * @param {string} [opts.value] - Checkbox value, if any.
-		 * @param {boolean} [opts.checked] - Whether the checkbox is default checked.
-		 * @param {boolean} [opts.disabled] - Whether the checkbox is disabled.
-		 * @param {boolean} [opts.invert] - Whether the sense of the checkbox is inverted.
-		 * @param {number} columnWidth - Column width.
-		 * @returns {string} HTML.
+		 * @param {object}         opts            - Options.
+		 * @param {string}         opts.label      - Checkbox label HTML.
+		 * @param {string}         opts.name       - Checkbox name.
+		 * @param {string}         [opts.value]    - Checkbox value, if any.
+		 * @param {boolean}        [opts.checked]  - Whether the checkbox is default checked.
+		 * @param {boolean|string} [opts.disabled] - Whether the checkbox is disabled. If a string, the string is used as a title attribute on the label.
+		 * @param {boolean}        [opts.invert]   - Whether the sense of the checkbox is inverted.
+		 * @param {number}         columnWidth     - Column width.
+		 * @return {string} HTML.
 		 */
 		function getOption(
 			{ disabled = false, checked = false, invert = false, value = '', label, name },
@@ -355,30 +426,27 @@
 		) {
 			// prettier-ignore
 			return `
-			<li style="min-width: ${ columnWidth }%">
-				<label style="font-weight: inherit; ">
-					<input type="checkbox" name="${ encodeHtmlEntities( name ) }" value="${ encodeHtmlEntities( value ) }"${ checked ? ' checked' : '' }${ disabled ? ' disabled' : '' }${ invert ? ' data-invert' : '' }>
-					${ label }
-				</label>
-			</li>
+				<li style="min-width: ${ columnWidth }%">
+					<label class="${ disabled ? 'disabled' : '' }" ${ typeof disabled === 'string' ? 'title="' + encodeHtmlEntities( disabled ) + '"' : '' }>
+						<input type="checkbox" name="${ encodeHtmlEntities( name ) }" value="${ encodeHtmlEntities( value ) }"${ checked ? ' checked' : '' }${ disabled ? ' disabled' : '' }${ invert ? ' data-invert' : '' }>
+						${ label }
+					</label>
+				</li>
 			`;
 		}
 
 		/**
 		 * Build HTML for a set of option checkboxes.
 		 *
-		 * @param {object[]} options - Array of options for `getOption()`.
-		 * @param {number} columnWidth - Column width.
-		 * @returns {string} HTML.
+		 * @param {object[]} options     - Array of options for `getOption()`.
+		 * @param {number}   columnWidth - Column width.
+		 * @return {string} HTML.
 		 */
 		function getOptionsList( options, columnWidth ) {
+			// prettier-ignore
 			return `
-				<ul style="list-style: none; padding-left: 0; margin-top: 24px; display: flex; flex-wrap: wrap;">
-					${ options
-						.map( option => {
-							return getOption( option, columnWidth );
-						} )
-						.join( '' ) }
+				<ul class="optionslist">
+					${ options.map( option => getOption( option, columnWidth ) ).join( '' ) }
 				</ul>
 			`;
 		}
@@ -388,8 +456,8 @@
 		 *
 		 * Also registers `onInputChanged()` as a change handler for all checkboxes in the HTML.
 		 *
-		 * @param {HTMLElement} el - Element.
-		 * @param {string} contents - HTML to append.
+		 * @param {HTMLElement} el       - Element.
+		 * @param {string}      contents - HTML to append.
 		 */
 		function appendHtml( el, contents ) {
 			const $el = $( el );
@@ -397,10 +465,10 @@
 				`<h2>Jetpack Live Branches</h2> ${ contents }`
 			);
 			$( '#jetpack-live-branches' ).remove();
+			liveBranches.prepend( style );
 			$el.append( liveBranches );
-			liveBranches
-				.find( 'input[type=checkbox]' )
-				.each( () => this.addEventListener( 'change', onInputChanged ) );
+			liveBranches.find( 'input[type="checkbox"]' ).on( 'change', onInputChanged );
+			liveBranches.find( 'a.refresh' ).on( 'click', onRefreshClick );
 		}
 
 		/**
@@ -420,11 +488,26 @@
 		}
 
 		/**
+		 * Refresh link click handler.
+		 *
+		 * @param {Event} e - Event object.
+		 * @return {false} False.
+		 */
+		function onRefreshClick( e ) {
+			e.stopPropagation();
+			e.preventDefault();
+			pluginsList = null;
+			$( '#jetpack-live-branches' ).remove();
+			doit();
+			return false;
+		}
+
+		/**
 		 * Update the link.
 		 */
 		function updateLink() {
 			const $link = $( '#jetpack-beta-branch-link' );
-			const url = getLink();
+			const [ url ] = getLink();
 
 			if ( url.match( /[?&]branch(es\.[^&=]*)?=/ ) ) {
 				$link.attr( 'href', url ).text( url );

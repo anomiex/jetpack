@@ -1,16 +1,9 @@
-<?php //phpcs:ignore WordPress.Files.FileName.NotHyphenatedLowercase
+<?php
 /**
  * Custom Autoloader Composer Plugin, hooks into composer events to generate the custom autoloader.
  *
  * @package automattic/jetpack-autoloader
  */
-
-// phpcs:disable PHPCompatibility.Keywords.NewKeywords.t_useFound
-// phpcs:disable PHPCompatibility.LanguageConstructs.NewLanguageConstructs.t_ns_separatorFound
-// phpcs:disable PHPCompatibility.Keywords.NewKeywords.t_namespaceFound
-// phpcs:disable WordPress.Files.FileName.NotHyphenatedLowercase
-// phpcs:disable WordPress.Files.FileName.InvalidClassFileName
-// phpcs:disable WordPress.NamingConventions.ValidVariableName.VariableNotSnakeCase
 
 namespace Automattic\Jetpack\Autoloader;
 
@@ -48,7 +41,7 @@ class CustomAutoloaderPlugin implements PluginInterface, EventSubscriberInterfac
 	 * @param Composer    $composer Composer object.
 	 * @param IOInterface $io IO object.
 	 */
-	public function activate( Composer $composer, IOInterface $io ) { // phpcs:ignore VariableAnalysis.CodeAnalysis.VariableAnalysis.UnusedVariable
+	public function activate( Composer $composer, IOInterface $io ) {
 		$this->composer = $composer;
 		$this->io       = $io;
 	}
@@ -111,7 +104,7 @@ class CustomAutoloaderPlugin implements PluginInterface, EventSubscriberInterfac
 			$this->io->writeError( "\n<error>An error occurred while generating the autoloader files:", true );
 			$this->io->writeError( 'The project\'s composer.json or composer environment set a non-default vendor directory.', true );
 			$this->io->writeError( 'The default composer vendor directory must be used.</error>', true );
-			exit();
+			exit( 0 );
 		}
 
 		$installationManager = $this->composer->getInstallationManager();
@@ -123,7 +116,6 @@ class CustomAutoloaderPlugin implements PluginInterface, EventSubscriberInterfac
 
 		$generator = new AutoloadGenerator( $this->io );
 		$generator->dump( $this->composer, $config, $localRepo, $package, $installationManager, 'composer', $optimize, $suffix );
-		$this->generated = true;
 	}
 
 	/**
@@ -145,16 +137,14 @@ class CustomAutoloaderPlugin implements PluginInterface, EventSubscriberInterfac
 
 		// Reuse our own suffix, if any.
 		if ( is_readable( $vendorPath . '/autoload_packages.php' ) ) {
-			// phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
 			$content = file_get_contents( $vendorPath . '/autoload_packages.php' );
-			if ( preg_match( '/^namespace Automattic\\\\Jetpack\\\\Autoloader\\\\jp([^;\s]+);/m', $content, $match ) ) {
+			if ( preg_match( '/^namespace Automattic\\\\Jetpack\\\\Autoloader\\\\jp([^;\s]+?)(?:\\\\al[^;\s]+)?;/m', $content, $match ) ) {
 				return $match[1];
 			}
 		}
 
 		// Reuse Composer's suffix, if any.
 		if ( is_readable( $vendorPath . '/autoload.php' ) ) {
-			// phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
 			$content = file_get_contents( $vendorPath . '/autoload.php' );
 			if ( preg_match( '{ComposerAutoloaderInit([^:\s]+)::}', $content, $match ) ) {
 				return $match[1];
@@ -173,18 +163,18 @@ class CustomAutoloaderPlugin implements PluginInterface, EventSubscriberInterfac
 	private function isRequiredByRoot() {
 		$package  = $this->composer->getPackage();
 		$requires = $package->getRequires();
-		if ( ! is_array( $requires ) ) {
+		if ( ! is_array( $requires ) ) { // @phan-suppress-current-line PhanRedundantCondition -- Earlier Composer versions may not have guaranteed this.
 			$requires = array();
 		}
 		$devRequires = $package->getDevRequires();
-		if ( ! is_array( $devRequires ) ) {
+		if ( ! is_array( $devRequires ) ) { // @phan-suppress-current-line PhanRedundantCondition -- Earlier Composer versions may not have guaranteed this.
 			$devRequires = array();
 		}
 		$requires = array_merge( $requires, $devRequires );
 
 		if ( empty( $requires ) ) {
 			$this->io->writeError( "\n<error>The package is not required and this should never happen?</error>", true );
-			exit();
+			exit( 0 );
 		}
 
 		foreach ( $requires as $require ) {

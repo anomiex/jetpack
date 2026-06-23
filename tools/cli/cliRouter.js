@@ -4,13 +4,20 @@ import * as buildCommand from './commands/build.js';
 import { changelogDefine } from './commands/changelog.js';
 import { cleanDefine } from './commands/clean.js';
 import { cliDefine } from './commands/cli.js';
+import * as composerCommand from './commands/composer.js';
 import * as dependenciesCommand from './commands/dependencies.js';
 import { dockerDefine } from './commands/docker.js';
+import { docsDefine } from './commands/docs.js';
 import { draftDefine } from './commands/draft.js';
 import { generateDefine } from './commands/generate.js';
 import * as installCommand from './commands/install.js';
+import * as noopCommand from './commands/noop.js';
+import * as phanCommand from './commands/phan.js';
+import * as playgroundCommand from './commands/playground.js';
+import * as pnpmCommand from './commands/pnpm.js';
 import { releaseDefine } from './commands/release.js';
-import { testDefine } from './commands/test.js';
+import { rsyncDefine } from './commands/rsync.js';
+import * as testCommand from './commands/test.js';
 import { watchDefine } from './commands/watch.js';
 
 /**
@@ -33,18 +40,26 @@ export async function cli() {
 	argv = changelogDefine( argv );
 	argv = cleanDefine( argv );
 	argv = cliDefine( argv );
+	argv.command( composerCommand );
 	argv.completion( 'completion', 'Generate bash/zsh completions' ); // Placed here to keep things alphabetical.
 	argv.command( dependenciesCommand );
 	argv = dockerDefine( argv );
+	argv = docsDefine( argv );
 	argv = draftDefine( argv );
 	argv = generateDefine( argv );
 	argv.command( installCommand );
+	argv.command( noopCommand );
+	argv.command( phanCommand );
+	argv.command( playgroundCommand );
+	argv.command( pnpmCommand );
 	argv = releaseDefine( argv );
-	argv = testDefine( argv );
+	argv = rsyncDefine( argv );
+	argv.command( testCommand );
 	argv = watchDefine( argv );
 
 	// This adds usage information on failure and demands that a subcommand must be passed.
 	argv
+		.strict()
 		.showHelpOnFail( true )
 		.demandCommand()
 		.recommendCommands()

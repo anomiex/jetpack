@@ -1,20 +1,13 @@
 import PropTypes from 'prop-types';
-import React from 'react';
-import useMyJetpackNavigate from '../../hooks/use-my-jetpack-navigate';
+import { PRODUCT_SLUGS } from '../../data/constants';
 import ProductCard from '../connected-product-card';
 
-const AntiSpamCard = ( { admin } ) => {
-	return (
-		<ProductCard
-			admin={ admin }
-			slug="anti-spam"
-			onAdd={ useMyJetpackNavigate( '/add-anti-spam' ) }
-		/>
-	);
+const AntiSpamCard = props => {
+	return <ProductCard slug={ PRODUCT_SLUGS.ANTI_SPAM } { ...props } />;
 };
 
 AntiSpamCard.propTypes = {
-	admin: PropTypes.bool.isRequired,
+	admin: PropTypes.bool,
 };
 
 export default AntiSpamCard;

@@ -1,12 +1,13 @@
 const path = require( 'path' );
 const jetpackWebpackConfig = require( '@automattic/jetpack-webpack-config/webpack' );
 const RemoveAssetWebpackPlugin = require( '@automattic/remove-asset-webpack-plugin' );
-const glob = require( 'glob' );
-const StaticSiteGeneratorPlugin = require( 'static-site-generator-webpack-plugin' );
+const { glob } = require( 'glob' );
+const StaticSiteGeneratorPlugin = require( './static-site-generator-webpack-plugin' );
 
 const sharedWebpackConfig = {
 	mode: jetpackWebpackConfig.mode,
-	devtool: jetpackWebpackConfig.isDevelopment ? 'source-map' : false,
+	devtool: jetpackWebpackConfig.devtool,
+	cache: jetpackWebpackConfig.cache( __filename ),
 	output: {
 		...jetpackWebpackConfig.output,
 		path: path.join( __dirname, '../_inc/build' ),
@@ -48,6 +49,9 @@ const sharedWebpackConfig = {
 				includeNodeModules: [ '@automattic/', 'debug/' ],
 			} ),
 
+			// Workarounds for non-extracted `@wordpress/*` packages.
+			...jetpackWebpackConfig.BundledWpPkgsTranspileRules(),
+
 			// Handle CSS.
 			jetpackWebpackConfig.CssRule( {
 				extensions: [ 'css', 'sass', 'scss' ],
@@ -58,7 +62,7 @@ const sharedWebpackConfig = {
 							postcssOptions: { config: path.join( __dirname, 'postcss.config.js' ) },
 						},
 					},
-					'sass-loader',
+					{ loader: 'sass-loader', options: { api: 'modern-compiler' } },
 				],
 			} ),
 
@@ -72,36 +76,29 @@ const supportedModules = [
 	'shortcodes',
 	'widgets',
 	'widget-visibility',
-	'custom-css',
 	'publicize',
 	'custom-post-types',
 	'sharedaddy',
 	'contact-form',
-	'photon',
 	'carousel',
 	'related-posts',
 	'tiled-gallery',
 	'likes',
 	'infinite-scroll',
-	'masterbar',
 	'videopress',
 	'comment-likes',
-	'lazy-images',
 	'scan',
 	'wordads',
+	'theme-tools/responsive-videos',
 ];
 
 const moduleSources = [
 	...glob.sync( '_inc/*.js' ),
-	...glob.sync( `modules/@(${ supportedModules.join( '|' ) })/**/*.js` ),
+	...supportedModules.map( dir => glob.sync( `modules/${ dir }/**/*.js` ) ).flat(),
 ].filter( name => ! name.endsWith( '.min.js' ) && name.indexOf( '/test/' ) < 0 );
 
 // Library definitions for certain modules.
 const libraryDefs = {
-	'carousel/swiper-bundle': {
-		name: 'Swiper670',
-		type: 'umd',
-	},
 	'widgets/google-translate/google-translate': {
 		name: 'googleTranslateElementInit',
 		type: 'assign',
@@ -123,7 +120,10 @@ module.exports = [
 	// Build all the modules.
 	{
 		...sharedWebpackConfig,
-		entry: moduleEntries,
+		entry: {
+			...moduleEntries,
+			'newsletter-widget': './modules/subscriptions/newsletter-widget/src/index.tsx',
+		},
 		plugins: [
 			...sharedWebpackConfig.plugins,
 			...jetpackWebpackConfig.DependencyExtractionPlugin(),
@@ -132,6 +132,17 @@ module.exports = [
 			...sharedWebpackConfig.output,
 			filename: '[name].min.js', // @todo: Fix this.
 		},
+	},
+	// Build the newsletter widget separately to support translatable strings.
+	{
+		...sharedWebpackConfig,
+		entry: {
+			'newsletter-widget': './modules/subscriptions/newsletter-widget/src/index.tsx',
+		},
+		plugins: [
+			...sharedWebpackConfig.plugins,
+			...jetpackWebpackConfig.DependencyExtractionPlugin(),
+		],
 	},
 	// Build admin page JS.
 	{
@@ -147,10 +158,11 @@ module.exports = [
 				},
 			},
 			'plugins-page': path.join( __dirname, '../_inc/client', 'plugins-entry.js' ),
+			'network-admin': path.join( __dirname, '../_inc/client', 'network-admin.tsx' ),
 		},
 		plugins: [
 			...sharedWebpackConfig.plugins,
-			...jetpackWebpackConfig.DependencyExtractionPlugin( { injectPolyfill: true } ),
+			...jetpackWebpackConfig.DependencyExtractionPlugin(),
 		],
 		externals: {
 			...sharedWebpackConfig.externals,
@@ -159,20 +171,37 @@ module.exports = [
 			} ),
 		},
 	},
-	// Build static.jsx (which produces pre-rendered HTML).
+	// Build AI admin page JS.
 	{
 		...sharedWebpackConfig,
-		entry: { static: path.join( __dirname, '../_inc/client', 'static.jsx' ) },
+		entry: {
+			'jetpack-ai-admin': path.join( __dirname, '../_inc/client', 'ai-admin.js' ),
+		},
+		plugins: [
+			...sharedWebpackConfig.plugins,
+			...jetpackWebpackConfig.DependencyExtractionPlugin( {
+				// Match Boost: @wordpress/ui pulls these in; they are not reliable as WP script
+				// handles in all contexts, so bundle them instead of externalizing.
+				requestMap: {
+					'@wordpress/theme': { external: false },
+					'@wordpress/private-apis': { external: false },
+				},
+			} ),
+		],
+		externals: {
+			...sharedWebpackConfig.externals,
+			jetpackConfig: JSON.stringify( {
+				consumer_slug: 'jetpack',
+			} ),
+		},
+	},
+	// Build generator.jsx (which produces pre-rendered HTML).
+	{
+		...sharedWebpackConfig,
+		entry: { static: path.join( __dirname, '../_inc/client', 'generator.jsx' ) },
 		output: {
 			...sharedWebpackConfig.output,
 			libraryTarget: 'commonjs2',
-		},
-		resolve: {
-			...sharedWebpackConfig.resolve,
-			alias: {
-				...sharedWebpackConfig.resolve.alias,
-				'react-redux': require.resolve( 'react-redux/lib/alternate-renderers' ),
-			},
 		},
 		plugins: [
 			...jetpackWebpackConfig.StandardPlugins( {

@@ -1,35 +1,39 @@
+import { getBlockIconComponent } from '@automattic/jetpack-shared-extension-utils';
 import { isBlobURL } from '@wordpress/blob';
-import { MediaPlaceholder } from '@wordpress/block-editor';
+import { MediaPlaceholder, useBlockProps } from '@wordpress/block-editor';
 import { withNotices } from '@wordpress/components';
 import { useDispatch } from '@wordpress/data';
-import { Fragment } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
-import classNames from 'classnames';
-import { get, pick } from 'lodash';
+import clsx from 'clsx';
+import metadata from './block.json';
 import Controls from './controls';
 import StoryPlayer from './player';
-import { icon } from '.';
+
 import './editor.scss';
 
 const ALLOWED_MEDIA_TYPES = [ 'image', 'video' ];
+const ALLOWED_MEDIA_PROPS = [
+	'alt',
+	'title',
+	'id',
+	'link',
+	'type',
+	'mime',
+	'caption',
+	'width',
+	'height',
+];
+const icon = getBlockIconComponent( metadata );
 
 export const pickRelevantMediaFiles = media => {
-	const mediaProps = pick( media, [
-		'alt',
-		'title',
-		'id',
-		'link',
-		'type',
-		'mime',
-		'caption',
-		'width',
-		'height',
-	] );
+	const mediaProps = Object.fromEntries(
+		Object.entries( media ).filter( ( [ k ] ) => ALLOWED_MEDIA_PROPS.includes( k ) )
+	);
 	mediaProps.url =
-		get( media, [ 'media_details', 'original', 'url' ] ) ||
-		get( media, [ 'media_details', 'videopress', 'original' ] ) ||
-		get( media, [ 'media_details', 'sizes', 'large', 'source_url' ] ) ||
-		get( media, [ 'sizes', 'large', 'url' ] ) ||
+		media?.media_details?.original?.url ||
+		media?.media_details?.videopress?.original ||
+		media?.media_details?.sizes?.large?.source_url ||
+		media?.sizes?.large?.url ||
 		media.url;
 	mediaProps.type = media.media_type || media.type;
 	mediaProps.mime = media.mime_type || media.mime;
@@ -41,7 +45,6 @@ export const pickRelevantMediaFiles = media => {
 
 export default withNotices( function StoryEdit( {
 	attributes,
-	className,
 	isSelected,
 	noticeOperations,
 	noticeUI,
@@ -49,6 +52,7 @@ export default withNotices( function StoryEdit( {
 } ) {
 	const { mediaFiles } = attributes;
 	const { lockPostSaving, unlockPostSaving } = useDispatch( 'core/editor' );
+	const blockProps = useBlockProps();
 	const lockName = 'storyBlockLock';
 
 	const onSelectMedia = newMediaFiles => {
@@ -88,7 +92,7 @@ export default withNotices( function StoryEdit( {
 		<MediaPlaceholder
 			addToGallery={ hasImages }
 			isAppender={ hasImages }
-			className={ className }
+			className={ blockProps.className }
 			disableMediaButtons={ hasImages && ! isSelected }
 			icon={ ! hasImages && icon }
 			labels={ {
@@ -110,20 +114,20 @@ export default withNotices( function StoryEdit( {
 		/>
 	);
 
+	let content;
+
 	if ( ! hasImages ) {
-		return (
-			<Fragment>
+		content = (
+			<>
 				{ controls }
 				{ mediaPlaceholder }
-			</Fragment>
+			</>
 		);
-	}
-
-	return (
-		<Fragment>
-			{ controls }
-			{ noticeUI }
-			<div className={ classNames( 'wp-block-jetpack-story', 'wp-story', className ) }>
+	} else {
+		content = (
+			<>
+				{ controls }
+				{ noticeUI }
 				<StoryPlayer
 					slides={ mediaFiles }
 					disabled={ ! isSelected }
@@ -135,8 +139,17 @@ export default withNotices( function StoryEdit( {
 					tapToPlayPause={ false }
 					playOnNextSlide={ false }
 				/>
-			</div>
-			{ isSelected && mediaPlaceholder }
-		</Fragment>
+				{ isSelected && mediaPlaceholder }
+			</>
+		);
+	}
+
+	return (
+		<div
+			{ ...blockProps }
+			className={ clsx( 'wp-block-jetpack-story', 'wp-story', blockProps.className ) }
+		>
+			{ content }
+		</div>
 	);
 } );

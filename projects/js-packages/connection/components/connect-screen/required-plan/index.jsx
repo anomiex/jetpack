@@ -1,6 +1,5 @@
 import { __ } from '@wordpress/i18n';
 import PropTypes from 'prop-types';
-import React from 'react';
 import useProductCheckoutWorkflow from '../../../hooks/use-product-checkout-workflow';
 import useConnection from '../../use-connection';
 import ConnectScreenRequiredPlanVisual from './visual';
@@ -9,13 +8,16 @@ import ConnectScreenRequiredPlanVisual from './visual';
  * The Connection Screen Visual component for consumers that require a Plan.
  *
  * @param {object} props -- The properties.
- * @returns {React.Component} The `ConnectScreenForRequiredPlan` component.
+ * @return {import('react').Component} The `ConnectScreenForRequiredPlan` component.
  */
 const ConnectScreenRequiredPlan = props => {
 	const {
-		title,
-		autoTrigger,
-		buttonLabel,
+		title = __(
+			'Over 5 million WordPress sites are faster and more secure',
+			'jetpack-connection-js'
+		),
+		autoTrigger = false,
+		buttonLabel = __( 'Set up Jetpack', 'jetpack-connection-js' ),
 		apiRoot,
 		apiNonce,
 		registrationNonce,
@@ -26,18 +28,19 @@ const ConnectScreenRequiredPlan = props => {
 		priceAfter,
 		pricingIcon,
 		pricingTitle,
-		pricingCurrencyCode,
+		pricingCurrencyCode = 'USD',
 		wpcomProductSlug,
 		siteProductAvailabilityHandler,
+		logo,
+		rna = false,
 	} = props;
 
 	const {
 		handleRegisterSite,
-		isRegistered,
-		isUserConnected,
 		siteIsRegistering,
 		userIsConnecting,
 		registrationError,
+		isOfflineMode,
 	} = useConnection( {
 		registrationNonce,
 		redirectUri,
@@ -56,7 +59,6 @@ const ConnectScreenRequiredPlan = props => {
 		from,
 	} );
 
-	const showConnectButton = ! isRegistered || ! isUserConnected;
 	const displayButtonError = Boolean( registrationError );
 	const buttonIsLoading = siteIsRegistering || userIsConnecting || hasCheckoutStarted;
 	const handleButtonClick = productSlug ? handleCheckoutWorkflow : handleRegisterSite;
@@ -71,9 +73,11 @@ const ConnectScreenRequiredPlan = props => {
 			pricingTitle={ pricingTitle }
 			pricingCurrencyCode={ pricingCurrencyCode }
 			handleButtonClick={ handleButtonClick }
-			showConnectButton={ showConnectButton }
 			displayButtonError={ displayButtonError }
 			buttonIsLoading={ buttonIsLoading }
+			logo={ logo }
+			isOfflineMode={ isOfflineMode }
+			rna={ rna }
 		>
 			{ children }
 		</ConnectScreenRequiredPlanVisual>
@@ -100,7 +104,7 @@ ConnectScreenRequiredPlan.propTypes = {
 	/** The Pricing Card Title. */
 	pricingTitle: PropTypes.string.isRequired,
 	/** The Pricing Card Icon. */
-	icon: PropTypes.string,
+	pricingIcon: PropTypes.oneOfType( [ PropTypes.string, PropTypes.element ] ),
 	/** Price before discount. */
 	priceBefore: PropTypes.number.isRequired,
 	/** Price after discount. */
@@ -111,13 +115,8 @@ ConnectScreenRequiredPlan.propTypes = {
 	wpcomProductSlug: PropTypes.string,
 	/** A callback that will be used to check whether the site already has the wpcomProductSlug. This will be checked after registration and the checkout will be skipped if it returns true. */
 	checkSiteHasWpcomProduct: PropTypes.func,
-};
-
-ConnectScreenRequiredPlan.defaultProps = {
-	title: __( 'Over 5 million WordPress sites are faster and more secure', 'jetpack' ),
-	buttonLabel: __( 'Set up Jetpack', 'jetpack' ),
-	pricingCurrencyCode: 'USD',
-	autoTrigger: false,
+	/** The logo to display at the top of the component. */
+	logo: PropTypes.element,
 };
 
 export default ConnectScreenRequiredPlan;

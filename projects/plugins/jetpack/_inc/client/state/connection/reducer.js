@@ -1,4 +1,4 @@
-import { assign, get, includes, merge } from 'lodash';
+import { merge } from 'lodash';
 import { combineReducers } from 'redux';
 import {
 	JETPACK_CONNECTION_STATUS_FETCH,
@@ -34,16 +34,16 @@ export const status = (
 ) => {
 	switch ( action.type ) {
 		case JETPACK_CONNECTION_STATUS_FETCH:
-			return assign( {}, state, { siteConnected: action.siteConnected } );
+			return Object.assign( {}, state, { siteConnected: action.siteConnected } );
 		case DISCONNECT_SITE_SUCCESS:
-			return assign( {}, state, { siteConnected: action.siteConnected } );
+			return Object.assign( {}, state, { siteConnected: action.siteConnected } );
 		case UNLINK_USER_SUCCESS:
-			return assign( {}, state, {
+			return Object.assign( {}, state, {
 				siteConnected: { ...state.siteConnected, isUserConnected: false },
 			} );
 		case USER_CONNECTION_DATA_FETCH_SUCCESS:
 			if ( true === action.userConnectionData?.currentUser?.isConnected ) {
-				return assign( {}, state, {
+				return Object.assign( {}, state, {
 					siteConnected: {
 						...state.siteConnected,
 						hasConnectedOwner: true,
@@ -60,7 +60,7 @@ export const status = (
 export const connectUrl = ( state = '', action ) => {
 	switch ( action.type ) {
 		case JETPACK_SET_INITIAL_STATE:
-			return get( action, 'initialState.connectUrl', state );
+			return action?.initialState?.connectUrl ?? state;
 		case CONNECT_URL_FETCH_SUCCESS:
 			return action.connectUrl;
 		default:
@@ -71,11 +71,12 @@ export const connectUrl = ( state = '', action ) => {
 export const user = ( state = window.Initial_State.userData || {}, action ) => {
 	switch ( action.type ) {
 		case USER_CONNECTION_DATA_FETCH_SUCCESS:
-			return assign( {}, state, action.userConnectionData );
+			return Object.assign( {}, state, action.userConnectionData );
 
-		case UNLINK_USER_SUCCESS:
-			const currentUser = assign( {}, state.currentUser, { isConnected: false } );
-			return assign( {}, state, { currentUser } );
+		case UNLINK_USER_SUCCESS: {
+			const currentUser = Object.assign( {}, state.currentUser, { isConnected: false } );
+			return Object.assign( {}, state, { currentUser } );
+		}
 
 		case MOCK_SWITCH_USER_PERMISSIONS:
 			return merge( {}, state, action.initialState );
@@ -97,41 +98,42 @@ export const connectionRequests = {
 export const requests = ( state = connectionRequests, action ) => {
 	switch ( action.type ) {
 		case DISCONNECT_SITE:
-			return assign( {}, state, { disconnectingSite: true } );
+			return Object.assign( {}, state, { disconnectingSite: true } );
 		case UNLINK_USER:
-			return assign( {}, state, { unlinkingUser: true } );
+			return Object.assign( {}, state, { unlinkingUser: true } );
 		case CONNECT_USER:
-			return assign( {}, state, {
+			return Object.assign( {}, state, {
 				connectingUser: true,
 				connectingUserFeatureLabel: action.featureLabel,
+				connectingUserFrom: action.from,
 			} );
 		case RESET_CONNECT_USER:
-			return assign( {}, state, { connectingUser: false } );
+			return Object.assign( {}, state, { connectingUser: false } );
 		case CONNECT_URL_FETCH:
-			return assign( {}, state, { fetchingConnectUrl: true } );
+			return Object.assign( {}, state, { fetchingConnectUrl: true } );
 		case USER_CONNECTION_DATA_FETCH:
-			return assign( {}, state, { fetchingUserData: true } );
+			return Object.assign( {}, state, { fetchingUserData: true } );
 		case SITE_RECONNECT:
-			return assign( {}, state, { reconnectingSite: true } );
+			return Object.assign( {}, state, { reconnectingSite: true } );
 
 		case DISCONNECT_SITE_FAIL:
 		case DISCONNECT_SITE_SUCCESS:
-			return assign( {}, state, { disconnectingSite: false } );
+			return Object.assign( {}, state, { disconnectingSite: false } );
 
 		case UNLINK_USER_FAIL:
 		case UNLINK_USER_SUCCESS:
-			return assign( {}, state, { unlinkingUser: false } );
+			return Object.assign( {}, state, { unlinkingUser: false } );
 
 		case CONNECT_URL_FETCH_FAIL:
 		case CONNECT_URL_FETCH_SUCCESS:
-			return assign( {}, state, { fetchingConnectUrl: false } );
+			return Object.assign( {}, state, { fetchingConnectUrl: false } );
 		case USER_CONNECTION_DATA_FETCH_FAIL:
 		case USER_CONNECTION_DATA_FETCH_SUCCESS:
-			return assign( {}, state, { fetchingUserData: false } );
+			return Object.assign( {}, state, { fetchingUserData: false } );
 
 		case SITE_RECONNECT_FAIL:
 		case SITE_RECONNECT_SUCCESS:
-			return assign( {}, state, { reconnectingSite: false } );
+			return Object.assign( {}, state, { reconnectingSite: false } );
 
 		default:
 			return state;
@@ -162,8 +164,8 @@ export const reducer = combineReducers( {
 /**
  * Get the whole connection status object.
  *
- * @param  {object} state - Global state tree
- * @returns {object} Connection status object.
+ * @param {object} state - Global state tree
+ * @return {object} Connection status object.
  */
 export function getConnectionStatus( state ) {
 	return 'object' === typeof state.jetpack.connection.status.siteConnected
@@ -174,8 +176,8 @@ export function getConnectionStatus( state ) {
 /**
  * Returns true if site is connected to WordPress.com
  *
- * @param  {Object}      state Global state tree
- * @return {bool|string} True if site is connected, False if it is not, 'offline' if site is in offline mode.
+ * @param {object} state - Global state tree
+ * @return {boolean|string} True if site is connected, False if it is not, 'offline' if site is in offline mode.
  */
 export function getSiteConnectionStatus( state ) {
 	if ( 'object' !== typeof state.jetpack.connection.status.siteConnected ) {
@@ -190,7 +192,7 @@ export function getSiteConnectionStatus( state ) {
 /**
  * Checks if the site is connected to WordPress.com. Unlike getSiteConnectionStatus, this one returns only a boolean.
  *
- * @param  {Object}  state Global state tree
+ * @param {object} state - Global state tree
  * @return {boolean} True if site is connected to WordPress.com. False if site is in Offline Mode or there's no connection data.
  */
 export function isSiteConnected( state ) {
@@ -207,7 +209,7 @@ export function isSiteConnected( state ) {
  * Checks if the site is registered with WordPress.com.
  *
  * @param {object} state -- Global state tree
- * @returns {boolean} True if site is registered WordPress.com (has blog token). False if site is in Offline Mode or there's no connection data.
+ * @return {boolean} True if site is registered WordPress.com (has blog token). False if site is in Offline Mode or there's no connection data.
  */
 export function isSiteRegistered( state ) {
 	if (
@@ -222,12 +224,12 @@ export function isSiteRegistered( state ) {
 /**
  * Returns an object with information about the Offline Mode.
  *
- * @param  {Object}      state Global state tree
- * @return {bool|object} False if site is not in Offline Mode. If it is, returns an object with information about the Offline Mode.
+ * @param {object} state - Global state tree
+ * @return {boolean|object} False if site is not in Offline Mode. If it is, returns an object with information about the Offline Mode.
  */
 export function getSiteOfflineMode( state ) {
-	if ( get( state.jetpack.connection.status, [ 'siteConnected', 'offlineMode', 'isActive' ] ) ) {
-		return get( state.jetpack.connection.status, [ 'siteConnected', 'offlineMode' ] );
+	if ( state.jetpack.connection.status?.siteConnected?.offlineMode?.isActive ) {
+		return state.jetpack.connection.status.siteConnected.offlineMode;
 	}
 	return false;
 }
@@ -235,8 +237,8 @@ export function getSiteOfflineMode( state ) {
 /**
  * Returns string/URL to make a connection to WordPress.com
  *
- * @param  {Object} state Global state tree
- * @return {String}       URL for connecting to WordPress.com
+ * @param {object} state - Global state tree
+ * @return {string}       URL for connecting to WordPress.com
  */
 export function getConnectUrl( state ) {
 	return state.jetpack.connection.connectUrl;
@@ -245,7 +247,7 @@ export function getConnectUrl( state ) {
 /**
  * Returns an object with information about the WP.com connected user
  *
- * @param  {Object} state Global state tree
+ * @param {object} state - Global state tree
  * @return {object}       Returns an object with information about the connected user
  */
 export function getConnectedWpComUser( state ) {
@@ -255,8 +257,8 @@ export function getConnectedWpComUser( state ) {
 /**
  * Returns true if currently disconnecting the site
  *
- * @param  {Object} state Global state tree
- * @return {bool}         True if site is being disconnected
+ * @param {object} state - Global state tree
+ * @return {boolean}         True if site is being disconnected
  */
 export function isDisconnectingSite( state ) {
 	return !! state.jetpack.connection.requests.disconnectingSite;
@@ -265,8 +267,8 @@ export function isDisconnectingSite( state ) {
 /**
  * Returns true if currently fetching connectUrl
  *
- * @param  {Object} state Global state tree
- * @return {bool} true if currently fetching connectUrl, false otherwise
+ * @param {object} state - Global state tree
+ * @return {boolean} true if currently fetching connectUrl, false otherwise
  */
 export function isFetchingConnectUrl( state ) {
 	return !! state.jetpack.connection.requests.fetchingConnectUrl;
@@ -275,8 +277,8 @@ export function isFetchingConnectUrl( state ) {
 /**
  * Returns true if currently unlinking the user
  *
- * @param  {Object} state Global state tree
- * @return {bool} true if currently unlinking a user, false otherwise
+ * @param {object} state - Global state tree
+ * @return {boolean} true if currently unlinking a user, false otherwise
  */
 export function isUnlinkingUser( state ) {
 	return !! state.jetpack.connection.requests.unlinkingUser;
@@ -285,8 +287,8 @@ export function isUnlinkingUser( state ) {
 /**
  * Returns true if currently linking the user
  *
- * @param  {object} state - Global state tree
- * @returns {bool} true if currently linking a user, false otherwise
+ * @param {object} state - Global state tree
+ * @return {boolean} true if currently linking a user, false otherwise
  */
 export function isConnectingUser( state ) {
 	return !! state.jetpack.connection.requests.connectingUser;
@@ -295,20 +297,32 @@ export function isConnectingUser( state ) {
 /**
  * Returns the feature label the user connection where initiated from, if any.
  *
- * @param  {object} state - Global state tree
- * @returns {string|null} string if feature label exists, false otherwise.
+ * @param {object} state - Global state tree
+ * @return {string|null} string if feature label exists, false otherwise.
  */
 export function getConnectingUserFeatureLabel( state ) {
-	return state.jetpack.connection.requests.hasOwnProperty( 'connectingUserFeatureLabel' )
+	return Object.hasOwn( state.jetpack.connection.requests, 'connectingUserFeatureLabel' )
 		? state.jetpack.connection.requests.connectingUserFeatureLabel
+		: null;
+}
+
+/**
+ * Returns the "from" value the user connection where initiated from, if any.
+ *
+ * @param {object} state - Global state tree
+ * @return {string|null} string if "from" value exists, false otherwise.
+ */
+export function getConnectingUserFrom( state ) {
+	return Object.hasOwn( state.jetpack.connection.requests, 'connectingUserFrom' )
+		? state.jetpack.connection.requests.connectingUserFrom
 		: null;
 }
 
 /**
  * Returns true if currently fetching user data
  *
- * @param  {Object} state Global state tree
- * @return {bool} true if currently fetching user data, false otherwise
+ * @param {object} state - Global state tree
+ * @return {boolean} true if currently fetching user data, false otherwise
  */
 export function isFetchingUserData( state ) {
 	return !! state.jetpack.connection.requests.fetchingUserData;
@@ -317,8 +331,8 @@ export function isFetchingUserData( state ) {
 /**
  * Returns true if current user is linked to WordPress.com
  *
- * @param  {Object} state Global state tree
- * @return {bool} true if the current user is connected to WP.com, false otherwise
+ * @param {object} state - Global state tree
+ * @return {boolean} true if the current user is connected to WP.com, false otherwise
  */
 export function isCurrentUserLinked( state ) {
 	return !! state.jetpack.connection.user.currentUser.isConnected;
@@ -327,27 +341,37 @@ export function isCurrentUserLinked( state ) {
 /**
  * Returns true if current user is connection owner.
  *
- * @param  {Object} state Global state tree
- * @return {bool} true if the current user is connection owner, false otherwise
+ * @param {object} state - Global state tree
+ * @return {boolean} true if the current user is connection owner, false otherwise
  */
 export function isConnectionOwner( state ) {
 	return !! state.jetpack.connection.user.currentUser.isMaster;
 }
 
 /**
+ * Returns connection owner name.
+ *
+ * @param {object} state - Global state tree
+ * @return {string} Return connection owner name.
+ */
+export function isConnectionOwnerName( state ) {
+	return state.jetpack.connection.user?.connectionOwner;
+}
+
+/**
  * Returns true if the site has a connected owner.
  *
- * @param  {object} state - Global state tree
- * @returns {boolean} true if the site has an owner connected, false otherwise
+ * @param {object} state - Global state tree
+ * @return {boolean} true if the site has an owner connected, false otherwise
  */
 export function hasConnectedOwner( state ) {
-	return get( state.jetpack.connection.status, [ 'siteConnected', 'hasConnectedOwner' ], false );
+	return state.jetpack.connection.status?.siteConnected?.hasConnectedOwner ?? false;
 }
 
 /**
  * Checks if the site is currently in offline mode.
  *
- * @param  {Object}  state Global state tree
+ * @param {object} state - Global state tree
  * @return {boolean} True if site is in offline mode. False otherwise.
  */
 export function isOfflineMode( state ) {
@@ -355,41 +379,31 @@ export function isOfflineMode( state ) {
 }
 
 /**
- * Checks if the site is currently in staging.
- *
- * @param  {Object}  state Global state tree
- * @return {boolean} True if site is in staging. False otherwise.
- */
-export function isStaging( state ) {
-	return get( state.jetpack.connection.status, [ 'siteConnected', 'isStaging' ], false );
-}
-
-/**
  * Checks if the site is currently in an Identity Crisis.
  *
- * @param  {Object}  state Global state tree
+ * @param {object} state - Global state tree
  * @return {boolean} True if site is in IDC. False otherwise.
  */
 export function isInIdentityCrisis( state ) {
-	return get( state.jetpack.connection.status, [ 'siteConnected', 'isInIdentityCrisis' ], false );
+	return state.jetpack.connection.status?.siteConnected?.isInIdentityCrisis ?? false;
 }
 
 /**
  * Checks if the module requires connection.
  *
- * @param  {Object}  state Global state tree
- * @param  {String}  slug Module slug.
+ * @param {object} state - Global state tree
+ * @param {string} slug  - Module slug.
  * @return {boolean} True if module requires connection.
  */
 export function requiresConnection( state, slug ) {
-	return includes( getModulesThatRequireConnection( state ).concat( [ 'backups', 'scan' ] ), slug );
+	return getModulesThatRequireConnection( state ).concat( [ 'backups', 'scan' ] ).includes( slug );
 }
 
 /**
  * Checks if the current module is unavailable in offline mode.
  *
- * @param  {Object}  state Global state tree
- * @param  {String}  module Module slug.
+ * @param {object} state  - Global state tree
+ * @param {string} module - Module slug.
  * @return {boolean} True if site is in offline mode and module requires connection. False otherwise.
  */
 export function isUnavailableInOfflineMode( state, module ) {
@@ -399,20 +413,20 @@ export function isUnavailableInOfflineMode( state, module ) {
 /**
  * Checks if the module requires user to be connected.
  *
- * @param  {object} state - Global state tree
- * @param  {string} slug - Module slug.
- * @returns {boolean} True if module requires connection.
+ * @param {object} state - Global state tree
+ * @param {string} slug  - Module slug.
+ * @return {boolean} True if module requires connection.
  */
 export function requiresUserConnection( state, slug ) {
-	return includes( getModulesThatRequireUserConnection( state ), slug );
+	return getModulesThatRequireUserConnection( state ).includes( slug );
 }
 
 /**
  * Checks if the current module is unavailable in Site Connection mode.
  *
- * @param  {object} state - Global state tree
- * @param  {string} module - Module slug.
- * @returns {boolean} True if site is in Site Connection mode and module requires connection. False otherwise.
+ * @param {object} state  - Global state tree
+ * @param {string} module - Module slug.
+ * @return {boolean} True if site is in Site Connection mode and module requires connection. False otherwise.
  */
 export function isUnavailableInSiteConnectionMode( state, module ) {
 	return ! hasConnectedOwner( state ) && requiresUserConnection( state, module );
@@ -421,17 +435,17 @@ export function isUnavailableInSiteConnectionMode( state, module ) {
 /**
  * Checks if the JETPACK__SANDBOX_DOMAIN is set
  *
- * @param  {Object} state Global state tree
+ * @param {object} state - Global state tree
  * @return {string} Value of the JETPACK__SANDBOX_DOMAIN constant. Empty string if not sandboxed - url if so.
  */
 export function getSandboxDomain( state ) {
-	return get( state.jetpack.connection.status, [ 'siteConnected', 'sandboxDomain' ], '' );
+	return state.jetpack.connection.status?.siteConnected?.sandboxDomain ?? '';
 }
 
 /**
  * Check if the reconnect requested.
  *
- * @param  {Object} state Global state tree.
+ * @param {object} state - Global state tree.
  * @return {boolean} True if the reconnecting is required, false otherwise.
  */
 export function isReconnectingSite( state ) {
@@ -442,7 +456,7 @@ export function isReconnectingSite( state ) {
  * Check if `hasSeenWCConnectionModal` (Jetpack option) is true.
  *
  * @param {object} state - Global state tree.
- * @returns {boolean} If true, the site has already displayed the WooCommerce Connection Modal.
+ * @return {boolean} If true, the site has already displayed the WooCommerce Connection Modal.
  */
 export function getHasSeenWCConnectionModal( state ) {
 	return !! state.jetpack.connection.hasSeenWCConnectionModal;

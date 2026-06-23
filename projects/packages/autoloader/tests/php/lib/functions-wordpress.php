@@ -227,7 +227,6 @@ if ( ! function_exists( 'wp_json_encode' ) ) {
 	 * @return false|string The JSON encoded string, or false if it cannot be encoded.
 	 */
 	function wp_json_encode( $data, $options = 0, $depth = 512 ) {
-		// phpcs:ignore WordPress.WP.AlternativeFunctions.json_encode_json_encode
 		return json_encode( $data, $options, $depth );
 	}
 }
@@ -386,6 +385,35 @@ if ( ! function_exists( 'add_action' ) ) {
 		}
 
 		return false;
+	}
+}
+
+if ( ! function_exists( 'wp_debug_backtrace_summary' ) ) {
+	/**
+	 * Replacement for the WordPress function.
+	 *
+	 * @param string $ignore_class Unused in this stub.
+	 * @param int    $skip_frames  Unused in this stub.
+	 * @param bool   $pretty       Unused in this stub.
+	 * @return string|array Either a string containing a reversed comma-separated trace or an array
+	 *                      of individual calls.
+	 */
+	function wp_debug_backtrace_summary( $ignore_class = null, $skip_frames = 0, $pretty = true ) { // phpcs:ignore VariableAnalysis.CodeAnalysis.VariableAnalysis.UnusedVariable
+		return 'some, list, of, callers';
+	}
+}
+
+if ( ! function_exists( 'wp_trigger_error' ) ) {
+	/**
+	 * Replacement for the WordPress function.
+	 *
+	 * @param string $function_name Unused in this stub.
+	 * @param string $message       The message explaining the error.
+	 * @param int    $error_level   Optional. The designated error type for this error.
+	 */
+	function wp_trigger_error( $function_name, $message, $error_level = E_USER_NOTICE ) {
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_trigger_error
+		trigger_error( $message, $error_level );
 	}
 }
 

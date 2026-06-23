@@ -1,7 +1,7 @@
 import restApi from '@automattic/jetpack-api';
 import { DisconnectDialog } from '@automattic/jetpack-connection';
 import { __ } from '@wordpress/i18n';
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { connect } from 'react-redux';
 import {
 	fetchUserConnectionData as actionFetchUserConnectionData,
@@ -20,12 +20,12 @@ import PortalSidecar from './utilities/portal-sidecar';
 /**
  * Component that loads on the plugins page and manages presenting the disconnection modal.
  *
- * @param {object} props - The props object for the component.
- * @param {string} props.apiRoot - Root URL for the API, which is required by the <DisconnectDialog/> component.
- * @param {string} props.apiNonce - Nonce value for the API, which is required by the <DisconnectDialog/> component.
- * @param {Array} props.siteBenefits - An array of benefits provided by Jetpack.
- * @param {string} props.pluginUrl - The URL of the plugin directory.
- * @returns {React.Component} - The PluginDeactivation component.
+ * @param {object} props              - The props object for the component.
+ * @param {string} props.apiRoot      - Root URL for the API, which is required by the <DisconnectDialog/> component.
+ * @param {string} props.apiNonce     - Nonce value for the API, which is required by the <DisconnectDialog/> component.
+ * @param {Array}  props.siteBenefits - An array of benefits provided by Jetpack.
+ * @param {string} props.pluginUrl    - The URL of the plugin directory.
+ * @return {import('react').Component} - The PluginDeactivation component.
  */
 const PluginDeactivation = props => {
 	const {
@@ -39,19 +39,18 @@ const PluginDeactivation = props => {
 	const [ modalOpen, setModalOpen ] = useState( false );
 
 	useEffect( () => {
+		restApi.setApiRoot( apiRoot );
+		restApi.setApiNonce( apiNonce );
 		fetchSiteBenefits();
 		fetchUserConnectionData();
-	}, [ fetchSiteBenefits, fetchUserConnectionData ] );
+	}, [ apiRoot, apiNonce, fetchSiteBenefits, fetchUserConnectionData ] );
 
 	// Modify the deactivation link.
 	const deactivationLink = document.querySelector( '#deactivate-jetpack, #deactivate-jetpack-dev' ); // ID set by WP on the deactivation link.
 
-	deactivationLink.setAttribute( 'title', __( 'Deactivate Jetpack', 'jetpack' ) );
-
-	useEffect( () => {
-		restApi.setApiRoot( apiRoot );
-		restApi.setApiNonce( apiNonce );
-	}, [ apiRoot, apiNonce ] );
+	if ( deactivationLink !== null ) {
+		deactivationLink.setAttribute( 'title', __( 'Deactivate Jetpack', 'jetpack' ) );
+	}
 
 	const toggleVisibility = useCallback( () => {
 		setModalOpen( ! modalOpen );
@@ -70,6 +69,9 @@ const PluginDeactivation = props => {
 	 * The link is set to open the deactivation dialog.
 	 */
 	useEffect( () => {
+		if ( deactivationLink === null ) {
+			return null;
+		}
 		deactivationLink.addEventListener( 'click', handleLinkClick );
 
 		return () => {
@@ -78,6 +80,9 @@ const PluginDeactivation = props => {
 	}, [ deactivationLink, handleLinkClick ] );
 
 	const handleDeactivate = useCallback( () => {
+		if ( deactivationLink === null ) {
+			return null;
+		}
 		window.location.href = deactivationLink.getAttribute( 'href' );
 	}, [ deactivationLink ] );
 

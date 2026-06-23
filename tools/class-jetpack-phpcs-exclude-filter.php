@@ -6,12 +6,13 @@
  */
 
 use PHP_CodeSniffer\Files\LocalFile;
+use PHP_CodeSniffer\Filters\Automattic\JetpackPhpcsFilter;
 use PHP_CodeSniffer\Util;
 
 /**
  * Filter for PHPCS to exclude files in bin/phpcs-excludelist.json.
  */
-class Jetpack_Phpcs_Exclude_Filter extends Automattic\Jetpack\PhpcsFilter {
+class Jetpack_Phpcs_Exclude_Filter extends JetpackPhpcsFilter {
 	/**
 	 * Files to exclude.
 	 *
@@ -27,17 +28,10 @@ class Jetpack_Phpcs_Exclude_Filter extends Automattic\Jetpack\PhpcsFilter {
 			return;
 		}
 
-		$lines = json_decode( file_get_contents( __DIR__ . '/phpcs-excludelist.json' ) ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
-		$lines = array_filter(
-			$lines,
-			function ( $line ) {
-				$line = trim( $line );
-				return '' !== $line && '#' !== $line[0];
-			}
-		);
+		$lines = json_decode( file_get_contents( __DIR__ . '/phpcs-excludelist.json' ) );
 		$lines = array_map(
 			function ( $line ) {
-				return $this->basedir . '/' . $line;
+				return $this->filterBaseDir . '/' . $line;
 			},
 			$lines
 		);
@@ -64,12 +58,11 @@ class Jetpack_Phpcs_Exclude_Filter extends Automattic\Jetpack\PhpcsFilter {
 	/**
 	 * Returns an iterator for the current entry.
 	 *
-	 * @return \RecursiveIterator
+	 * @return static
 	 */
 	public function getChildren() {
 		$ret          = parent::getChildren();
 		$ret->exclude = $this->exclude;
 		return $ret;
 	}
-
 }

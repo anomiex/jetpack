@@ -1,5 +1,5 @@
-import { createElement, render } from '@wordpress/element';
-import { assign, kebabCase } from 'lodash';
+import { createElement, createRoot } from '@wordpress/element';
+import { kebabCase } from 'lodash';
 
 export class FrontendManagement {
 	blockIterator( rootNode, blocks ) {
@@ -20,10 +20,11 @@ export class FrontendManagement {
 			}
 
 			const data = this.extractAttributesFromContainer( node, attributes );
-			assign( data, options.props );
+			Object.assign( data, options.props );
 			const children = this.extractChildrenFromContainer( node );
 			const el = createElement( component, data, children );
-			render( el, selector ? node.querySelector( selector ) : node );
+			const root = createRoot( el );
+			root.render( selector ? node.querySelector( selector ) : node );
 
 			node.setAttribute( 'data-jetpack-block-initialized', true );
 		}
@@ -40,8 +41,7 @@ export class FrontendManagement {
 			if ( attribute.type === 'array' || attribute.type === 'object' ) {
 				try {
 					data[ name ] = JSON.parse( data[ name ] );
-				} catch ( e ) {
-					// console.log( 'Error decoding JSON data for field ' + name, e);
+				} catch {
 					data[ name ] = null;
 				}
 			}

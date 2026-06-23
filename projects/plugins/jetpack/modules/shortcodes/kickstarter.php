@@ -8,8 +8,14 @@
  * @package automattic/jetpack
  */
 
+if ( ! defined( 'ABSPATH' ) ) {
+	exit( 0 );
+}
+
 add_shortcode( 'kickstarter', 'jetpack_kickstarter_shortcode' );
-add_filter( 'pre_kses', 'jetpack_kickstarter_embed_to_shortcode' );
+if ( jetpack_shortcodes_should_hook_pre_kses() ) {
+	add_filter( 'pre_kses', 'jetpack_kickstarter_embed_to_shortcode' );
+}
 
 /**
  * Parse shortcode arguments and render its output.
@@ -64,7 +70,7 @@ function jetpack_kickstarter_embed_to_shortcode( $content ) {
 			$params = $match[1] . $match[3];
 
 			if ( 'regexp_ent' === $reg ) {
-				$params = html_entity_decode( $params );
+				$params = html_entity_decode( $params, ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML401 );
 			}
 
 			$params = wp_kses_hair( $params, array( 'http' ) );

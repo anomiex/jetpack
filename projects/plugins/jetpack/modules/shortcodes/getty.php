@@ -8,6 +8,10 @@
  * @package automattic/jetpack
  */
 
+if ( ! defined( 'ABSPATH' ) ) {
+	exit( 0 );
+}
+
 if ( defined( 'IS_WPCOM' ) && IS_WPCOM ) {
 	add_action( 'init', 'jetpack_getty_enable_embeds' );
 } else {
@@ -26,8 +30,10 @@ function jetpack_getty_enable_embeds() {
 	wp_oembed_add_provider( '#https?://www\.gettyimages\.com/detail/.*#i', 'https://embed.gettyimages.com/oembed/', true );
 	wp_oembed_add_provider( '#https?://(www\.)?gty\.im/.*#i', 'https://embed.gettyimages.com/oembed/', true );
 
-	// Allow iframes to be filtered to short code (so direct copy+paste can be done).
-	add_filter( 'pre_kses', 'wpcom_shortcodereverse_getty' );
+	if ( jetpack_shortcodes_should_hook_pre_kses() ) {
+		// Allow iframes to be filtered to short code (so direct copy+paste can be done).
+		add_filter( 'pre_kses', 'wpcom_shortcodereverse_getty' );
+	}
 
 	// Actually display the Getty Embed.
 	add_shortcode( 'getty', 'jetpack_getty_shortcode' );
@@ -56,7 +62,7 @@ add_filter( 'oembed_fetch_url', 'getty_add_oembed_endpoint_caller' );
 function getty_add_oembed_endpoint_caller( $provider ) {
 	// By time filter is called, original provider URL has had url, maxwidth,
 	// maxheight query parameters added.
-	if ( 0 !== strpos( $provider, 'https://embed.gettyimages.com/oembed/' ) ) {
+	if ( ! str_starts_with( $provider, 'https://embed.gettyimages.com/oembed/' ) ) {
 		return $provider;
 	}
 
@@ -132,7 +138,7 @@ function wpcom_shortcodereverse_getty( $content ) {
 			} else {
 				$params = $match[5];
 				if ( 'regexp_ent' === $reg ) {
-					$params = html_entity_decode( $params );
+					$params = html_entity_decode( $params, ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML401 );
 				}
 				$params = wp_kses_hair( $params, array( 'http' ) );
 

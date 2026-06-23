@@ -1,5 +1,5 @@
 import { getJetpackData } from '@automattic/jetpack-shared-extension-utils';
-import { get, pickBy, startsWith, flatten, map, keys, values } from 'lodash';
+import { pickBy } from 'lodash';
 
 /**
  * Return an object with the allowed mime types for the site,
@@ -7,13 +7,13 @@ import { get, pickBy, startsWith, flatten, map, keys, values } from 'lodash';
  * It allows `video, `audio`, ...
  *
  * @param {string} mimeType - File mime type.
- * @returns {object} Filtered allowed mime types.
+ * @return {object} Filtered allowed mime types.
  */
 export function getAllowedVideoTypesByType( mimeType ) {
 	if ( ! mimeType ) {
 		return {};
 	}
-	return pickBy( getAllowedMimeTypesBySite(), type => startsWith( type, `${ mimeType }/` ) );
+	return pickBy( getAllowedMimeTypesBySite(), type => type.startsWith( `${ mimeType }/` ) );
 }
 
 /**
@@ -24,30 +24,32 @@ export function getAllowedVideoTypesByType( mimeType ) {
  * pick up both extensions `3g2` and `3gp2` and populate the returned array.
  *
  * @param {object} mimeTypesObject - Object mime types.
- * @returns {Array} File extensions.
+ * @return {Array} File extensions.
  */
 export function pickFileExtensionsFromMimeTypes( mimeTypesObject ) {
 	if ( ! mimeTypesObject ) {
 		return [];
 	}
-	return flatten( map( keys( mimeTypesObject ), ext => ext.split( '|' ) ) );
+	return Object.keys( mimeTypesObject )
+		.map( ext => ext.split( '|' ) )
+		.flat();
 }
 
 /**
  * Return the allowed file mime types for the site.
  *
- * @returns {object} Allowed Mime Types.
+ * @return {object} Allowed Mime Types.
  */
 export default function getAllowedMimeTypesBySite() {
-	return get( getJetpackData(), [ 'allowedMimeTypes' ], [] );
+	return getJetpackData()?.allowedMimeTypes ?? [];
 }
 
 /**
  * Check if the given file matches with the file type.
  *
- * @param   {string|object} file - File to check.
- * @param   {string}        type - File type used to check the file.
- * @returns {boolean}       True if file type matches with the given type. Otherwise, False.
+ * @param {string|object} file - File to check.
+ * @param {string}        type - File type used to check the file.
+ * @return {boolean}       True if file type matches with the given type. Otherwise, False.
  */
 export function isFileOfType( file, type ) {
 	if ( ! file || ! type ) {
@@ -68,7 +70,7 @@ export function isFileOfType( file, type ) {
 	}
 
 	if ( typeof file === 'object' ) {
-		return file.type && values( allowedVideoMimeTypes ).includes( file.type );
+		return file.type && Object.values( allowedVideoMimeTypes ).includes( file.type );
 	}
 
 	return false;

@@ -1,5 +1,9 @@
 <?php // phpcs:ignore WordPress.Files.FileName.InvalidClassFileName
 
+if ( ! defined( 'ABSPATH' ) ) {
+	exit( 0 );
+}
+
 $json_jetpack_endpoints_dir = __DIR__ . '/';
 
 require_once $json_jetpack_endpoints_dir . 'class.jetpack-json-api-endpoint.php';
@@ -42,7 +46,7 @@ new Jetpack_JSON_API_Themes_Active_Endpoint(
 		),
 		'request_format'          => array(
 			'theme'                => '(string) The ID of the theme that should be activated',
-			'dont_change_homepage' => '(bool=false) Whether the homepage of the site should be replaced with the theme homepage',
+			'dont_change_homepage' => '(bool) Whether the homepage of the site should be replaced with the theme homepage',
 		),
 		'response_format'         => Jetpack_JSON_API_Themes_Endpoint::$_response_format,
 		'allow_jetpack_site_auth' => true,
@@ -84,8 +88,11 @@ new Jetpack_JSON_API_Themes_List_Endpoint(
 	)
 );
 
+require_once $json_jetpack_endpoints_dir . 'class-jetpack-json-api-attachment-ownership-trait.php';
+
 require_once $json_jetpack_endpoints_dir . 'class.jetpack-json-api-themes-get-endpoint.php';
 require_once $json_jetpack_endpoints_dir . 'class.jetpack-json-api-themes-new-endpoint.php';
+require_once $json_jetpack_endpoints_dir . 'class.jetpack-json-api-themes-replace-endpoint.php';
 
 // POST /sites/%s/themes/%new
 new Jetpack_JSON_API_Themes_New_Endpoint(
@@ -99,7 +106,7 @@ new Jetpack_JSON_API_Themes_New_Endpoint(
 			'$site' => '(int|string) The site ID, The site domain',
 		),
 		'request_format'          => array(
-			'zip' => '(zip) Theme package zip file. multipart/form-data encoded. ',
+			'zip' => '(array) Reference to an uploaded theme package zip file.',
 		),
 		'response_format'         => Jetpack_JSON_API_Themes_Endpoint::$_response_format,
 		'allow_jetpack_site_auth' => true,
@@ -252,6 +259,7 @@ require_once $json_jetpack_endpoints_dir . 'class.jetpack-json-api-plugins-endpo
 require_once $json_jetpack_endpoints_dir . 'class.jetpack-json-api-plugins-get-endpoint.php';
 require_once $json_jetpack_endpoints_dir . 'class.jetpack-json-api-plugins-list-endpoint.php';
 require_once $json_jetpack_endpoints_dir . 'class.jetpack-json-api-plugins-new-endpoint.php';
+require_once $json_jetpack_endpoints_dir . 'class.jetpack-json-api-plugins-replace-endpoint.php';
 require_once $json_jetpack_endpoints_dir . 'class.jetpack-json-api-plugins-install-endpoint.php';
 require_once $json_jetpack_endpoints_dir . 'class.jetpack-json-api-plugins-delete-endpoint.php';
 require_once $json_jetpack_endpoints_dir . 'class.jetpack-json-api-plugins-modify-endpoint.php';
@@ -1390,7 +1398,7 @@ new Jetpack_JSON_API_User_Create_Endpoint(
         "name": "binarysmash",
         "URL": "http:\/\/binarysmash.wordpress.com",
         "avatar_URL": "http:\/\/0.gravatar.com\/avatar\/a178ebb1731d432338e6bb0158720fcc?s=96&d=identicon&r=G",
-        "profile_URL": "http:\/\/en.gravatar.com\/binarysmash",
+        "profile_URL": "http:\/\/gravatar.com\/binarysmash",
         "roles": [ "administrator" ]
     }',
 		'example_request'         => 'https://public-api.wordpress.com/rest/v1/sites/example.wordpress.org/users/create',

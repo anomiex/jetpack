@@ -10,6 +10,8 @@ namespace Automattic\Jetpack\Changelog\Tests;
 use Automattic\Jetpack\Changelog\Changelog;
 use Automattic\Jetpack\Changelog\ChangelogEntry;
 use InvalidArgumentException;
+use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -17,8 +19,8 @@ use PHPUnit\Framework\TestCase;
  *
  * @covers \Automattic\Jetpack\Changelog\Changelog
  */
+#[CoversClass( Changelog::class )]
 class ChangelogTest extends TestCase {
-	use \Yoast\PHPUnitPolyfills\Polyfills\ExpectException;
 
 	/**
 	 * Test prologue and epilogue.
@@ -32,6 +34,7 @@ class ChangelogTest extends TestCase {
 		$this->assertSame( 'Foo', $changelog->getPrologue() );
 		$this->assertSame( 'Bar', $changelog->getEpilogue() );
 
+		// @phan-suppress-next-line PhanTypeMismatchArgument -- This is testing the type casting.
 		$this->assertSame( $changelog, $changelog->setPrologue( 123 )->setEpilogue( 456 ) );
 		$this->assertSame( '123', $changelog->getPrologue() );
 		$this->assertSame( '456', $changelog->getEpilogue() );
@@ -72,6 +75,7 @@ class ChangelogTest extends TestCase {
 		$changelog = new Changelog();
 		$this->expectException( InvalidArgumentException::class );
 		$this->expectExceptionMessage( 'Automattic\\Jetpack\\Changelog\\Changelog::setEntries: Expected a ChangelogEntry, got NULL at index 0' );
+		// @phan-suppress-next-line PhanTypeMismatchArgument -- This is testing the error case.
 		$changelog->setEntries( array( null ) );
 	}
 
@@ -82,6 +86,7 @@ class ChangelogTest extends TestCase {
 		$changelog = new Changelog();
 		$this->expectException( InvalidArgumentException::class );
 		$this->expectExceptionMessage( 'Automattic\\Jetpack\\Changelog\\Changelog::setEntries: Expected a ChangelogEntry, got Automattic\\Jetpack\\Changelog\\Changelog at index 0' );
+		// @phan-suppress-next-line PhanTypeMismatchArgument -- This is testing the error case.
 		$changelog->setEntries( array( $changelog ) );
 	}
 
@@ -92,13 +97,14 @@ class ChangelogTest extends TestCase {
 	 * @param string           $json JSON data.
 	 * @param Changelog|string $changelog Changelog, or error message if decoding should fail.
 	 */
+	#[DataProvider( 'provideJson' )]
 	public function testJson( $json, $changelog ) {
 		if ( is_string( $changelog ) ) {
 			$this->expectException( InvalidArgumentException::class );
 			$this->expectExceptionMessage( $changelog );
 			Changelog::jsonUnserialize( json_decode( $json ) );
 		} else {
-			$this->assertSame( $json, json_encode( $changelog ) );
+			$this->assertSame( $json, json_encode( $changelog, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
 			$this->assertEquals( $changelog, Changelog::jsonUnserialize( json_decode( $json ) ) );
 		}
 	}
@@ -106,7 +112,7 @@ class ChangelogTest extends TestCase {
 	/**
 	 * Data provider for testJson.
 	 */
-	public function provideJson() {
+	public static function provideJson() {
 		return array(
 			'Basic serialization'              => array(
 				'{"__class__":"Automattic\\\\Jetpack\\\\Changelog\\\\Changelog","prologue":"","epilogue":"","entries":[]}',
@@ -131,5 +137,4 @@ class ChangelogTest extends TestCase {
 			),
 		);
 	}
-
 }

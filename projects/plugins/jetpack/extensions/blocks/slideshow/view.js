@@ -1,18 +1,22 @@
 import domReady from '@wordpress/dom-ready';
-import { forEach } from 'lodash';
 import ResizeObserver from 'resize-observer-polyfill';
 import createSwiper from './create-swiper';
+import { paginationCustomRender } from './pagination';
 import {
 	swiperApplyAria,
 	swiperInit,
 	swiperPaginationRender,
 	swiperResize,
 } from './swiper-callbacks';
+import applyPaddingForStackBlock from './utils';
 
 if ( typeof window !== 'undefined' ) {
 	domReady( function () {
+		applyPaddingForStackBlock();
+
 		const slideshowBlocks = document.getElementsByClassName( 'wp-block-jetpack-slideshow' );
-		forEach( slideshowBlocks, slideshowBlock => {
+
+		Array.from( slideshowBlocks ).forEach( slideshowBlock => {
 			if ( slideshowBlock.getAttribute( 'data-jetpack-block-initialized' ) === 'true' ) {
 				return;
 			}
@@ -20,7 +24,9 @@ if ( typeof window !== 'undefined' ) {
 			const { autoplay, delay, effect } = slideshowBlock.dataset;
 			const prefersReducedMotion = window.matchMedia( '(prefers-reduced-motion: reduce)' ).matches;
 			const shouldAutoplay = autoplay && ! prefersReducedMotion;
-			const slideshowContainer = slideshowBlock.getElementsByClassName( 'swiper-container' )[ 0 ];
+			const slideshowContainer = slideshowBlock.querySelector(
+				'.wp-block-jetpack-slideshow_container'
+			);
 			let pendingRequestAnimationFrame = null;
 			createSwiper(
 				slideshowContainer,
@@ -34,10 +40,16 @@ if ( typeof window !== 'undefined' ) {
 					effect,
 					init: true,
 					initialSlide: 0,
-					loop: true,
+					loop: false,
 					keyboard: {
 						enabled: true,
 						onlyInViewport: true,
+					},
+					pagination: {
+						el: '.swiper-pagination',
+						clickable: true,
+						type: 'custom',
+						renderCustom: paginationCustomRender,
 					},
 				},
 				{

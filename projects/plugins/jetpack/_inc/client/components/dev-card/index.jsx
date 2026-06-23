@@ -1,9 +1,8 @@
-import classNames from 'classnames';
+import clsx from 'clsx';
+import { Component } from 'react';
+import { connect } from 'react-redux';
 import Card from 'components/card';
 import { getPlanClass } from 'lib/plans/constants';
-import { get } from 'lodash';
-import React from 'react';
-import { connect } from 'react-redux';
 import { getVaultPressScanThreatCount } from 'state/at-a-glance';
 import { isConnectionOwner, isCurrentUserLinked } from 'state/connection';
 import {
@@ -26,7 +25,7 @@ import { getScanStatus } from 'state/scan';
 import { getSitePlan } from 'state/site';
 import onKeyDownCallback from 'utils/onkeydown-callback';
 
-export class DevCard extends React.Component {
+export class DevCard extends Component {
 	static displayName = 'DevCard';
 
 	onPlanChange = event => {
@@ -78,7 +77,7 @@ export class DevCard extends React.Component {
 									checked={ ! this.props.canViewStats }
 									onChange={ this.onPermissionsChange }
 								/>
-								Can not view stats
+								Cannot view stats
 							</label>
 						</li>
 					</ul>
@@ -128,11 +127,11 @@ export class DevCard extends React.Component {
 			return null;
 		}
 
-		const classes = classNames( this.props.className, 'jp-dev-card' );
+		const classes = clsx( this.props.className, 'jp-dev-card' );
 
 		const planClass = getPlanClass( this.props.sitePlan.product_slug );
-		const rewindState = get( this.props.rewindStatus, [ 'state' ], false );
-		const scanState = get( this.props.scanStatus, [ 'state' ], false );
+		const rewindState = this.props.rewindStatus?.state ?? false;
+		const scanState = this.props.scanStatus?.state ?? false;
 
 		return (
 			<Card compact className={ classes }>
@@ -197,6 +196,19 @@ export class DevCard extends React.Component {
 								onChange={ this.onPlanChange }
 							/>
 							Pro
+						</label>
+					</li>
+					<li>
+						<label htmlFor="jetpack_starter">
+							<input
+								type="radio"
+								id="jetpack_starter"
+								value="jetpack_starter_yearly"
+								name="jetpack_starter_yearly"
+								checked={ 'is-jetpack-starter-plan' === planClass }
+								onChange={ this.onPlanChange }
+							/>
+							Security (10 GB)
 						</label>
 					</li>
 					<li>

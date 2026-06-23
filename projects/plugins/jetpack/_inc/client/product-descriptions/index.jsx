@@ -1,11 +1,10 @@
-import QueryIntroOffers from 'components/data/query-intro-offers';
-import QuerySiteProducts from 'components/data/query-site-products';
-import { JetpackLoadingIcon } from 'components/jetpack-loading-icon';
+import { Spinner } from '@wordpress/components';
 import { isEmpty } from 'lodash';
 import PropTypes from 'prop-types';
-import React from 'react';
 import { connect } from 'react-redux';
-import { Route, Switch } from 'react-router-dom';
+import { Route, Routes } from 'react-router';
+import QueryIntroOffers from 'components/data/query-intro-offers';
+import QuerySiteProducts from 'components/data/query-site-products';
 import { getProductsForPurchase } from 'state/initial-state';
 import { isFetchingIntroOffers } from 'state/intro-offers';
 import { isFetchingProducts as isFetchingProductsSelector } from 'state/products';
@@ -24,7 +23,7 @@ const ProductDescriptions = props => {
 
 	if ( ! isLoading ) {
 		Object.values( SUPPORTED_PRODUCTS ).forEach( function ( key ) {
-			if ( ! products.hasOwnProperty( key ) ) {
+			if ( ! Object.hasOwn( products, key ) ) {
 				return;
 			}
 
@@ -35,9 +34,11 @@ const ProductDescriptions = props => {
 			}
 
 			routes.push(
-				<Route key={ key } path={ `/product/${ key }` }>
-					<ProductDescription product={ product } />
-				</Route>
+				<Route
+					key={ key }
+					path={ `/product/${ key }` }
+					element={ <ProductDescription product={ product } /> }
+				/>
 			);
 		} );
 	}
@@ -49,10 +50,10 @@ const ProductDescriptions = props => {
 
 			{ isLoading ? (
 				<div className="jp-product-descriptions__loading">
-					<JetpackLoadingIcon />
+					<Spinner />
 				</div>
 			) : (
-				<Switch>{ routes }</Switch>
+				<Routes>{ routes }</Routes>
 			) }
 		</>
 	);

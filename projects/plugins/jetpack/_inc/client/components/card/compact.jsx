@@ -1,14 +1,13 @@
-import classnames from 'classnames';
+import clsx from 'clsx';
+import { Component } from 'react';
 import Card from 'components/card';
-import { assign } from 'lodash';
-import React from 'react';
 
-export default class CompactCard extends React.Component {
+export default class CompactCard extends Component {
 	static displayName = 'CompactCard';
 
 	render() {
-		const props = assign( {}, this.props, {
-			className: classnames( this.props.className, 'is-compact' ),
+		const props = Object.assign( {}, this.props, {
+			className: clsx( this.props.className, 'is-compact' ),
 		} );
 
 		return <Card { ...props }>{ this.props.children }</Card>;

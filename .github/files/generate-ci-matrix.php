@@ -6,8 +6,6 @@
  * @package automattic/jetpack
  */
 
-// phpcs:disable WordPress.WP.AlternativeFunctions, WordPress.WP.GlobalVariablesOverride
-
 chdir( __DIR__ . '/../../' );
 
 // Default versions for PHP and Node.
@@ -24,79 +22,115 @@ foreach ( file( '.github/versions.sh' ) as $line ) {
 // Default matrix variables. See inline for docs.
 $default_matrix_vars = array(
 	// {string} Name for the job. Required, and must be unique.
-	'name'         => null,
+	'name'                => null,
+
+	// {string} Runner name as found in https://github.com/actions/runner-images/.
+	'runner'              => 'ubuntu-latest',
 
 	// {string} Composer script for the job. Required.
-	'script'       => null,
+	'script'              => null,
 
 	// {string} PHP version to use.
-	'php'          => $versions['PHP_VERSION'],
+	'php'                 => $versions['PHP_VERSION'],
 
 	// {string} Node version to use.
-	'node'         => $versions['NODE_VERSION'],
+	'node'                => $versions['NODE_VERSION'],
 
 	// {string} WordPress version to check out: 'latest', 'previous', 'trunk', or 'none'.
-	'wp'           => 'none',
+	'wp'                  => 'none',
 
-	// {bool} Whether the check is experimental, i.e. it won't make the workflow fail.
-	'experimental' => false,
+	// {bool} Whether the check is experimental, i.e. it won't make the workflow fail. Don't set this when the job is required!
+	'experimental'        => false,
+
+	// {bool} Whether to force package tests to run. Normally they only run when 'wp' is 'latest' or 'none'.
+	'force-package-tests' => false,
 
 	// {int} Job timeout in minutes.
-	'timeout'      => 10,
+	'timeout'             => 10,
 
 	// {string} A valid artifact name for any generated artifacts. If not given, will be derived from the name.
-	'artifact'     => null,
+	'artifact'            => null,
+
+	// {bool} Whether to install WooCommerce.
+	'with-woocommerce'    => false,
+
+	// {string} For coverage jobs, which group is being run: 'php' or 'js'.
+	'coverage-group'      => '',
 );
 
 // Matrix definitions. Each will be combined with `$default_matrix_vars` later in processing.
 $matrix = array();
 
 // Add PHP tests.
-foreach ( array( '5.6', '7.0', '7.2', '7.3', '7.4', '8.0' ) as $php ) {
+foreach ( array( '7.2', '7.3' ) as $php ) {
+	$matrix[] = array(
+		'name'                => "PHP tests: PHP $php WP previous",
+		'script'              => 'test-php',
+		'php'                 => $php,
+		'wp'                  => 'previous',
+		'force-package-tests' => true,
+		'timeout'             => 20, // 2025-11-06: Successful runs seem to take ~7 minutes.
+	);
+}
+foreach ( array( '7.4', '8.0', '8.1', '8.2', '8.3', '8.4', '8.5' ) as $php ) {
 	$matrix[] = array(
 		'name'    => "PHP tests: PHP $php WP latest",
 		'script'  => 'test-php',
 		'php'     => $php,
 		'wp'      => 'latest',
-		'timeout' => 20, // 2022-01-25: 5.6 tests have started timing out at 15 minutes. Previously: Successful runs seem to take ~8 minutes for PHP 5.6 and for the 7.4 trunk run, ~5.5-6 for 7.x and 8.0.
+		'timeout' => 20, // 2025-11-06: Successful runs seem to take ~7 minutes.
 	);
 }
-// Uncomment this once WP trunk finally works with 8.1. Then merge into the above once WP latest does and we've cleaned up any problems in our own code.
-// phpcs:ignore Squiz.PHP.CommentedOutCode.Found, Squiz.Commenting.BlockComment.NoEmptyLineBefore
-/*
-$matrix[] = array(
-	'name'         => 'PHP tests: PHP 8.1 WP trunk',
-	'script'       => 'test-php',
-	'php'          => '8.1',
-	'wp'           => 'trunk',
-	'timeout'      => 15,
-	'experimental' => true,
-);
-*/
+
 foreach ( array( 'previous', 'trunk' ) as $wp ) {
+	$phpver   = $versions['PHP_VERSION'];
 	$matrix[] = array(
-		'name'    => "PHP tests: PHP {$versions['PHP_VERSION']} WP $wp",
+		'name'    => "PHP tests: PHP {$phpver} WP $wp",
 		'script'  => 'test-php',
-		'php'     => $versions['PHP_VERSION'],
+		'php'     => $phpver,
 		'wp'      => $wp,
-		'timeout' => 15, // 2021-01-18: Successful runs seem to take ~8 minutes for PHP 5.6 and for the 7.4 trunk run, ~5.5-6 for 7.x and 8.0.
+		'timeout' => 15, // 2025-11-06: Successful runs seem to take ~7 minutes.
 	);
 }
+
+// Add WooCommerce tests.
+$matrix[] = array(
+	'name'             => 'PHP tests: PHP 7.4 WP latest with WooCommerce',
+	'script'           => 'test-php',
+	'php'              => '7.4',
+	'wp'               => 'latest',
+	'timeout'          => 15, // 2025-11-06: Successful runs seem to take ~3 minutes.
+	'with-woocommerce' => true,
+);
+
+// Add wpcomsh tests.
+$matrix[] = array(
+	'name'         => 'PHP tests: PHP 8.3 WP latest with wpcomsh',
+	'script'       => 'test-php',
+	'php'          => '8.3',
+	'wp'           => 'latest',
+	'timeout'      => 15, // 2025-11-06: Successful runs seem to take ~7 minutes.
+	'with-wpcomsh' => true,
+);
 
 // Add JS tests.
 $matrix[] = array(
 	'name'    => 'JS tests',
 	'script'  => 'test-js',
-	'timeout' => 15, // 2021-01-18: Successful runs seem to take ~5 minutes.
+	'timeout' => 15, // 2025-11-06: Successful runs seem to take ~5 minutes.
 );
 
-// Add Coverage tests.
-$matrix[] = array(
-	'name'    => 'Code coverage',
-	'script'  => 'test-coverage',
-	'wp'      => 'latest',
-	'timeout' => 30, // 2021-01-18: Successful runs seem to take ~20 minutes
-);
+// Add Coverage tests. Split into PHP and JS groups so they run in parallel.
+foreach ( array( 'php', 'js' ) as $cov_group ) {
+	$matrix[] = array(
+		'name'           => 'Code coverage (' . strtoupper( $cov_group ) . ')',
+		'script'         => "test-$cov_group-coverage",
+		// JS coverage doesn't need a WordPress environment, like the regular JS tests job.
+		'wp'             => 'php' === $cov_group ? 'latest' : 'none',
+		'timeout'        => 30, // 2025-11-06: Successful runs took ~15 minutes combined; we'll want to update this when we have new numbers.
+		'coverage-group' => $cov_group,
+	);
+}
 
 // END matrix definitions.
 // Now, validation.
@@ -106,21 +140,21 @@ $any_errors = false;
 /**
  * Output an error for GH Actions.
  *
- * @param array ...$args Arguments as for printf.
+ * @param string $fmt Format string for printf.
+ * @param mixed  ...$args Arguments as for printf.
  */
-function error( ...$args ) {
+function error( $fmt, ...$args ) {
 	global $any_errors;
 
 	$any_errors = true;
 
 	$msg = strtr(
-		sprintf( ...$args ),
+		sprintf( $fmt, ...$args ),
 		array(
 			"\r" => '',
 			"\n" => '%0A',
 		)
 	);
-	// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 	fprintf( STDERR, "---\n::error::%s\n---\n", $msg );
 }
 
@@ -128,7 +162,7 @@ function error( ...$args ) {
  * Join an array with commas and "or".
  *
  * @param array $vals Values to join.
- * @returns string
+ * @return string
  */
 function join_or( $vals ) {
 	if ( count( $vals ) > 1 ) {
@@ -220,6 +254,27 @@ foreach ( $matrix as &$m ) {
 			)
 		);
 		error( "Key `wp` must be %s\n%s", $valid_wp, $orig );
+	}
+
+	// Coverage runs must set a proper `coverage-group` to match the script; other runs must leave it empty.
+	if ( preg_match( '/^test-(\w+)-coverage$/', $m['script'], $match ) ) {
+		if ( $m['coverage-group'] !== $match[1] ) {
+			error( "Key `coverage-group` must be '%s' for script `%s`!\n%s", $match[1], $m['script'], $orig );
+		}
+		$valid_groups = array( 'php', 'js' );
+		if ( ! in_array( $m['coverage-group'], $valid_groups, true ) ) {
+			$valid_groups = join_or(
+				array_map(
+					function ( $v ) {
+						return "'$v'";
+					},
+					$valid_groups
+				)
+			);
+			error( "For coverage runs, key `coverage_group` must be %s!\n%s", $valid_groups, $orig );
+		}
+	} elseif ( $m['coverage-group'] !== '' ) {
+		error( "Key `coverage-group` must be empty for a non-coverage run!\n%s", $orig );
 	}
 }
 unset( $m );

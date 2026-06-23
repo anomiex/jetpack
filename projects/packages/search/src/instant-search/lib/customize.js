@@ -5,6 +5,9 @@ const SETTINGS_TO_STATE_MAP = new Map( [
 	[ 'jetpack_search_enable_sort', 'enableSort' ],
 	[ 'jetpack_search_highlight_color', 'highlightColor' ],
 	[ 'jetpack_search_inf_scroll', 'enableInfScroll' ],
+	[ 'jetpack_search_filtering_opens_overlay', 'enableFilteringOpensOverlay' ],
+	[ 'jetpack_search_show_post_date', 'enablePostDate' ],
+	[ 'jetpack_search_show_product_price', 'enableProductPrice' ],
 	[ 'jetpack_search_overlay_trigger', 'overlayTrigger' ],
 	[ 'jetpack_search_show_powered_by', 'showPoweredBy' ],
 	[ 'jetpack_search_result_format', 'resultFormat' ],
@@ -13,7 +16,7 @@ const SETTINGS_TO_STATE_MAP = new Map( [
 /**
  * Detects if the current environment is within WP's Customizer.
  *
- * @returns {boolean} is in customizer.
+ * @return {boolean} is in customizer.
  */
 export function isInCustomizer() {
 	return typeof window?.wp?.customize === 'function';

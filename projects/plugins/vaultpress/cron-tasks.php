@@ -1,8 +1,8 @@
 <?php
 // don't call the file directly
-defined( 'ABSPATH' ) or die();
+defined( 'ABSPATH' ) || die( 0 );
 
-include_once dirname( __FILE__ ) . '/vp-scanner.php';
+require_once __DIR__ . '/vp-scanner.php';
 
 if ( !function_exists( 'apply_filters_ref_array' ) ) :
 

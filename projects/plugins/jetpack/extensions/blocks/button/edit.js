@@ -1,45 +1,42 @@
 import {
 	InspectorControls,
 	RichText,
-	__experimentalUseGradient as useGradient, // eslint-disable-line wpcalypso/no-unsafe-wp-apis
+	__experimentalUseGradient as useGradient, // eslint-disable-line @wordpress/no-unsafe-wp-apis
+	__experimentalUseBorderProps as useBorderProps, // eslint-disable-line @wordpress/no-unsafe-wp-apis
 	withColors,
+	useBlockProps,
+	store as blockEditorStore,
 } from '@wordpress/block-editor';
 import { compose } from '@wordpress/compose';
-import { useEffect, useRef } from '@wordpress/element';
+import { useDispatch, useSelect } from '@wordpress/data';
+import { useEffect } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
-import classnames from 'classnames';
-import applyFallbackStyles from './apply-fallback-styles';
+import clsx from 'clsx';
 import { IS_GRADIENT_AVAILABLE } from './constants';
 import ButtonControls from './controls';
+import useFallbackColors from './use-fallback-colors';
 import usePassthroughAttributes from './use-passthrough-attributes';
 import './editor.scss';
 
-const usePrevious = value => {
-	const ref = useRef();
-
-	useEffect( () => {
-		ref.current = value;
-	}, [ value ] );
-
-	return ref.current;
-};
-
 export function ButtonEdit( props ) {
 	const { attributes, backgroundColor, className, clientId, setAttributes, textColor } = props;
-	const { align, borderRadius, element, placeholder, text, width } = attributes;
-	const previousAlign = usePrevious( align );
-
+	const { borderRadius, element, placeholder, text, width, fontSize, customVariant, metaName } =
+		attributes;
 	usePassthroughAttributes( { attributes, clientId, setAttributes } );
 
-	useEffect( () => {
-		// Reset button width if switching to left or right (floated) alignment for first time.
-		const alignmentChanged = previousAlign !== align;
-		const isAlignedLeftRight = align === 'left' || align === 'right';
+	const { metadata } = useSelect(
+		select => {
+			const { getBlockAttributes } = select( blockEditorStore );
 
-		if ( alignmentChanged && isAlignedLeftRight && width?.includes( '%' ) ) {
-			setAttributes( { width: undefined } );
-		}
-	}, [ align, previousAlign, setAttributes, width ] );
+			return {
+				metadata: getBlockAttributes( clientId )?.metadata,
+			};
+		},
+		[ clientId ]
+	);
+
+	const { updateBlockAttributes, __unstableMarkNextChangeAsNotPersistent } =
+		useDispatch( 'core/block-editor' );
 
 	/* eslint-disable react-hooks/rules-of-hooks */
 	const {
@@ -54,35 +51,71 @@ export function ButtonEdit( props ) {
 		: {};
 	/* eslint-enable react-hooks/rules-of-hooks */
 
-	const blockClasses = classnames( 'wp-block-button', className );
+	const blockProps = useBlockProps( {
+		className: clsx( 'wp-block-button', className ),
+		style: { width },
+	} );
 
-	const buttonClasses = classnames( 'wp-block-button__link', {
+	const [ fallbackColors, textRef ] = useFallbackColors();
+
+	const borderProps = useBorderProps( attributes );
+
+	const buttonClasses = clsx( 'wp-block-button__link', borderProps.className, {
 		'has-background': backgroundColor.color || gradientValue,
 		[ backgroundColor.class ]: ! gradientValue && backgroundColor.class,
 		'has-text-color': textColor.color,
 		[ textColor.class ]: textColor.class,
 		[ gradientClass ]: gradientClass,
 		'no-border-radius': 0 === borderRadius,
-		'has-custom-width': !! width,
+		[ `has-${ fontSize }-font-size` ]: !! fontSize,
+		'has-custom-font-size': !! fontSize,
+		[ `is-${ customVariant }` ]: !! customVariant,
 	} );
+
+	useEffect( () => {
+		if ( ! clientId ) {
+			return;
+		}
+		if ( ! metaName ) {
+			return;
+		}
+		if ( metadata?.name === metaName ) {
+			return;
+		}
+		__unstableMarkNextChangeAsNotPersistent();
+		updateBlockAttributes( clientId, {
+			metadata: {
+				...metadata,
+				name: metaName,
+			},
+		} );
+	}, [
+		metaName,
+		metadata,
+		updateBlockAttributes,
+		clientId,
+		__unstableMarkNextChangeAsNotPersistent,
+	] );
 
 	const buttonStyles = {
 		...( ! backgroundColor.color && gradientValue
 			? { background: gradientValue }
 			: { backgroundColor: backgroundColor.color } ),
+		fontSize: attributes.style?.typography?.fontSize,
 		color: textColor.color,
 		borderRadius: borderRadius ? borderRadius + 'px' : undefined,
-		width,
+		...borderProps.style,
 	};
 
 	return (
-		<div className={ blockClasses }>
+		<div { ...blockProps }>
 			<RichText
 				allowedFormats={ 'input' === element ? [] : undefined }
 				className={ buttonClasses }
 				disableLineBreaks={ 'input' === element }
 				onChange={ value => setAttributes( { text: value } ) }
 				placeholder={ placeholder || __( 'Add text…', 'jetpack' ) }
+				ref={ textRef }
 				style={ buttonStyles }
 				value={ text }
 				withoutInteractiveFormatting
@@ -93,6 +126,7 @@ export function ButtonEdit( props ) {
 						gradientValue,
 						setGradient,
 						isGradientAvailable: IS_GRADIENT_AVAILABLE,
+						...fallbackColors,
 						...props,
 					} }
 				/>
@@ -102,6 +136,5 @@ export function ButtonEdit( props ) {
 }
 
 export default compose(
-	withColors( { backgroundColor: 'background-color' }, { textColor: 'color' } ),
-	applyFallbackStyles
+	withColors( { backgroundColor: 'background-color' }, { textColor: 'color' } )
 )( ButtonEdit );

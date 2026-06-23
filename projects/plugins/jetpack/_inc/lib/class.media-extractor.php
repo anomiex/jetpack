@@ -6,6 +6,8 @@
  * @package automattic/jetpack
  */
 
+use Automattic\Jetpack\Post_Media\Images;
+
 /**
  * Class with methods to extract metadata from a post/page about videos, images, links, mentions embedded
  * in or attached to the post/page.
@@ -32,10 +34,12 @@ class Jetpack_Media_Meta_Extractor {
 	 * @var string[]
 	 */
 	private static $keeper_shortcodes = array(
+		'audio',
 		'youtube',
 		'vimeo',
 		'hulu',
 		'ted',
+		'video',
 		'wpvideo',
 		'videopress',
 	);
@@ -80,7 +84,7 @@ class Jetpack_Media_Meta_Extractor {
 			$extracted = self::get_image_fields( $post, array(), $extract_alt_text );
 
 			// Turn off images so we can safely call extract_from_content() below.
-			$what_to_extract = $what_to_extract - self::IMAGES;
+			$what_to_extract -= self::IMAGES;
 		}
 
 		if ( function_exists( 'restore_current_blog' ) ) {
@@ -172,11 +176,11 @@ class Jetpack_Media_Meta_Extractor {
 
 					$attr = shortcode_parse_atts( $matches[3][ $key ] );
 
-					$shortcode_total_count++;
+					++$shortcode_total_count;
 					if ( ! isset( $shortcode_type_counts[ $shortcode_name ] ) ) {
 						$shortcode_type_counts[ $shortcode_name ] = 0;
 					}
-					$shortcode_type_counts[ $shortcode_name ]++;
+					++$shortcode_type_counts[ $shortcode_name ];
 
 					// Store (uniquely) presence of all shortcode regardless of whether it's a keeper (for those, get ID below)
 					// @todo Store number of occurrences?
@@ -197,6 +201,11 @@ class Jetpack_Media_Meta_Extractor {
 							$id = call_user_func( $shortcode_get_id_func, $attr );
 						} elseif ( method_exists( $shortcode_class_name, $shortcode_get_id_method ) ) {
 							$id = call_user_func( array( $shortcode_class_name, $shortcode_get_id_method ), $attr );
+						} elseif ( 'video' === $shortcode ) {
+							$id = $attr['src'] ?? $attr['url'] ?? $attr['mp4'] ?? $attr['m4v'] ?? $attr['webm'] ?? $attr['ogv'] ?? $attr['wmv'] ?? $attr['flv'] ?? null;
+						} elseif ( 'audio' === $shortcode ) {
+							preg_match( '#(https?://(?:[^\s"|\']+)\.(?:mp3|ogg|flac|m4a|wav))([ "\'|]|$)#', implode( ' ', $attr ), $audio_matches );
+							$id = $audio_matches[1] ?? null;
 						}
 						if ( ! empty( $id )
 							&& ( ! isset( $shortcode_details[ $shortcode_name ] ) || ! in_array( $id, $shortcode_details[ $shortcode_name ], true ) ) ) {
@@ -294,12 +303,14 @@ class Jetpack_Media_Meta_Extractor {
 						}
 					}
 
-					// @todo Check unique before adding
-					$links[] = array(
+					$link = array(
 						'url'           => $link_all_but_proto,
 						'host_reversed' => $host_reversed,
 						'host'          => $url['host'],
 					);
+					if ( ! in_array( $link, $links, true ) ) {
+						$links[] = $link;
+					}
 				}
 			}
 
@@ -338,7 +349,11 @@ class Jetpack_Media_Meta_Extractor {
 
 					// Check whether this "link" is really an embed.
 					foreach ( $oembed->providers as $matchmask => $data ) {
-						list( $providerurl, $regex ) = $data; // phpcs:ignore VariableAnalysis.CodeAnalysis.VariableAnalysis.UnusedVariable
+						// Guard against malformed oEmbed providers.
+						if ( ! isset( $data[0] ) ) {
+							continue;
+						}
+						$regex = $data[1] ?? false;
 
 						// Turn the asterisk-type provider URLs into regex.
 						if ( ! $regex ) {
@@ -374,7 +389,7 @@ class Jetpack_Media_Meta_Extractor {
 	/**
 	 * Get image fields for matching images.
 	 *
-	 * @uses Jetpack_PostImages
+	 * @uses Images
 	 *
 	 * @param WP_Post $post A post object.
 	 * @param array   $args Optional args, see defaults list for details.
@@ -399,7 +414,7 @@ class Jetpack_Media_Meta_Extractor {
 		$image_booleans            = array();
 		$image_booleans['gallery'] = 0;
 
-		$from_featured_image = Jetpack_PostImages::from_thumbnail( $post->ID, $args['width'], $args['height'] );
+		$from_featured_image = Images::from_thumbnail( $post->ID, $args['width'], $args['height'] );
 		if ( ! empty( $from_featured_image ) ) {
 			if ( $extract_alt_text ) {
 				$image_list = array_merge( $image_list, self::reduce_extracted_images( $from_featured_image ) );
@@ -409,7 +424,7 @@ class Jetpack_Media_Meta_Extractor {
 			}
 		}
 
-		$from_slideshow = Jetpack_PostImages::from_slideshow( $post->ID, $args['width'], $args['height'] );
+		$from_slideshow = Images::from_slideshow( $post->ID, $args['width'], $args['height'] );
 		if ( ! empty( $from_slideshow ) ) {
 			if ( $extract_alt_text ) {
 				$image_list = array_merge( $image_list, self::reduce_extracted_images( $from_slideshow ) );
@@ -419,7 +434,7 @@ class Jetpack_Media_Meta_Extractor {
 			}
 		}
 
-		$from_gallery = Jetpack_PostImages::from_gallery( $post->ID );
+		$from_gallery = Images::from_gallery( $post->ID );
 		if ( ! empty( $from_gallery ) ) {
 			if ( $extract_alt_text ) {
 				$image_list = array_merge( $image_list, self::reduce_extracted_images( $from_gallery ) );
@@ -427,7 +442,7 @@ class Jetpack_Media_Meta_Extractor {
 				$srcs       = wp_list_pluck( $from_gallery, 'src' );
 				$image_list = array_merge( $image_list, $srcs );
 			}
-			$image_booleans['gallery']++; // @todo This count isn't correct, will only every count 1
+			++$image_booleans['gallery']; // @todo This count isn't correct, will only every count 1
 		}
 
 		// @todo Can we check width/height of these efficiently?  Could maybe use query args at least, before we strip them out
@@ -437,7 +452,7 @@ class Jetpack_Media_Meta_Extractor {
 	}
 
 	/**
-	 * Given an extracted image array reduce to src and alt_text.
+	 * Given an extracted image array reduce to src,  alt_text, src_width, and src_height.
 	 *
 	 * @param array $images extracted image array.
 	 *
@@ -450,14 +465,19 @@ class Jetpack_Media_Meta_Extractor {
 			if ( empty( $image['src'] ) ) {
 				continue;
 			}
-			if ( ! empty( $image['alt_text'] ) ) {
-				$ret_images[] = array(
-					'url'      => $image['src'],
-					'alt_text' => $image['alt_text'],
-				);
-			} else {
-				$ret_images[] = $image['src'];
+			$ret_image = array(
+				'url' => $image['src'],
+			);
+			if ( ! empty( $image['src_height'] ) || ! empty( $image['src_width'] ) ) {
+				$ret_image['src_width']  = $image['src_width'] ?? '';
+				$ret_image['src_height'] = $image['src_height'] ?? '';
 			}
+			if ( ! empty( $image['alt_text'] ) ) {
+				$ret_image['alt_text'] = $image['alt_text'];
+			} else {
+				$ret_image = $image['src'];
+			}
+			$ret_images[] = $ret_image;
 		}
 		return $ret_images;
 	}
@@ -467,11 +487,12 @@ class Jetpack_Media_Meta_Extractor {
 	 *
 	 * @param string $content HTML content.
 	 * @param array  $image_list Array of already found images.
+	 * @param string $extract_alt_text Whether or not to extract the alt text.
 	 *
 	 * @return array|array[] Array of images.
 	 */
-	public static function extract_images_from_content( $content, $image_list ) {
-		$image_list = self::get_images_from_html( $content, $image_list );
+	public static function extract_images_from_content( $content, $image_list, $extract_alt_text = false ) {
+		$image_list = self::get_images_from_html( $content, $image_list, $extract_alt_text );
 		return self::build_image_struct( $image_list, array() );
 	}
 
@@ -495,9 +516,7 @@ class Jetpack_Media_Meta_Extractor {
 				}
 			}
 			$image_booleans['image'] = count( $retval['image'] );
-			if ( ! empty( $image_booleans ) ) {
-				$retval['has'] = $image_booleans;
-			}
+			$retval['has']           = $image_booleans;
 			return $retval;
 		} else {
 			return array();
@@ -515,7 +534,7 @@ class Jetpack_Media_Meta_Extractor {
 	 */
 	public static function get_images_from_html( $html, $images_already_extracted, $extract_alt_text = false ) {
 		$image_list = $images_already_extracted;
-		$from_html  = Jetpack_PostImages::from_html( $html );
+		$from_html  = Images::from_html( $html );
 		// early return if no image in html.
 		if ( empty( $from_html ) ) {
 			return $image_list;
@@ -526,7 +545,7 @@ class Jetpack_Media_Meta_Extractor {
 			$length    = strpos( $image_url, '?' );
 			$src       = wp_parse_url( $image_url );
 
-			if ( $src && isset( $src['scheme'], $src['host'], $src['path'] ) ) {
+			if ( $src && isset( $src['scheme'] ) && isset( $src['host'] ) && isset( $src['path'] ) ) {
 				// Rebuild the URL without the query string.
 				$queryless = $src['scheme'] . '://' . $src['host'] . $src['path'];
 			} elseif ( $length ) {
@@ -543,14 +562,21 @@ class Jetpack_Media_Meta_Extractor {
 			}
 
 			if ( ! in_array( $queryless, $image_list, true ) ) {
-				if ( $extract_alt_text && ! empty( $extracted_image['alt_text'] ) ) {
-					$image_list[] = array(
-						'url'      => $queryless,
-						'alt_text' => $extracted_image['alt_text'],
-					);
+				$image_to_add = array(
+					'url' => $queryless,
+				);
+				if ( $extract_alt_text ) {
+					if ( ! empty( $extracted_image['alt_text'] ) ) {
+						$image_to_add['alt_text'] = $extracted_image['alt_text'];
+					}
+					if ( ! empty( $extracted_image['src_width'] ) || ! empty( $extracted_image['src_height'] ) ) {
+							$image_to_add['src_width']  = $extracted_image['src_width'];
+							$image_to_add['src_height'] = $extracted_image['src_height'];
+					}
 				} else {
-					$image_list[] = $queryless;
+					$image_to_add = $queryless;
 				}
+				$image_list[] = $image_to_add;
 			}
 		}
 		return $image_list;
@@ -565,7 +591,7 @@ class Jetpack_Media_Meta_Extractor {
 	 */
 	private static function get_stripped_content( $content ) {
 		$clean_content = wp_strip_all_tags( $content );
-		$clean_content = html_entity_decode( $clean_content );
+		$clean_content = html_entity_decode( $clean_content, ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML401 );
 		// completely strip shortcodes and any content they enclose.
 		$clean_content = strip_shortcodes( $clean_content );
 		return $clean_content;

@@ -10,14 +10,13 @@ namespace Automattic\Jetpack\Changelog\Tests;
 use Automattic\Jetpack\Changelog\Changelog;
 use Automattic\Jetpack\Changelog\Parser;
 use Exception;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 /**
  * Test base class for changelog parsers.
  */
-class ParserTestCase extends TestCase {
-	use \Yoast\PHPUnitPolyfills\Polyfills\AssertIsType;
-	use \Yoast\PHPUnitPolyfills\Polyfills\AssertStringContains;
+abstract class ParserTestCase extends TestCase {
 
 	/**
 	 * Parser class being tested.
@@ -31,7 +30,7 @@ class ParserTestCase extends TestCase {
 	 *
 	 * @var string
 	 */
-	protected $fixtures;
+	protected static $fixtures;
 
 	/**
 	 * Set to update fixture files after running tests.
@@ -100,7 +99,7 @@ class ParserTestCase extends TestCase {
 		$this->assertTrue( isset( $data['changelog'] ) || isset( $data['object'] ), 'Must provide at least one of "changelog" or "object"' );
 		$this->assertFalse( isset( $data['parse-output'] ) && isset( $data['parse-exception'] ), 'Cannot provide both "parse-output" and "parse-exception".' );
 		$this->assertFalse( isset( $data['format-output'] ) && isset( $data['format-exception'] ), 'Cannot provide both "format-output" and "format-exception".' );
-		$jsonFlags = JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR; // phpcs:ignore PHPCompatibility.Constants.NewConstants.json_throw_on_errorFound
+		$jsonFlags = JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR;
 
 		$contents = "# {$this->className} test fixture file\n";
 		if ( ! empty( $data['args'] ) ) {
@@ -171,6 +170,7 @@ class ParserTestCase extends TestCase {
 	 * @param string $filename Fixture file name.
 	 * @throws Exception On all sorts of failures. Duh.
 	 */
+	#[DataProvider( 'provideFixture' )]
 	public function testFixture( $filename ) {
 		// Load fixture file. The important parts are the bits delimited with `~~~~~~~~`, the rest is ignored.
 		$contents = file_get_contents( $filename );
@@ -225,7 +225,7 @@ class ParserTestCase extends TestCase {
 						$this->assertStringContainsString( $data['parse-exception']->getMessage(), $ex->getMessage(), 'Expected exception from parse()' );
 					}
 				} else {
-					$expect = isset( $data['parse-output'] ) ? $data['parse-output'] : $data['object'];
+					$expect = $data['parse-output'] ?? $data['object'] ?? null;
 					$this->assertEquals( $expect, $parser->parse( $data['changelog'] ), 'Output from parse()' );
 				}
 			}
@@ -239,7 +239,7 @@ class ParserTestCase extends TestCase {
 						$this->assertStringContainsString( $data['format-exception']->getMessage(), $ex->getMessage(), 'Expected exception from format()' );
 					}
 				} else {
-					$expect = isset( $data['format-output'] ) ? $data['format-output'] : $data['changelog'];
+					$expect = $data['format-output'] ?? $data['changelog'] ?? null;
 					$this->assertEquals( $expect, $parser->format( $data['object'] ), 'Output from format()' );
 				}
 			}
@@ -275,9 +275,9 @@ class ParserTestCase extends TestCase {
 	/**
 	 * Data provider for testFixture.
 	 */
-	public function provideFixture() {
+	public static function provideFixture() {
 		$ret = array();
-		foreach ( glob( $this->fixtures ) as $filename ) {
+		foreach ( glob( static::$fixtures ) as $filename ) {
 			$ret[ basename( $filename ) ] = array( $filename );
 		}
 		return $ret;
@@ -289,5 +289,4 @@ class ParserTestCase extends TestCase {
 	public function testUpdateFixtures() {
 		$this->assertFalse( $this->updateFixtures, static::class . '::$updateFixtures must be false for tests to pass.' );
 	}
-
 }

@@ -1,9 +1,11 @@
 import { JETPACK_DATA_PATH } from '@automattic/jetpack-shared-extension-utils';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import apiFetch from '@wordpress/api-fetch';
 import InstagramGalleryEdit from '../edit';
 
-const originalFetch = window.fetch;
+// Mock @wordpress/api-fetch
+jest.mock( '@wordpress/api-fetch' );
 
 // Mock connecting site to wpcom.
 jest.mock( '../use-connect-wpcom', () => ( {
@@ -37,8 +39,7 @@ describe( 'InstagramGalleryEdit', () => {
 
 	beforeEach( () => {
 		setAttributes.mockClear();
-		// eslint-disable-next-line jest/prefer-spy-on -- Nothing to spy on.
-		window.fetch = jest.fn();
+		apiFetch.mockClear();
 		window[ JETPACK_DATA_PATH ] = {
 			jetpack: {
 				is_current_user_connected: true,
@@ -46,49 +47,35 @@ describe( 'InstagramGalleryEdit', () => {
 		};
 	} );
 
-	afterAll( () => {
-		window.fetch = originalFetch;
+	afterEach( () => {
+		jest.clearAllMocks();
 	} );
 
 	test( 'renders the Instagram connection placeholder when the user has no existing connection', async () => {
 		// Mock call to the `instagram-gallery/connections` endpoint.
-		window.fetch.mockReturnValue(
-			Promise.resolve( { status: 200, json: () => Promise.resolve( [] ) } )
-		);
+		apiFetch.mockResolvedValue( [] );
 
-		render( <InstagramGalleryEdit { ...defaultProps } /> );
+		const { container } = render( <InstagramGalleryEdit { ...defaultProps } /> );
 
-		await waitFor( () =>
-			expect( window.fetch.mock.calls[ 0 ][ 0 ] ).toBe(
-				'/wpcom/v2/instagram-gallery/connections?_locale=user'
-			)
-		);
+		await waitFor( () => {
+			expect(
+				within( container ).getByText( 'Connect to Instagram to start sharing your images.' )
+			).toBeInTheDocument();
+		} );
 
-		expect(
-			screen.getByText( 'Connect to Instagram to start sharing your images.' )
-		).toBeInTheDocument();
-		expect( screen.getByText( 'Connect to Instagram' ) ).toBeInTheDocument();
+		expect( within( container ).getByText( 'Connect to Instagram' ) ).toBeInTheDocument();
 	} );
 
 	test( 'updates instagram user and access token when selecting existing connection', async () => {
 		const user = userEvent.setup();
 		// Mock call to the `instagram-gallery/connections` endpoint.
-		window.fetch.mockReturnValue(
-			Promise.resolve( {
-				status: 200,
-				json: () => Promise.resolve( [ { token: '123456', username: 'testjetpackuser' } ] ),
-			} )
-		);
+		apiFetch.mockResolvedValue( [ { token: '123456', username: 'testjetpackuser' } ] );
 
 		render( <InstagramGalleryEdit { ...defaultProps } /> );
 
-		await waitFor( () =>
-			expect( window.fetch.mock.calls[ 0 ][ 0 ] ).toBe(
-				'/wpcom/v2/instagram-gallery/connections?_locale=user'
-			)
-		);
-
-		expect( screen.getByText( 'Select your Instagram account:' ) ).toBeInTheDocument();
+		await waitFor( () => {
+			expect( screen.getByText( 'Select your Instagram account:' ) ).toBeInTheDocument();
+		} );
 
 		await user.click( screen.getByLabelText( '@testjetpackuser' ) );
 		await user.click( screen.getByText( 'Connect to Instagram' ) );
@@ -102,22 +89,13 @@ describe( 'InstagramGalleryEdit', () => {
 	test( 'displays text to tell the user to log out of instagram when there is an existing connection', async () => {
 		const user = userEvent.setup();
 		// Mock call to the `instagram-gallery/connections` endpoint.
-		window.fetch.mockReturnValue(
-			Promise.resolve( {
-				status: 200,
-				json: () => Promise.resolve( [ { token: '123456', username: 'testjetpackuser' } ] ),
-			} )
-		);
+		apiFetch.mockResolvedValue( [ { token: '123456', username: 'testjetpackuser' } ] );
 
 		render( <InstagramGalleryEdit { ...defaultProps } /> );
 
-		await waitFor( () =>
-			expect( window.fetch.mock.calls[ 0 ][ 0 ] ).toBe(
-				'/wpcom/v2/instagram-gallery/connections?_locale=user'
-			)
-		);
-
-		expect( screen.getByText( 'Select your Instagram account:' ) ).toBeInTheDocument();
+		await waitFor( () => {
+			expect( screen.getByText( 'Select your Instagram account:' ) ).toBeInTheDocument();
+		} );
 
 		await user.click( screen.getByLabelText( 'Add a new account' ) );
 		expect(
@@ -143,12 +121,7 @@ describe( 'InstagramGalleryEdit', () => {
 		];
 
 		// Mock call to the `instagram-gallery/gallery` endpoint.
-		window.fetch.mockReturnValueOnce(
-			Promise.resolve( {
-				status: 200,
-				json: () => Promise.resolve( { external_name: 'testjetpackuser', images } ),
-			} )
-		);
+		apiFetch.mockResolvedValueOnce( { external_name: 'testjetpackuser', images } );
 
 		const propsWithConnectedAccount = {
 			...defaultProps,
@@ -157,13 +130,9 @@ describe( 'InstagramGalleryEdit', () => {
 
 		render( <InstagramGalleryEdit { ...propsWithConnectedAccount } /> );
 
-		await waitFor( () =>
-			expect( window.fetch.mock.calls[ 0 ][ 0 ] ).toBe(
-				'/wpcom/v2/instagram-gallery/gallery?access_token=123456&count=30&_locale=user'
-			)
-		);
-
-		expect( screen.getByAltText( 'test image 1' ) ).toBeInTheDocument();
+		await waitFor( () => {
+			expect( screen.getByAltText( 'test image 1' ) ).toBeInTheDocument();
+		} );
 		expect( screen.getByAltText( 'test image 2' ) ).toBeInTheDocument();
 		expect( screen.queryByText( 'Connect to Instagram' ) ).not.toBeInTheDocument();
 	} );

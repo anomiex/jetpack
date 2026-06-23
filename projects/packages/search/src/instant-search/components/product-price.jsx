@@ -1,16 +1,12 @@
-import React, { Component, Fragment } from 'react';
+import * as React from 'react';
+import { Component, Fragment } from 'react';
 
 import './product-price.scss';
 
 class ProductPrice extends Component {
 	render() {
-		const {
-			formattedPrice,
-			formattedSalePrice,
-			formattedRegularPrice,
-			price,
-			salePrice,
-		} = this.props;
+		const { formattedPrice, formattedSalePrice, formattedRegularPrice, price, salePrice } =
+			this.props;
 
 		if ( ! price ) {
 			return null;

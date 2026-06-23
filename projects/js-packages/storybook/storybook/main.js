@@ -2,67 +2,172 @@
  * This file is inspired by https://github.com/WordPress/gutenberg/blob/trunk/storybook/main.js
  */
 
-const path = require( 'path' );
-const projects = require( './projects' );
+import path from 'node:path';
+import { fileURLToPath } from 'url';
+import react from '@vitejs/plugin-react';
+import remarkGfm from 'remark-gfm';
+import { NodePackageImporter } from 'sass-embedded';
+import jetpackConfig from './jetpackConfig.js';
+import { projects } from './projects.js';
 
-const modulesDir = path.join( __dirname, '../node_modules' );
+const __dirname = import.meta.dirname;
 
-const storiesSearch = '*.@(js|jsx|mdx|ts|tsx)';
-
+const storiesSearch = '*.@(mdx|@(story|stories).@(js|jsx|ts|tsx))';
 const stories = [ process.env.NODE_ENV !== 'test' && `./stories/**/${ storiesSearch }` ]
-	.concat( projects.map( project => `${ project }/**/stories/${ storiesSearch }` ) )
+	.concat(
+		projects.map( project =>
+			path.relative( __dirname, `${ project }/**/stories/${ storiesSearch }` )
+		)
+	)
 	.filter( Boolean );
 
-const customEnvVariables = {};
-
-// Workaround for Emotion 11
-// https://github.com/storybookjs/storybook/pull/13300#issuecomment-783268111
-const updateEmotionAliases = config => ( {
-	...config,
-	resolve: {
-		...config.resolve,
-		alias: {
-			...config.resolve.alias,
-			'@emotion/core': path.join( modulesDir, '@emotion/react' ),
-			'@emotion/styled': path.join( modulesDir, '@emotion/styled' ),
-			'@emotion/styled-base': path.join( modulesDir, '@emotion/styled' ),
-			'emotion-theming': path.join( modulesDir, '@emotion/react' ),
-		},
-	},
-} );
-
-module.exports = {
-	core: {
-		builder: 'webpack5',
-	},
+const sbconfig = {
 	stories,
 	addons: [
 		{
 			name: '@storybook/addon-docs',
-			options: { configureJSX: true },
+			options: {
+				mdxPluginOptions: {
+					mdxCompileOptions: {
+						remarkPlugins: [ remarkGfm ],
+					},
+				},
+			},
 		},
-		'@storybook/addon-storysource',
-		'@storybook/addon-viewport',
 		'@storybook/addon-a11y',
-		'@storybook/addon-essentials',
-		'storybook-addon-turbo-build',
+		'@storybook/addon-vitest',
 	],
-	managerWebpack: updateEmotionAliases,
-	// Workaround:
-	// https://github.com/storybookjs/storybook/issues/12270
-	webpackFinal: async config => {
-		// Find the DefinePlugin
-		const plugin = config.plugins.find( p => {
-			return p.definitions && p.definitions[ 'process.env' ];
-		} );
-		// Add custom env variables
-		Object.keys( customEnvVariables ).forEach( key => {
-			plugin.definitions[ 'process.env' ][ key ] = JSON.stringify( customEnvVariables[ key ] );
-		} );
+	viteFinal: async config => {
+		const { mergeConfig, transformWithOxc } = await import( 'vite' );
+		return mergeConfig( config, {
+			plugins: [
+				// This would normally be in vite.config.js, but we don't have one of those.
+				react( { include: /\.(m?[jt]sx?|cjs)$/ } ),
 
-		const finalConfig = updateEmotionAliases( config );
+				// Our webpack setup processes .js files as jsx. Have vite do it too.
+				{
+					name: 'jsx-in-js',
+					enforce: 'pre',
+					async transform( code, id ) {
+						if ( ! id.includes( 'node_modules' ) && /\.[cm]?js$/.test( id ) ) {
+							return transformWithOxc( code, id, { lang: 'jsx' } );
+						}
+					},
+				},
 
-		return finalConfig;
+				// Stub `@automattic/jetpack-config`, the whole `jetpackConfig` thing confuses Storybook/vite/vitest/esbuild/rolldown/etc to no end.
+				// If you're trying to use those tools for something else, consider somehow fixing `@automattic/jetpack-config` instead of perpetuating this hack.
+				{
+					name: 'virtual-jetpack-config',
+					enforce: 'pre',
+					resolveId( id ) {
+						if ( id === '@automattic/jetpack-config' ) return '\0@automattic/jetpack-config';
+					},
+					load( id ) {
+						if ( id === '\0@automattic/jetpack-config' )
+							return `
+								const jetpackConfig = ${ JSON.stringify( jetpackConfig ) };
+								export const jetpackConfigHas = key => Object.hasOwn( jetpackConfig, key );
+								export const jetpackConfigGet = key => {
+									if ( ! jetpackConfigHas( key ) ) {
+										throw '@automattic/jetpack-config: "' + key + '" is not defined in Storybook.';
+									}
+									return jetpackConfig[ key ];
+								};
+							`;
+					},
+				},
+
+				// Handle packages/search's weird `resolve.modules` setting.
+				{
+					name: 'search-dashboard-modules',
+					async resolveId( id, importer ) {
+						if (
+							( id.startsWith( 'components/' ) || id === 'store' || id.startsWith( 'store/' ) ) &&
+							importer?.includes( '/search/src/dashboard/' )
+						) {
+							const dashboardDir = path.join( __dirname, '../../../packages/search/src/dashboard' );
+							return this.resolve( path.join( dashboardDir, id ), importer, {
+								skipSelf: true,
+							} );
+						}
+					},
+				},
+			],
+			optimizeDeps: {
+				rolldownOptions: {
+					// Tell the dep pre-bundling scanner to treat .js as JSX.
+					moduleTypes: { '.js': 'jsx' },
+				},
+			},
+			server: {
+				watch: {
+					// Vite doesn't like our vendor symlink loops.
+					ignored: [ '**/vendor/**', '**/jetpack_vendor/**' ],
+				},
+			},
+			css: {
+				preprocessorOptions: {
+					scss: {
+						api: 'modern-compiler',
+						loadPaths: [
+							'node_modules',
+							// Handle packages/search's weird `resolve.modules` setting for scss resolution too.
+							path.join( __dirname, '../../../packages/search/src/dashboard' ),
+						],
+						// Boost-specific alias. Needs separate configuration from the below, sigh.
+						importers: [
+							new NodePackageImporter(),
+							{
+								findFileUrl( url ) {
+									if ( url.startsWith( '$css/' ) ) {
+										return new URL(
+											'../../../plugins/boost/app/assets/src/css/' + url.slice( 5 ),
+											import.meta.url
+										);
+									}
+									return null;
+								},
+							},
+						],
+					},
+				},
+			},
+			build: {
+				chunkSizeWarningLimit: Infinity, // We don't care.
+			},
+			resolve: {
+				conditions: [ 'jetpack:src' ],
+				// Somehow or other vitest blows up trying to process `node_modules/storybook/dist/manager-api/index.js` unless we set this.
+				dedupe: [ 'react', 'react-dom' ],
+				alias: {
+					...config.resolve?.alias,
+
+					// Premium Analytics internal packages. At build time wp-build maps
+					// `@jetpack-premium-analytics/<dir>` to `packages/<dir>`; mirror that here
+					// (each package's `main` points at its TS source).
+					'@jetpack-premium-analytics': path.join(
+						__dirname,
+						'../../../packages/premium-analytics/packages'
+					),
+
+					// Boost-specific aliases
+					$lib: path.join( __dirname, '../../../plugins/boost/app/assets/src/js/lib' ),
+					$features: path.join( __dirname, '../../../plugins/boost/app/assets/src/js/features' ),
+					$layout: path.join( __dirname, '../../../plugins/boost/app/assets/src/js/layout' ),
+					$svg: path.join( __dirname, '../../../plugins/boost/app/assets/src/js/svg' ),
+					$css: path.join( __dirname, '../../../plugins/boost/app/assets/src/css' ),
+					$images: path.join( __dirname, '../../../plugins/boost/app/assets/static/images' ),
+
+					// Stuff @wordpress/block-editor → postcss probes but doesn't need.
+					// Without these, vitest dumps lots of complaints about https://vite.dev/guide/troubleshooting#module-externalized-for-browser-compatibility.
+					fs: path.join( __dirname, 'empty.js' ),
+					path: path.join( __dirname, 'empty.js' ),
+					url: path.join( __dirname, 'empty.js' ),
+					'source-map-js': path.join( __dirname, 'empty.js' ),
+				},
+			},
+		} );
 	},
 	refs: {
 		gutenberg: {
@@ -70,4 +175,17 @@ module.exports = {
 			url: 'https://wordpress.github.io/gutenberg/',
 		},
 	},
+	framework: {
+		// Workaround https://github.com/storybookjs/storybook/issues/21710
+		// from https://storybook.js.org/docs/faq#how-do-i-fix-module-resolution-in-special-environments
+		name: path.dirname(
+			fileURLToPath( import.meta.resolve( '@storybook/react-vite/package.json' ) )
+		),
+		options: {},
+	},
+	typescript: {
+		reactDocgen: 'react-docgen-typescript',
+	},
+	staticDirs: [ '../public' ],
 };
+export default sbconfig;

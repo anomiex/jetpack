@@ -91,7 +91,9 @@ fi
 CURRENT_STABLE_VERSION=$(jq -r .version <<<"$JSON")
 
 # Get all versions, strip anything with alpha characters such as -beta or trunk.
-LAST_STABLE_TAG=$(jq -r '.versions | delpaths([paths | select(.[] | test("[A-Za-z]+"; "i"))]) | keys[-2]' <<<"$JSON")
+SVN_TMP=$(jq -r '.versions | keys[] | select( test( "^[0-9]+(\\.[0-9]+)+$" ) )' <<<"$JSON"  | sort -V )
+mapfile -t SVN_TAGS <<<"$SVN_TMP"
+LAST_STABLE_TAG=${SVN_TAGS[-2]}
 
 red CAUTION
 echo "This script does one thing, which is to revert stable tag in WordPress.org svn to the prior tag."
@@ -106,8 +108,8 @@ info "Checking out SVN shallowly to $DIR"
 svn -q checkout "https://plugins.svn.wordpress.org/$WPSLUG/" --depth=empty "$DIR"
 success "Done!"
 
-info "Checking out SVN trunk to $DIR/trunk"
-svn -q up trunk
+info "Checking out SVN trunk readme.txt to $DIR/trunk"
+svn -q up --parents trunk/readme.txt
 success "Done!"
 
 # Update trunk to point to the last stable tag.

@@ -9,14 +9,12 @@ import './store';
 
 export default function StoryPlayer( { id, slides, metadata, disabled, ...settings } ) {
 	const playerId = useMemo( () => id || Math.random().toString( 36 ), [ id ] );
-	const { init, setEnded, setPlaying, setFullscreen, showSlide } = useDispatch(
-		'jetpack/story/player'
-	);
+	const { init, setEnded, setPlaying, setFullscreen, showSlide } =
+		useDispatch( 'jetpack/story/player' );
 	const { playing, currentSlideIndex, fullscreen, isReady, playerSettings } = useSelect(
 		select => {
-			const { getCurrentSlideIndex, getSettings, isFullscreen, isPlayerReady, isPlaying } = select(
-				'jetpack/story/player'
-			);
+			const { getCurrentSlideIndex, getSettings, isFullscreen, isPlayerReady, isPlaying } =
+				select( 'jetpack/story/player' );
 			if ( ! isPlayerReady( playerId ) ) {
 				return {
 					isReady: false,
@@ -51,6 +49,7 @@ export default function StoryPlayer( { id, slides, metadata, disabled, ...settin
 					if ( fullscreen ) {
 						break;
 					}
+				// fall through
 				case SPACE:
 					setPlaying( playerId, ! playing );
 					break;

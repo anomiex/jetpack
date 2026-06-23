@@ -8,18 +8,17 @@ import {
 import { ConnectScreenRequiredPlan, CONNECTION_STORE_ID } from '@automattic/jetpack-connection';
 import { useSelect } from '@wordpress/data';
 import { __ } from '@wordpress/i18n';
-import React from 'react';
 import styles from './styles.module.scss';
 
 const Admin = () => {
-	const connectionStatus = useSelect(
-		select => select( CONNECTION_STORE_ID ).getConnectionStatus(),
-		[]
+	const connectionStatus = useSelect( select =>
+		select( CONNECTION_STORE_ID ).getConnectionStatus()
 	);
 	const { isUserConnected, isRegistered } = connectionStatus;
 	const showConnectionCard = ! isRegistered || ! isUserConnected;
+
 	return (
-		<AdminPage moduleName={ __( 'Jetpack Starter Plugin', 'jetpack-starter-plugin' ) }>
+		<AdminPage>
 			<AdminSectionHero>
 				{ showConnectionCard ? (
 					<Container horizontalSpacing={ 3 } horizontalGap={ 3 }>
@@ -29,6 +28,9 @@ const Admin = () => {
 					</Container>
 				) : (
 					<Container horizontalSpacing={ 3 } horizontalGap={ 3 }>
+						<Col>
+							<div id="jp-admin-notices" className="jetpack-starter-plugin-jitm-card" />
+						</Col>
 						<Col sm={ 4 } md={ 6 } lg={ 6 }>
 							<h1 className={ styles.heading }>
 								{ __( 'The plugin headline.', 'jetpack-starter-plugin' ) }

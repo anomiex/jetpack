@@ -1,7 +1,7 @@
-import { Icon, warning, info, check } from '@wordpress/icons';
-import classNames from 'classnames';
-import React from 'react';
+import { Icon, cautionFilled as warning, info, check } from '@wordpress/icons';
+import clsx from 'clsx';
 import styles from './style.module.scss';
+import type { ReactNode, Component, ReactElement, FC } from 'react';
 
 type AlertProps = {
 	/** The severity of the alert. */
@@ -11,7 +11,10 @@ type AlertProps = {
 	showIcon?: boolean;
 
 	/** Children to be rendered inside the alert. */
-	children: React.ReactNode;
+	children: ReactNode;
+
+	/** Wrapper class name */
+	className?: string;
 };
 
 const getIconByLevel = ( level: AlertProps[ 'level' ] ) => {
@@ -32,14 +35,15 @@ const getIconByLevel = ( level: AlertProps[ 'level' ] ) => {
 /**
  * Alert component
  *
- * @param {object} props                   - The component properties.
- * @param {string} props.level             - The alert level: error, warning, info, success.
- * @param {boolean} props.showIcon         - Whether to show the alert icon.
- * @param {React.Component} props.children - The alert content.
- * @returns {React.ReactElement}             The `Alert` component.
+ * @param {object}    props           - The component properties.
+ * @param {string}    props.level     - The alert level: error, warning, info, success.
+ * @param {boolean}   props.showIcon  - Whether to show the alert icon.
+ * @param {string}    props.className - The wrapper class name.
+ * @param {Component} props.children  - The alert content.
+ * @return {ReactElement}             The `Alert` component.
  */
-const Alert: React.FC< AlertProps > = ( { level, children, showIcon } ) => {
-	const classes = classNames( styles.container, styles[ `is-${ level }` ] );
+const Alert: FC< AlertProps > = ( { level = 'warning', children, showIcon = true, className } ) => {
+	const classes = clsx( styles.container, styles[ `is-${ level }` ], className );
 
 	return (
 		<div className={ classes }>
@@ -51,11 +55,6 @@ const Alert: React.FC< AlertProps > = ( { level, children, showIcon } ) => {
 			<div>{ children }</div>
 		</div>
 	);
-};
-
-Alert.defaultProps = {
-	level: 'warning',
-	showIcon: true,
 };
 
 export default Alert;

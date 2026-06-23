@@ -25,7 +25,7 @@ resetAbortController();
  * Builds ElasticSerach aggregations for filters defined by search widgets.
  *
  * @param {object[]} widgets - an array of widget configuration objects
- * @returns {object} filter aggregations
+ * @return {object} filter aggregations
  */
 export function buildFilterAggregations( widgets = [] ) {
 	const aggregation = {};
@@ -42,7 +42,7 @@ export function buildFilterAggregations( widgets = [] ) {
  * Tried to merge the buckets, but which ended up showing too many filters.
  *
  * @param {object} newAggregations - New aggregations to operate on.
- * @returns {object} - Aggregations with doc_count set to 0.
+ * @return {object} - Aggregations with doc_count set to 0.
  */
 export function setDocumentCountsToZero( newAggregations ) {
 	newAggregations = newAggregations ?? {};
@@ -63,7 +63,7 @@ export function setDocumentCountsToZero( newAggregations ) {
  * Builds ElasticSearch aggregations for a given filter.
  *
  * @param {object[]} filter - a filter object from a widget configuration object.
- * @returns {object} filter aggregations
+ * @return {object} filter aggregations
  */
 function generateAggregation( filter ) {
 	switch ( filter.type ) {
@@ -83,7 +83,17 @@ function generateAggregation( filter ) {
 
 			return { terms: { field, size: filter.count } };
 		}
+		case 'product_attribute': {
+			const field = `taxonomy.${ filter.attribute }.slug_slash_name`;
+			return { terms: { field, size: filter.count } };
+		}
 		case 'post_type': {
+			return { terms: { field: filter.type, size: filter.count } };
+		}
+		case 'author': {
+			return { terms: { field: 'author_login_slash_name', size: filter.count } };
+		}
+		case 'blog_id': {
 			return { terms: { field: filter.type, size: filter.count } };
 		}
 	}
@@ -94,9 +104,9 @@ const DATE_REGEX = /(\d{4})-(\d{2})-(\d{2})/;
  * Generates a ElasticSearch date range filter.
  *
  * @param {string} fieldName - Name of the field (created, modified, etc).
- * @param {string} input - Filter value.
- * @param {string} type - Date range type (year vs month).
- * @returns {object} date filter.
+ * @param {string} input     - Filter value.
+ * @param {string} type      - Date range type (year vs month).
+ * @return {object} date filter.
  */
 export function generateDateRangeFilter( fieldName, input, type ) {
 	let year, month;
@@ -126,6 +136,12 @@ const filterKeyToEsFilter = new Map( [
 	// Post type
 	[ 'post_types', postType => ( { term: { post_type: postType } } ) ],
 
+	// Author
+	[ 'authors', author => ( { term: { author_login: author } } ) ],
+
+	// Blog ID
+	[ 'blog_ids', blogId => ( { term: { blog_id: blogId } } ) ],
+
 	// Built-in taxonomies
 	[ 'category', category => ( { term: { 'category.slug': category } } ) ],
 	[ 'post_tag', tag => ( { term: { 'tag.slug': tag } } ) ],
@@ -154,7 +170,7 @@ const filterKeyToEsFilter = new Map( [
  * Build static filters object
  *
  * @param {object} staticFilters - list of static filter key-value.
- * @returns {object} - list of selected static filters.
+ * @return {object} - list of selected static filters.
  */
 function buildStaticFilters( staticFilters ) {
 	const selectedFilters = {};
@@ -173,10 +189,10 @@ function buildStaticFilters( staticFilters ) {
 /**
  * Build an ElasticSearch filter object.
  *
- * @param {object} filterQuery - Filter query value object.
- * @param {object} adminQueryFilter - Manual ElasticSearch query override.
+ * @param {object} filterQuery       - Filter query value object.
+ * @param {object} adminQueryFilter  - Manual ElasticSearch query override.
  * @param {string} excludedPostTypes - Post types excluded via the Customizer.
- * @returns {object} ElasticSearch filter object.
+ * @return {object} ElasticSearch filter object.
  */
 function buildFilterObject( filterQuery, adminQueryFilter, excludedPostTypes ) {
 	const filter = { bool: { must: [] } };
@@ -219,7 +235,7 @@ const SORT_QUERY_MAP = new Map( [
  * Map sort values to ones compatible with the API.
  *
  * @param {string} sort - Sort value.
- * @returns {string} Mapped sort value.
+ * @return {string} Mapped sort value.
  */
 function mapSortToApiValue( sort ) {
 	// Some sorts don't need to be mapped
@@ -235,7 +251,7 @@ function mapSortToApiValue( sort ) {
  * Generate the query string for an API request
  *
  * @param {object} options - Options object for the function
- * @returns {string} The generated query string.
+ * @return {string} The generated query string.
  */
 function generateApiQueryString( {
 	aggregations,
@@ -249,6 +265,9 @@ function generateApiQueryString( {
 	postsPerPage = 10,
 	adminQueryFilter,
 	isInCustomizer = false,
+	additionalBlogIds = [],
+	highlightFields = [ 'title', 'content', 'comments' ],
+	customResults = [],
 } ) {
 	if ( query === null ) {
 		query = '';
@@ -261,8 +280,8 @@ function generateApiQueryString( {
 		'category.name.default',
 		'post_type',
 		'shortcode_types',
+		'forum.topic_resolved',
 	];
-	const highlightFields = [ 'title', 'content', 'comments' ];
 
 	/* Fetch image fields for non-minimal results
 	 *
@@ -312,6 +331,35 @@ function generateApiQueryString( {
 		size: postsPerPage,
 	};
 
+	// Support search through multiple blogs.
+	if ( additionalBlogIds?.length > 0 ) {
+		// `blog_id` is required when additional_blog_ids is set.
+		params.fields = fields.concat( [ 'author', 'blog_name', 'blog_icon_url', 'blog_id' ] );
+		params.additional_blog_ids = additionalBlogIds;
+	}
+
+	// Support customized search results by promoting certain documents to the top for specific queries
+	// By default we do exact matches, but also allow for regex, if the pattern
+	// starts with "regex:". For regex, we anchor the pattern to the start and
+	// end of the query. If the user really wants to match anywhere within the
+	// query, they can use for example ".*hello.*"
+	//
+	customResults.every( rule => {
+		let pattern = rule.pattern;
+		const postIds = rule.ids;
+		if ( pattern.startsWith( 'regex:' ) ) {
+			pattern = '^' + pattern.replace( 'regex:', '' ) + '$';
+			if ( query.match( pattern ) ) {
+				params.custom_results = postIds;
+				return false;
+			}
+		} else if ( query === pattern ) {
+			params.custom_results = postIds;
+			return false;
+		}
+		return true;
+	} );
+
 	if ( staticFilters && Object.keys( staticFilters ).length > 0 ) {
 		params = {
 			...params,
@@ -327,7 +375,7 @@ function generateApiQueryString( {
  * Generate an error handler for a given cache key
  *
  * @param {string} cacheKey - The cache key to use
- * @returns {Function} An error handler to be used with a search request
+ * @return {Function} An error handler to be used with a search request
  */
 function errorHandlerFactory( cacheKey ) {
 	return function errorHandler( error ) {
@@ -353,9 +401,9 @@ function errorHandlerFactory( cacheKey ) {
 /**
  * Generate a response handler for a given cache key
  *
- * @param {string} cacheKey - The cache key to use
+ * @param {string} cacheKey  - The cache key to use
  * @param {number} requestId - Sequential ID used to determine recency of requests.
- * @returns {Function} A response handler to be used with a search request
+ * @return {Function} A response handler to be used with a search request
  */
 function responseHandlerFactory( cacheKey, requestId ) {
 	return function responseHandler( responseJson ) {
@@ -379,9 +427,9 @@ function resetAbortController() {
 /**
  * Perform a search.
  *
- * @param {object} options - Search options
+ * @param {object} options   - Search options
  * @param {number} requestId - Sequential ID used to determine recency of requests.
- * @returns {Promise} A promise to the JSON response object
+ * @return {Promise} A promise to the JSON response object
  */
 export function search( options, requestId ) {
 	const key = stringify( Array.from( arguments ) );
@@ -435,9 +483,9 @@ export function search( options, requestId ) {
 	} )
 		.then( response => {
 			if ( response.status !== 200 ) {
-				return Promise.reject(
-					`Unexpected response from API with status code ${ response.status }.`
-				);
+				return response.json().then( json => {
+					throw new Error( json.error );
+				} );
 			}
 			return response;
 		} )

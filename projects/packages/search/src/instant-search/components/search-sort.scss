@@ -1,36 +1,43 @@
-@import '../lib/styles/_helper.scss';
+@use "../lib/styles/helper";
 
 .jetpack-instant-search__search-sort {
 	align-items: center;
 	display: flex;
 
-	> label[for='jetpack-instant-search__search-sort-select'] {
+	> label[for="jetpack-instant-search__search-sort-select"] {
 		margin: 0 0.25em 0 0;
 		flex-shrink: 0;
 		font-size: 1em;
-		font-weight: bold;
+		font-weight: 700;
 	}
 }
 
 .jetpack-instant-search__search-sort-with-links {
 	font-size: 13px;
+
+	.jetpack-instant-search__search-sort-separator {
+		font-weight: 300;
+		color: helper.$color-text-lighter;
+	}
 }
 
 .jetpack-instant-search__search-sort-with-select {
-	@include break-small-down() {
+
+	@include helper.break-small-down() {
 		width: 100%;
 		margin-right: 1em;
+
 		.jetpack-instant-search__overlay--no-sidebar & {
 			margin-right: 0;
 		}
 	}
 
-	@include break-large-up() {
+	@include helper.break-large-up() {
 		margin-top: -4px; // bump up when SearchControls using absolute positioning.
 	}
 }
 
-#jetpack-instant-search__search-sort-select {
+.jetpack-instant-search__search-sort-select {
 	font-size: 1em;
 
 	padding: 0.25em;
@@ -38,41 +45,39 @@
 
 	// Prevent themes from specifying a customized select styling.
 	appearance: auto;
-	background: $color-modal-background;
-	border: 1px solid $color-layout-borders;
-	color: $color-text;
+	background: helper.$color-modal-background;
+	border: 1px solid helper.$color-layout-borders;
+	color: helper.$color-text;
 	height: inherit;
 
-	@include break-small-down() {
+	@include helper.break-small-down() {
 		width: 100%;
 		padding: 0.5em;
 	}
 }
 
 .jetpack-instant-search__search-sort-option {
+
+	@include helper.remove-button-styling();
 	cursor: pointer;
 	padding: 0 2px 0 2px;
-	color: $color-text-lighter;
-	text-decoration: none;
 
-	&::after {
-		content: '·';
-		padding-left: 5px;
-		font-weight: 400;
-		color: $color-text-lighter;
-	}
+	&:focus {
 
-	.jetpack-instant-search__search-sort &:focus,
-	.jetpack-instant-search__search-sort &:hover {
-		text-decoration: none;
+		@include helper.apply-overlay-focus-styling();
 	}
+}
 
-	&:last-child::after {
-		content: '';
-	}
+.jetpack-instant-search__search-form-controls
+.jetpack-instant-search__search-sort
+button.jetpack-instant-search__search-sort-option {
+	// Extra specificity to override overly agressive theme styles.
+	// Without this, we need to use "!important" to get our default styling.
+	@include helper.apply-default-overlay-colors();
+	@include helper.apply-default-overlay-font-metrics();
 
 	&.is-selected {
-		color: $color-link-alt;
+		color: helper.$color-link-alt;
 		font-weight: 600;
 		text-decoration: none;
 	}

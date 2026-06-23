@@ -1,21 +1,12 @@
-@import '../../../scss/mixin_breakpoint.scss';
-@import '../../../scss/calypso-colors';
-@import 'node_modules/@automattic/jetpack-base-styles/style';
+@use "@automattic/jetpack-base-styles/style";
+@use "../../../scss/mixins/breakpoints";
+@use "../../../scss/calypso-colors";
 
 .jp-recommendations-question__site-type-checkboxes {
-	@include breakpoint( '>480px' ) {
-		display: grid;
-		gap: 16px;
-		grid-template-rows: auto auto;
-		grid-template-columns: auto auto;
-	}
+	display: flex;
+	flex-direction: column;
 
-	@include breakpoint( '<480px' ) {
-		display: flex;
-		flex-direction: column;
-	}
-
-	margin-bottom: 40px;
+	margin-bottom: 1rem;
 
 	text-align: left;
 }
@@ -25,16 +16,17 @@
 
 	margin: 0 0 32px 32px;
 
-	@include breakpoint( '<660px' ) {
+	@include breakpoints.breakpoint( "<660px" ) {
 		margin: 0 32px 32px 32px;
 	}
 
-	@include breakpoint( '<480px' ) {
+	@include breakpoints.breakpoint( "<480px" ) {
 		margin: 0 16px 16px 16px;
 	}
 
 	.dops-button {
-		@include breakpoint( '<480px' ) {
+
+		@include breakpoints.breakpoint( "<480px" ) {
 			width: 100%;
 		}
 	}
@@ -45,7 +37,7 @@
 	margin: 14px auto 0 auto;
 	max-width: 300px;
 
-	@include breakpoint( '<480px' ) {
+	@include breakpoints.breakpoint( "<480px" ) {
 		display: none;
 	}
 }

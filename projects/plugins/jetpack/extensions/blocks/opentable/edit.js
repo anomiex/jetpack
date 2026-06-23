@@ -1,12 +1,16 @@
-import { isAtomicSite, isSimpleSite } from '@automattic/jetpack-shared-extension-utils';
-import { InspectorControls, InspectorAdvancedControls } from '@wordpress/block-editor';
+import { isWpcomPlatformSite } from '@automattic/jetpack-script-data';
+import { getBlockIconComponent } from '@automattic/jetpack-shared-extension-utils';
+import {
+	InspectorControls,
+	InspectorAdvancedControls,
+	useBlockProps,
+} from '@wordpress/block-editor';
 import {
 	getBlockDefaultClassName,
 	registerBlockStyle,
 	unregisterBlockStyle,
 } from '@wordpress/blocks';
 import {
-	ExternalLink,
 	PanelBody,
 	Placeholder,
 	SelectControl,
@@ -15,27 +19,24 @@ import {
 } from '@wordpress/components';
 import { useEffect } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
-import classnames from 'classnames';
-import { isEmpty, isEqual, join } from 'lodash';
-import './editor.scss';
+import { Link } from '@wordpress/ui';
+import clsx from 'clsx';
+import { isEmpty, isEqual } from 'lodash';
 import { getActiveStyleName } from '../../shared/block-styles';
 import { getValidatedAttributes } from '../../shared/get-validated-attributes';
-import {
-	buttonStyle,
-	defaultAttributes,
-	getStyleOptions,
-	getStyleValues,
-	languageOptions,
-	languageValues,
-} from './attributes';
-import icon from './icon';
+import metadata from './block.json';
+import { languageOptions, languageValues } from './i18n';
 import RestaurantPicker from './restaurant-picker';
+import { buttonStyle, getStyleOptions, getStyleValues } from './styles';
 import usePrevious from './use-previous';
 import { getAttributesFromEmbedCode } from './utils';
 
+import './editor.scss';
+
+const icon = getBlockIconComponent( metadata );
+
 function OpenTableEdit( {
 	attributes,
-	className,
 	clientId,
 	isSelected,
 	name,
@@ -43,8 +44,10 @@ function OpenTableEdit( {
 	noticeUI,
 	setAttributes,
 } ) {
+	const blockProps = useBlockProps();
+
 	const defaultClassName = getBlockDefaultClassName( name );
-	const validatedAttributes = getValidatedAttributes( defaultAttributes, attributes );
+	const validatedAttributes = getValidatedAttributes( metadata.attributes, attributes );
 
 	if ( ! isEqual( validatedAttributes, attributes ) ) {
 		setAttributes( validatedAttributes );
@@ -81,7 +84,7 @@ function OpenTableEdit( {
 
 	// Don't allow button style with multiple restaurant IDs.
 	useEffect( () => {
-		if ( 'button' === selectedStyle && Array.isArray( rid ) && rid.length > 1 ) {
+		if ( 'button' === selectedStyle && Array.isArray( rid ) && rid?.length > 1 ) {
 			setAttributes( { className: '', style: '' } );
 		}
 	}, [ rid, selectedStyle, setAttributes ] );
@@ -92,7 +95,7 @@ function OpenTableEdit( {
 			return;
 		}
 
-		if ( Array.isArray( rid ) && rid.length > 1 ) {
+		if ( Array.isArray( rid ) && rid?.length > 1 ) {
 			unregisterBlockStyle( 'jetpack/opentable', [ 'button' ] );
 		} else {
 			registerBlockStyle( 'jetpack/opentable', buttonStyle );
@@ -113,7 +116,7 @@ function OpenTableEdit( {
 		// Need to force attribute to be updated after switch to using block styles
 		// so it still meets frontend rendering expectations.
 		setAttributes( { style } );
-	}, [ style ] );
+	}, [ align, style, prevStyle, setAttributes ] );
 
 	const parseEmbedCode = embedCode => {
 		const newAttributes = getAttributesFromEmbedCode( embedCode );
@@ -131,14 +134,14 @@ function OpenTableEdit( {
 			);
 		}
 
-		const validatedNewAttributes = getValidatedAttributes( defaultAttributes, newAttributes );
+		const validatedNewAttributes = getValidatedAttributes( metadata.attributes, newAttributes );
 		setAttributes( validatedNewAttributes );
 		noticeOperations.removeAllNotices();
 	};
 
 	const styleValues = getStyleValues( rid );
 	const getTypeAndTheme = fromStyle =>
-		rid.length > 1
+		rid?.length > 1
 			? [ 'multi', 'button' !== fromStyle ? fromStyle : 'standard' ]
 			: [
 					'button' === fromStyle ? 'button' : 'standard',
@@ -152,15 +155,14 @@ function OpenTableEdit( {
 				<div className={ `${ defaultClassName }-overlay` }></div>
 				<iframe
 					title={ sprintf(
-						/* translators: Placeholder is a unique ID. */
+						/* translators: %s: a unique ID. */
 						__( 'Open Table Preview %s', 'jetpack' ),
 						clientId
 					) }
 					scrolling="no"
-					src={ `https://www.opentable.com/widget/reservation/canvas?rid=${ join(
-						rid,
-						'%2C'
-					) }&type=${ type }&theme=${ theme }&overlay=false&domain=${ domain }&lang=${
+					src={ `https://www.opentable.com/widget/reservation/canvas?rid=${
+						Array.isArray( rid ) ? rid.join( '%2C' ) : ''
+					}&type=${ type }&theme=${ theme }&overlay=false&domain=${ domain }&lang=${
 						lang && languageValues.includes( lang ) ? lang : 'en-US'
 					}&newtab=${ newtab }&disablega=true` }
 				/>
@@ -187,12 +189,14 @@ function OpenTableEdit( {
 					checked={ iframe }
 					onChange={ () => setAttributes( { iframe: ! iframe } ) }
 					className="is-opentable"
+					__nextHasNoMarginBottom={ true }
 				/>
 				{ 'button' === style && (
 					<ToggleControl
 						label={ __( 'Remove button margin', 'jetpack' ) }
 						checked={ negativeMargin }
 						onChange={ () => setAttributes( { negativeMargin: ! negativeMargin } ) }
+						__nextHasNoMarginBottom={ true }
 					/>
 				) }
 			</InspectorAdvancedControls>
@@ -204,45 +208,48 @@ function OpenTableEdit( {
 						value={ lang }
 						onChange={ newLang => setAttributes( { lang: newLang } ) }
 						options={ languageOptions }
+						__nextHasNoMarginBottom={ true }
+						__next40pxDefaultSize={ true }
 					/>
 					<ToggleControl
 						label={ __( 'Open in a new window', 'jetpack' ) }
 						checked={ newtab }
 						onChange={ () => setAttributes( { newtab: ! newtab } ) }
+						__nextHasNoMarginBottom={ true }
 					/>
 				</PanelBody>
 			</InspectorControls>
 		</>
 	);
 
-	const supportLink =
-		isSimpleSite() || isAtomicSite()
-			? 'https://en.support.wordpress.com/wordpress-editor/blocks/opentable-block/'
-			: 'https://jetpack.com/support/jetpack-blocks/opentable-block/';
+	const supportLink = isWpcomPlatformSite()
+		? 'https://en.support.wordpress.com/wordpress-editor/blocks/opentable-block/'
+		: 'https://jetpack.com/support/jetpack-blocks/opentable-block/';
 
 	const blockPlaceholder = (
 		<Placeholder
 			label={ __( 'OpenTable Reservation', 'jetpack' ) }
 			icon={ icon }
 			instructions={ __(
-				'Enter your restaurant name, or paste an OpenTable Reservation Widget embed code.',
+				'Enter your restaurants IDs, separated by comma, or paste an OpenTable Reservation Widget embed code.',
 				'jetpack'
 			) }
 			notices={ noticeUI }
 		>
 			<RestaurantPicker rids={ rid } onSubmit={ onPickerSubmit } />
 			<div className={ `${ defaultClassName }-placeholder-links` }>
-				<ExternalLink href="https://restaurant.opentable.com/get-started/">
+				<Link openInNewTab href="https://restaurant.opentable.com/get-started/">
 					{ __( 'Sign up for OpenTable', 'jetpack' ) }
-				</ExternalLink>
-				<ExternalLink href={ supportLink }>{ __( 'Learn more', 'jetpack' ) }</ExternalLink>
+				</Link>
+				<Link openInNewTab href={ supportLink }>
+					{ __( 'Learn more', 'jetpack' ) }
+				</Link>
 			</div>
 		</Placeholder>
 	);
 
-	const editClasses = classnames( className, {
-		[ `is-style-${ style }` ]:
-			! isPlaceholder && styleValues.includes( style ) && className.indexOf( 'is-style' ) === -1,
+	const editClasses = clsx( {
+		[ `is-style-${ style }` ]: ! isPlaceholder && styleValues.includes( style ),
 		'is-placeholder': isPlaceholder,
 		'is-multi': 'multi' === getTypeAndTheme( style )[ 0 ],
 		[ `align${ align }` ]: align,
@@ -250,13 +257,13 @@ function OpenTableEdit( {
 	} );
 
 	return (
-		<>
+		<div { ...blockProps }>
 			{ noticeUI }
 			<div className={ editClasses }>
 				{ ! isPlaceholder && inspectorControls }
 				{ ! isPlaceholder ? blockPreview() : blockPlaceholder }
 			</div>
-		</>
+		</div>
 	);
 }
 

@@ -1,22 +1,22 @@
 <?php
 /**
  * A utility for transforming a raw code coverage
- * report into a clover.xml file for consumption.
+ * report for consumption.
  *
  * @package automattic/jetpack-autoloader
  */
 
-use SebastianBergmann\CodeCoverage\Report\Clover;
+use SebastianBergmann\CodeCoverage\Report\PHP as PhpReporter;
 use SebastianBergmann\CodeCoverage\Version;
 
 // phpcs:disabled WordPress.Security.EscapeOutput.OutputNotEscaped
 
-define( 'ROOT_DIR', dirname( dirname( dirname( __DIR__ ) ) ) );
+define( 'ROOT_DIR', dirname( __DIR__, 3 ) );
 
 require_once ROOT_DIR . DIRECTORY_SEPARATOR . 'vendor' . DIRECTORY_SEPARATOR . 'autoload.php';
 
 /**
- * Returns the path to the clover.xml output file.
+ * Returns the path to the php.cov output file.
  *
  * @return string The path to the output file.
  */
@@ -25,7 +25,7 @@ function get_output_file() {
 	global $argv;
 
 	if ( $argc < 2 ) {
-		echo "Usage: test-coverage [clover.xml file]\n";
+		echo "Usage: test-coverage [php.cov file]\n";
 		exit( -1 );
 	}
 
@@ -64,7 +64,7 @@ function get_coverage_version() {
  */
 function count_lines_before_class_keyword( $file ) {
 	// Find the line that the `class` keyword occurs on so that we can use it to calculate an offset from the header.
-	$content = file_get_contents( $file ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+	$content = file_get_contents( $file );
 
 	// Find the class keyword and capture the number of characters in the string before this point.
 	if ( 0 === preg_match_all( '/^class /m', $content, $matches, PREG_OFFSET_CAPTURE ) ) {
@@ -158,12 +158,14 @@ function get_path_transformation_map( $report_file_paths ) {
 }
 
 /**
- * Processes a v9 CodeCoverage report.
+ * Processes a v11 CodeCoverage report.
  *
  * @param SebastianBergmann\CodeCoverage\CodeCoverage $report The report to process.
  * @return SebastianBergmann\CodeCoverage\CodeCoverage The processed report.
+ *
+ * @phan-suppress PhanAccessMethodInternal -- There's not really a way to avoid this.
  */
-function process_coverage_9( $report ) {
+function process_coverage_12( $report ) {
 	$data      = $report->getData( true );
 	$classname = get_class( $data );
 
@@ -196,25 +198,30 @@ function process_coverage_9( $report ) {
 		$removed_files[] = $file;
 	}
 
+	// Unfortunately we have to use reflection (or else we have to reconstruct the whole stack of objects from scratch), since they deleted `excludeFile()` because PHPUnit itself didn't use it. Sigh.
+	$rp    = new \ReflectionProperty( $report->filter(), 'files' );
+	$files = $rp->getValue( $report->filter() );
+
 	// Remove all of the files that we've transformed from the coverage.
 	$line_coverage = $data->lineCoverage();
 	foreach ( $removed_files as $file ) {
 		// Make sure the uncovered file does not show up in the report.
-		$report->filter()->excludeFile( $file );
+		unset( $files[ realpath( $file ) ] );
 		unset( $line_coverage[ $file ] );
 	}
 	$data->setLineCoverage( $line_coverage );
+	$rp->setValue( $report->filter(), $files );
 
 	return $report;
 }
 
 /**
- * Processes the code coverage report and outputs a clover.xml file.
+ * Processes the code coverage report and outputs a file with fixed paths.
  */
 function process_coverage() {
 	echo "Aggregating compiled coverage into unified code coverage report\n";
 
-	// We're going to transform the code coverage object into a Clover XML report.
+	// We're going to transform the code coverage object.
 	$output_file = get_output_file();
 
 	// Since there is no backwards compatibility guarantee in place for the code coverage
@@ -235,9 +242,9 @@ function process_coverage() {
 	$report = call_user_func( $function, $report );
 
 	// Generate the XML file for the report.
-	$clover = new Clover();
-	$clover->process( $report, $output_file );
-	echo "Generated code coverage report in Clover format\n";
+	$reporter = new PhpReporter();
+	$reporter->process( $report, $output_file );
+	echo "Generated code coverage report\n";
 }
 
 // Process the coverage report into the new output.

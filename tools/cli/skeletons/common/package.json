@@ -1,8 +1,8 @@
 {
+	"name": "_TBD_",
+	"version": "0.0.0+TBD",
 	"private": true,
-	"name": "TBD",
-	"version": "TBD",
-	"description": "TBD",
+	"description": "_TBD_",
 	"homepage": "https://jetpack.com",
 	"bugs": {
 		"url": "https://github.com/Automattic/jetpack/issues"
@@ -19,10 +19,5 @@
 		"build-production": "echo 'Not implemented.'",
 		"build-production-js": "echo 'Not implemented.'",
 		"clean": "true"
-	},
-	"devDependencies": {},
-	"engines": {
-		"node": "^16.13.2",
-		"yarn": "use pnpm instead - see docs/yarn-upgrade.md"
 	}
 }

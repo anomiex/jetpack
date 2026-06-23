@@ -1,13 +1,14 @@
-import classNames from 'classnames';
-import Gridicon from 'components/gridicon';
-import { noop } from 'lodash';
+import clsx from 'clsx';
 import PropTypes from 'prop-types';
-import React, { Component } from 'react';
+import { Component } from 'react';
+import Gridicon from 'components/gridicon';
 import onKeyDownCallback from 'utils/onkeydown-callback';
+
+const noop = () => {};
 
 class ModernOverlay extends Component {
 	maybeDismiss = e => {
-		if ( this.props.showDismiss && ( ! e.keyCode || e.keyCode === 27 ) ) {
+		if ( this.props.showDismiss && ( ! e.code || e.code === 'Escape' ) ) {
 			this.props.dismiss( e );
 		}
 	};
@@ -27,7 +28,7 @@ class ModernOverlay extends Component {
 	}
 
 	render() {
-		const classes = classNames( this.props.className, 'jp-dialogue-modern', {
+		const classes = clsx( this.props.className, 'jp-dialogue-modern', {
 			'has-featured-image': !! this.props.svg,
 		} );
 		return (

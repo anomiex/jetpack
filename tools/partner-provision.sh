@@ -10,7 +10,6 @@ usage () {
 	--user=wp_user_id \
 	[--wp-cli-path=/usr/local/bin/wp]
 	[--plan=plan_name] \
-	[--onboarding=1] \
 	[--wpcom_user_id=1234] \
 	[--wpcom_user_email=wpcom_user_email] \
 	[--url=http://example.com] \
@@ -69,10 +68,6 @@ for i in "$@"; do
 			;;
 		-p=* | --plan=* )
 			PROVISION_REQUEST_ARGS="$PROVISION_REQUEST_ARGS --form plan=${i#*=}"
-			shift
-			;;
-		-o=* | --onboarding=* )
-			PROVISION_REQUEST_ARGS="$PROVISION_REQUEST_ARGS --form onboarding=${i#*=}"
 			shift
 			;;
 		-u=* | --url=* )
@@ -141,7 +136,7 @@ for i in "$@"; do
 			exit
 			;;
 		* )
-			echo $(usage) >&2
+			echo "$(usage)" >&2
 			exit 1
 	esac
 done
@@ -158,7 +153,7 @@ if [ "$WP_CLI_EXISTS" -eq "1" ]; then
 fi
 
 if [ "$CLIENT_ID" = "" ] || [ "$CLIENT_SECRET" = "" ] || [ "$WP_USER" = "" ]; then
-	echo $(usage) >&2
+	echo "$(usage)" >&2
 	exit 1
 fi
 
@@ -181,7 +176,7 @@ jetpack_is_wp_cli_error() {
 		exit 1
 	fi
 
-	if [ ! -z $( echo "$1" | grep Error:) ] || [ -z "$1" ]; then
+	if [ ! -z "$( echo "$1" | grep Error:)" ] || [ -z "$1" ]; then
 		return 0
 	fi
 

@@ -1,21 +1,19 @@
 import { getRedirectUrl } from '@automattic/jetpack-components';
-import { ExternalLink } from '@wordpress/components';
 import { createInterpolateElement } from '@wordpress/element';
 import { __, _x } from '@wordpress/i18n';
-import classNames from 'classnames';
+import { Link } from '@wordpress/ui';
+import clsx from 'clsx';
+import { Component } from 'react';
+import { connect } from 'react-redux';
 import ClipboardButtonInput from 'components/clipboard-button-input';
-import { FormFieldset } from 'components/forms';
 import { withModuleSettingsFormHelpers } from 'components/module-settings/with-module-settings-form-helpers';
 import { ModuleToggle } from 'components/module-toggle';
 import SettingsCard from 'components/settings-card';
 import SettingsGroup from 'components/settings-group';
 import analytics from 'lib/analytics';
-import { get } from 'lodash';
-import React from 'react';
-import { connect } from 'react-redux';
 import { getSiteAdminUrl, isSiteVisibleToSearchEngines } from 'state/initial-state';
 
-export class Sitemaps extends React.Component {
+export class Sitemaps extends Component {
 	renderSitemapRow = ( sitemap, sitemapTrack ) => {
 		const trackSitemapUrl = () => analytics.tracks.recordJetpackClick( sitemapTrack );
 		return (
@@ -26,7 +24,8 @@ export class Sitemaps extends React.Component {
 					copied={ __( 'Copied!', 'jetpack' ) }
 					prompt={ __( 'Highlight and copy the following text to your clipboard:', 'jetpack' ) }
 				/>
-				<ExternalLink
+				<Link
+					openInNewTab
 					// eslint-disable-next-line react/jsx-no-bind
 					onClick={ trackSitemapUrl }
 					rel="noopener noreferrer"
@@ -38,10 +37,10 @@ export class Sitemaps extends React.Component {
 
 	render() {
 		const sitemaps = this.props.getModule( 'sitemaps' ),
-			sitemap_url = get( sitemaps, [ 'extra', 'sitemap_url' ], '' ),
-			news_sitemap_url = get( sitemaps, [ 'extra', 'news_sitemap_url' ], '' );
+			sitemap_url = sitemaps?.extra?.sitemap_url ?? '',
+			news_sitemap_url = sitemaps?.extra?.news_sitemap_url ?? '';
 
-		const searchEngineVisibilityClasses = classNames( {
+		const searchEngineVisibilityClasses = clsx( {
 			'jp-form-setting-explanation': true,
 			'is-warning':
 				! this.props.isSiteVisibleToSearchEngines && this.props.getOptionValue( 'sitemaps' ),
@@ -65,39 +64,37 @@ export class Sitemaps extends React.Component {
 					<ModuleToggle
 						slug="sitemaps"
 						compact
+						disabled={ this.props.isSavingAnyOption( 'sitemaps' ) }
 						activated={ this.props.getOptionValue( 'sitemaps' ) }
-						toggling={ this.props.isSavingAnyOption( 'sitemaps' ) }
 						toggleModule={ this.props.toggleModuleNow }
 					>
-						{ __( 'Generate XML sitemaps', 'jetpack' ) }
+						<span className="jp-form-toggle-explanation">
+							{ __( 'Generate XML sitemaps', 'jetpack' ) }
+						</span>
 					</ModuleToggle>
 					{ this.props.isSiteVisibleToSearchEngines ? (
 						this.props.getOptionValue( 'sitemaps' ) && (
-							<FormFieldset>
-								<p className="jp-form-setting-explanation">
-									{ __(
-										'Good news: Jetpack is sending your sitemap automatically to all major search engines for indexing.',
-										'jetpack'
-									) }
-									{ this.renderSitemapRow( sitemap_url, 'sitemap-url-link' ) }
-									{ this.renderSitemapRow( news_sitemap_url, 'sitemap-news-url-link' ) }
-								</p>
-							</FormFieldset>
+							<p className="jp-form-setting-explanation">
+								{ __(
+									'Good news: Jetpack is sending your sitemap automatically to all major search engines for indexing.',
+									'jetpack'
+								) }
+								{ this.renderSitemapRow( sitemap_url, 'sitemap-url-link' ) }
+								{ this.renderSitemapRow( news_sitemap_url, 'sitemap-news-url-link' ) }
+							</p>
 						)
 					) : (
-						<FormFieldset>
-							<p className={ searchEngineVisibilityClasses }>
-								{ createInterpolateElement(
-									__(
-										'Search engines can’t access your site at the moment. If you’d like to make your site accessible, check your <a>Reading settings</a> and switch "Search Engine Visibility" on.',
-										'jetpack'
-									),
-									{
-										a: <a href={ this.props.siteAdminUrl + 'options-reading.php' } />,
-									}
-								) }
-							</p>
-						</FormFieldset>
+						<p className={ searchEngineVisibilityClasses }>
+							{ createInterpolateElement(
+								__(
+									'Search engines can’t access your site at the moment. If you’d like to make your site accessible, check your <a>Reading settings</a> and switch "Search Engine Visibility" on.',
+									'jetpack'
+								),
+								{
+									a: <a href={ this.props.siteAdminUrl + 'options-reading.php' } />,
+								}
+							) }
+						</p>
 					) }
 				</SettingsGroup>
 			</SettingsCard>

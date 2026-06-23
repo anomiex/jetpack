@@ -7,6 +7,10 @@
 
 namespace Automattic\Jetpack\Search;
 
+if ( ! defined( 'ABSPATH' ) ) {
+	exit( 0 );
+}
+
 /**
  * Class that has various methods for outputting functionality into a theme that doesn't support widgets.
  * Additionally the widget itself makes use of these class.
@@ -63,7 +67,7 @@ class Template_Tags {
 		}
 
 		foreach ( (array) $filters as $filter ) {
-			if ( 'post_type' === $filter['type'] ) {
+			if ( isset( $filter['type'] ) && 'post_type' === $filter['type'] ) {
 				self::render_filter( $filter, $post_types );
 			} else {
 				self::render_filter( $filter, $active_post_types );
@@ -135,7 +139,7 @@ class Template_Tags {
 						<input type="checkbox"<?php checked( ! empty( $item['active'] ) ); ?> disabled="disabled" />&nbsp;
 						<a href="<?php echo esc_url( $url ); ?>">
 							<?php
-								echo esc_html( $item['name'] );
+								echo esc_html( (string) $item['name'] );
 								echo '&nbsp;';
 								echo esc_html(
 									sprintf(
@@ -182,6 +186,12 @@ class Template_Tags {
 			case 'post_type':
 				$data_base = 'data-filter-type="post_types" ';
 				break;
+			case 'author':
+				$data_base = 'data-filter-type="authors" ';
+				break;
+			case 'blog_id':
+				$data_base = 'data-filter-type="blog_ids" ';
+				break;
 			case 'date_histogram':
 				if ( $filter['buckets'][0]['query_vars']['monthnum'] ) {
 					$data_base = 'data-filter-type="month_post_date" ';
@@ -205,6 +215,12 @@ class Template_Tags {
 						break;
 					case 'post_type':
 						$data_str .= 'data-val="' . esc_attr( $item['query_vars']['post_type'] ) . '"';
+						break;
+					case 'author':
+						$data_str .= 'data-val="' . esc_attr( $item['query_vars']['author'] ) . '"';
+						break;
+					case 'blog_id':
+						$data_str .= 'data-val="' . esc_attr( $item['query_vars']['blog_id'] ) . '"';
 						break;
 					case 'date_histogram':
 						if ( $item['query_vars']['monthnum'] ) {

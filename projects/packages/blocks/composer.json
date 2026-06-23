@@ -3,12 +3,18 @@
 	"description": "Register and manage blocks within a plugin. Used to manage block registration, enqueues, and more.",
 	"type": "jetpack-library",
 	"license": "GPL-2.0-or-later",
-	"require": {},
+	"require": {
+		"php": ">=7.2",
+		"automattic/jetpack-constants": "@dev"
+	},
 	"require-dev": {
-		"automattic/wordbless": "dev-master",
-		"brain/monkey": "2.6.1",
-		"yoast/phpunit-polyfills": "1.0.3",
-		"automattic/jetpack-changelogger": "^3.1"
+		"automattic/jetpack-test-environment": "@dev",
+		"brain/monkey": "^2.6.2",
+		"yoast/phpunit-polyfills": "^4.0.0",
+		"automattic/phpunit-select-config": "@dev"
+	},
+	"suggest": {
+		"automattic/jetpack-autoloader": "Allow for better interoperability with other plugins that use this package."
 	},
 	"autoload": {
 		"classmap": [
@@ -17,15 +23,10 @@
 	},
 	"scripts": {
 		"phpunit": [
-			"./vendor/phpunit/phpunit/phpunit --colors=always"
+			"phpunit-select-config phpunit.#.xml.dist --colors=always"
 		],
-		"post-update-cmd": "php -r \"copy('vendor/automattic/wordbless/src/dbless-wpdb.php', 'wordpress/wp-content/db.php');\"",
-		"test-coverage": [
-			"php -dpcov.directory=. ./vendor/bin/phpunit --coverage-clover \"$COVERAGE_DIR/clover.xml\""
-		],
-		"test-php": [
-			"@composer phpunit"
-		]
+		"test-php": "@composer phpunit",
+		"test-php-coverage": "php -dpcov.directory=. ./vendor/bin/phpunit-select-config phpunit.#.xml.dist --coverage-php \"$COVERAGE_DIR/php.cov\""
 	},
 	"repositories": [
 		{
@@ -45,7 +46,7 @@
 			"link-template": "https://github.com/Automattic/jetpack-blocks/compare/v${old}...v${new}"
 		},
 		"branch-alias": {
-			"dev-trunk": "1.4.x-dev"
+			"dev-trunk": "3.3.x-dev"
 		}
 	},
 	"config": {

@@ -17,12 +17,15 @@ export default {
 	},
 	text: {
 		type: 'string',
+		role: 'content',
 	},
 	placeholder: {
 		type: 'string',
+		role: 'content',
 	},
 	url: {
 		type: 'string',
+		role: 'content',
 	},
 	textColor: {
 		type: 'string',
@@ -48,6 +51,12 @@ export default {
 		type: 'number',
 	},
 	width: {
+		type: 'string',
+	},
+	customVariant: {
+		type: 'string',
+	},
+	metaName: {
 		type: 'string',
 	},
 };

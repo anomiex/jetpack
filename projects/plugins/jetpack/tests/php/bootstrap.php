@@ -6,7 +6,13 @@
  */
 
 // Catch `exit()` and `die()` so they won't make PHPUnit exit.
-require __DIR__ . '/redefine-exit.php';
+// If we're running under `jetpack docker phpunit --php`, Patchwork is located in DOCKER_PHPUNIT_BASE_DIR.
+if ( getenv( 'DOCKER_PHPUNIT_BASE_DIR' ) ) {
+	require_once getenv( 'DOCKER_PHPUNIT_BASE_DIR' ) . '/vendor/antecedent/patchwork/Patchwork.php';
+} else {
+	require_once __DIR__ . '/../../vendor/antecedent/patchwork/Patchwork.php';
+}
+\Automattic\RedefineExit::setup();
 
 /*
  * For tests that should be skipped in Jetpack but run in WPCOM (or vice versa), test against this constant.
@@ -18,12 +24,12 @@ require __DIR__ . '/redefine-exit.php';
 define( 'TESTING_IN_JETPACK', true );
 
 // Support for:
-// 1. `WP_DEVELOP_DIR` environment variable.
+// 1. `WORDPRESS_DEVELOP_DIR` environment variable.
 // 2. Plugin installed inside of WordPress.org developer checkout.
 // 3. Tests checked out to /tmp.
-if ( false !== getenv( 'WP_DEVELOP_DIR' ) ) {
+if ( false !== getenv( 'WORDPRESS_DEVELOP_DIR' ) ) {
 	// Defined on command line.
-	$test_root = getenv( 'WP_DEVELOP_DIR' );
+	$test_root = getenv( 'WORDPRESS_DEVELOP_DIR' );
 	if ( file_exists( "$test_root/tests/phpunit/" ) ) {
 		$test_root .= '/tests/phpunit/';
 	}
@@ -45,15 +51,30 @@ if ( false !== getenv( 'WP_DEVELOP_DIR' ) ) {
 }
 
 if ( ! isset( $test_root ) || ! file_exists( $test_root . '/includes/bootstrap.php' ) ) {
-	fprintf(
-		STDERR,
-		<<<'EOF'
+	if ( is_dir( '/tmp/wordpress-develop' ) && file_exists( '/var/scripts/ensure-php-version.sh' ) ) {
+		fprintf(
+			STDERR,
+			<<<'EOF'
+Looks like you're using the Jetpack Docker dev env, but the wordpress-develop checkout is incomplete.
+Try running `jetpack docker stop && jetpack docker up` to repopulate it.
+
+If that doesn't fix it, try (on the host) deleting `tools/docker/wordpress-develop/tests/` and then
+running `jetpack docker stop && jetpack docker up` again to repopulate it.
+
+EOF
+		);
+	} else {
+		fprintf(
+			STDERR,
+			<<<'EOF'
 Failed to automatically locate WordPress or wordpress-develop to run tests.
 
-Set the WP_DEVELOP_DIR environment variable to point to a copy of WordPress
+Set the WORDPRESS_DEVELOP_DIR environment variable to point to a copy of WordPress
 or wordpress-develop.
+
 EOF
-	);
+		);
+	}
 	exit( 1 );
 }
 
@@ -69,37 +90,68 @@ if ( ! is_readable( $jp_autoloader ) || ! is_readable( __DIR__ . '/../../modules
 	exit( 1 );
 }
 
+// If we're running under `jetpack docker phpunit --php`, load the autoloader for that.
+if ( getenv( 'DOCKER_PHPUNIT_BASE_DIR' ) ) {
+	require getenv( 'DOCKER_PHPUNIT_BASE_DIR' ) . '/vendor/autoload.php';
+}
+
 require $jp_autoloader;
 
 if ( '1' !== getenv( 'WP_MULTISITE' ) && ( ! defined( 'WP_TESTS_MULTISITE' ) || ! WP_TESTS_MULTISITE ) ) {
-	echo 'To run Jetpack multisite, use -c tests/php.multisite.xml' . PHP_EOL;
+	echo 'To run Jetpack multisite, use -c tests/php.multisite.#.xml' . PHP_EOL;
 	echo "Disregard Core's -c tests/phpunit/multisite.xml notice below." . PHP_EOL;
+}
+
+if ( '1' !== getenv( 'JETPACK_TEST_WPCOMSH' ) ) {
+	echo 'To run tests with the WordPress.com Site Helper plugin activated and Atomic mode enabled,' . PHP_EOL;
+	echo 'prefix phpunit with JETPACK_TEST_WPCOMSH=1' . PHP_EOL;
 }
 
 if ( '1' !== getenv( 'JETPACK_TEST_WOOCOMMERCE' ) ) {
 	echo 'To run Jetpack woocommerce tests, prefix phpunit with JETPACK_TEST_WOOCOMMERCE=1' . PHP_EOL;
+} elseif ( getenv( 'WORDPRESS_DIR' ) !== false ) {
+	define( 'JETPACK_WOOCOMMERCE_INSTALL_DIR', getenv( 'WORDPRESS_DIR' ) . '/wp-content/plugins/woocommerce' );
 } else {
 	define( 'JETPACK_WOOCOMMERCE_INSTALL_DIR', __DIR__ . '/../../../woocommerce' );
 }
 
 require __DIR__ . '/lib/mock-functions.php';
+require __DIR__ . '/lib/CallableMock.php';
+require __DIR__ . '/_inc/lib/mocks/simplepie.php';
 require $test_root . '/includes/functions.php';
 
-// Activates this plugin in WordPress so it can be tested.
-function _manually_load_plugin() {
-	if ( '1' === getenv( 'JETPACK_TEST_WOOCOMMERCE' ) ) {
-		require JETPACK_WOOCOMMERCE_INSTALL_DIR . '/woocommerce.php';
+// Speed things up by turning down the password hashing cost.
+tests_add_filter(
+	'wp_hash_password_options',
+	function ( $options ) {
+		$options['cost'] = 4;
+		return $options;
 	}
-	require __DIR__ . '/../../jetpack.php';
-	$jetpack = Jetpack::init();
-	$jetpack->configure();
+);
+
+/** Activates this plugin in WordPress so it can be tested. */
+if ( ! function_exists( '_manually_load_plugin' ) ) {
+	function _manually_load_plugin() {
+		if ( '1' === getenv( 'JETPACK_TEST_WOOCOMMERCE' ) ) {
+			require JETPACK_WOOCOMMERCE_INSTALL_DIR . '/woocommerce.php';
+
+			// Action Scheduler is needed early on since 10.4.0.
+			$as_file = JETPACK_WOOCOMMERCE_INSTALL_DIR . '/packages/action-scheduler/action-scheduler.php';
+			require_once JETPACK_WOOCOMMERCE_INSTALL_DIR . '/packages/action-scheduler/classes/abstracts/ActionScheduler.php';
+			ActionScheduler::init( $as_file );
+		}
+
+		require __DIR__ . '/../../jetpack.php';
+		$jetpack = Jetpack::init();
+		$jetpack->configure();
+	}
 }
 
 function _manually_install_woocommerce() {
 	// clean existing install first
 	define( 'WP_UNINSTALL_PLUGIN', true );
 	define( 'WC_REMOVE_ALL_DATA', true );
-	include JETPACK_WOOCOMMERCE_INSTALL_DIR . '/uninstall.php';
+	require JETPACK_WOOCOMMERCE_INSTALL_DIR . '/uninstall.php';
 
 	WC_Install::install();
 
@@ -109,9 +161,34 @@ function _manually_install_woocommerce() {
 	echo 'Installing WooCommerce...' . PHP_EOL;
 }
 
+/**
+ * Loading required mu-wpcom plugin files to be able to test with all required code.
+ */
+function _manually_load_muplugin() {
+	if ( getenv( 'WORDPRESS_DIR' ) !== false ) {
+		define( 'JETPACK_WPCOMSH_INSTALL_DIR', getenv( 'WORDPRESS_DIR' ) . '/wp-content/mu-plugins/wpcomsh' );
+	} else {
+		define( 'JETPACK_WPCOMSH_INSTALL_DIR', __DIR__ . '/../../../wpcomsh' );
+	}
+
+	require_once JETPACK_WPCOMSH_INSTALL_DIR . '/wpcomsh.php';
+	\Automattic\Jetpack\Jetpack_Mu_Wpcom::init();
+
+	defined( 'WPCOMSH_PREMIUM_THEMES_PATH' ) || define( 'WPCOMSH_PREMIUM_THEMES_PATH', sys_get_temp_dir() . '/premium' );
+	if ( ! is_dir( WPCOMSH_PREMIUM_THEMES_PATH ) ) {
+		mkdir( WPCOMSH_PREMIUM_THEMES_PATH, 0777 );
+	}
+}
+
 // If we are running the uninstall tests don't load jetpack.
 if ( ! ( in_running_uninstall_group() ) ) {
 	tests_add_filter( 'plugins_loaded', '_manually_load_plugin', 1 );
+
+	if ( '1' === getenv( 'JETPACK_TEST_WPCOMSH' ) ) {
+		define( 'IS_ATOMIC', true );
+		tests_add_filter( 'muplugins_loaded', '_manually_load_muplugin' );
+	}
+
 	if ( '1' === getenv( 'JETPACK_TEST_WOOCOMMERCE' ) ) {
 		tests_add_filter( 'setup_theme', '_manually_install_woocommerce' );
 	}
@@ -139,6 +216,29 @@ if ( '1' === getenv( 'LEGACY_FULL_SYNC' ) ) {
 	tests_add_filter( 'jetpack_sync_modules', 'jetpack_full_sync_immediately_off' );
 }
 
+// Override WP_TESTS_CONFIG_FILE_PATH via environment.
+// Important for monorepo CI, if you don't do this then different test runs might collide!
+if ( false !== getenv( 'WP_TESTS_CONFIG_FILE_PATH' ) ) {
+	define( 'WP_TESTS_CONFIG_FILE_PATH', getenv( 'WP_TESTS_CONFIG_FILE_PATH' ) );
+}
+
+// Load trait for WP_UnitTestCase PHPUnit 10 compat.
+require_once __DIR__ . '/WP_UnitTestCase_Fix.php';
+
+// Suppress PHP 8.5 deprecation warnings from WordPress core.
+// See here: https://core.trac.wordpress.org/ticket/63061
+// @todo: Remove this when resolved in WP core.
+if ( PHP_VERSION_ID >= 80500 ) {
+	set_error_handler(
+		function ( $errno, $errstr, $errfile = '' ) {
+			return E_DEPRECATED === $errno
+				&& $errstr === 'Using null as an array offset is deprecated, use an empty string instead'
+				&& str_ends_with( $errfile, 'wp-includes/theme.php' );
+		},
+		E_ALL
+	);
+}
+
 require $test_root . '/includes/bootstrap.php';
 
 // Load the shortcodes module to test properly.
@@ -146,15 +246,16 @@ if ( ! function_exists( 'shortcode_new_to_old_params' ) && ! in_running_uninstal
 	require __DIR__ . '/../../modules/shortcodes.php';
 }
 
+// Load the sso module to test properly.
+if ( ! in_running_uninstall_group() ) {
+	require __DIR__ . '/../../modules/sso.php';
+}
+
 // Load attachment helper methods.
-require __DIR__ . '/attachment_test_case.php';
+require __DIR__ . '/attachment_testcase.php';
 
 // Load WPCOM-shared helper functions.
 require __DIR__ . '/lib/class-wpcom-features.php';
-require __DIR__ . '/lib/wpcom-helper-functions.php';
-
-// Load the Tweetstorm Requests override class.
-require __DIR__ . '/_inc/lib/class-tweetstorm-requests-transport-override.php';
 
 function in_running_uninstall_group() {
 	global  $argv;

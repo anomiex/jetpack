@@ -1,7 +1,8 @@
-<?php
+<?php // phpcs:ignore WordPress.Files.FileName.NotHyphenatedLowercase
 /**
  * Jetpack Beta wp-admin page header.
  *
+ * @html-template \Automattic\JetpackBeta\Admin::render -- Via plugin-select.template.php or plugin-manage.template.php
  * @package automattic/jetpack-beta
  */
 
@@ -9,7 +10,7 @@ use Automattic\JetpackBeta\Utils;
 
 // Check that the file is not accessed directly.
 if ( ! defined( 'ABSPATH' ) ) {
-	exit;
+	exit( 0 );
 }
 
 ?>

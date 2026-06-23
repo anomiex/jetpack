@@ -1,25 +1,23 @@
-/*eslint lodash/import-scope: [2, "method"]*/
 import { __ } from '@wordpress/i18n';
-import uniqueId from 'lodash/uniqueId';
 
 export const CREATE_NOTICE = 'CREATE_NOTICE';
 export const REMOVE_NOTICE = 'REMOVE_NOTICE';
 
+let createNoticeCounter = 0;
+
 /**
  * Create global notice
  *
- * @param {*} status - success, error, info or warning.
- * @param {*} text - the text to show.
+ * @param {*} status  - success, error, info or warning.
+ * @param {*} text    - the text to show.
  * @param {*} options - Options.
- * @returns {object} - action object.
+ * @return {object} - action object.
  */
 export function createNotice( status, text, options = {} ) {
 	const notice = {
-		id: options.id || uniqueId(),
+		id: options.id || ++createNoticeCounter,
 		duration: options.duration ?? 2000,
 		showDismiss: typeof options.showDismiss === 'boolean' ? options.showDismiss : true,
-		isPersistent: options.isPersistent || false,
-		displayOnNextPage: options.displayOnNextPage || false,
 		status: status,
 		text: text,
 	};
@@ -34,7 +32,7 @@ export function createNotice( status, text, options = {} ) {
  * Remove notice by ID
  *
  * @param {*} noticeId - noticeID.
- * @returns {object} - action object.
+ * @return {object} - action object.
  */
 export function removeNotice( noticeId ) {
 	return { type: REMOVE_NOTICE, notice: { id: noticeId } };

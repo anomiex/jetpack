@@ -1,40 +1,125 @@
+/*
+ * External dependencies
+ */
 import { __ } from '@wordpress/i18n';
-import Text from '../text';
-import { Price } from './price';
+import clsx from 'clsx';
+/*
+ * Internal dependencies
+ */
+import Text from '../text/index.tsx';
+import { Price } from './price.tsx';
 import styles from './style.module.scss';
-import type { ProductPriceProps } from './types';
-import type React from 'react';
+import type { ProductPriceProps } from './types.ts';
+import type { FC, ReactNode } from 'react';
 
 /**
  * React component to render the price.
  *
  * @param {ProductPriceProps} props - Component props.
- * @returns {React.ReactNode} Price react component.
+ * @return {ReactNode} Price react component.
  */
-const ProductPrice: React.FC< ProductPriceProps > = ( {
+const ProductPrice: FC< ProductPriceProps > = ( {
 	price,
 	offPrice,
 	currency = '',
 	showNotOffPrice = true,
-	leyend = __( '/month, paid yearly', 'jetpack' ),
+	hideDiscountLabel = true,
+	promoLabel = '',
+	legend = __( '/month, paid yearly', 'jetpack-components' ),
 	isNotConvenientPrice = false,
+	hidePriceFraction = false,
+	children,
+	variant = 'default',
 } ) => {
-	if ( ! ( price || offPrice ) || ! currency ) {
+	if ( ( price == null && offPrice == null ) || ! currency ) {
 		return null;
 	}
 
-	showNotOffPrice = showNotOffPrice && Boolean( offPrice );
+	showNotOffPrice = showNotOffPrice && offPrice != null;
+
+	const discount =
+		typeof price === 'number' && typeof offPrice === 'number'
+			? Math.floor( ( ( price - offPrice ) / price ) * 100 )
+			: 0;
+
+	const showDiscountLabel = ! hideDiscountLabel && discount && discount > 0;
+
+	const discountElt = showDiscountLabel ? discount + __( '% off', 'jetpack-components' ) : null;
+
+	if ( variant === 'simple' ) {
+		return (
+			<div className={ styles.simple }>
+				<div className={ styles.currentPrice }>
+					<Price
+						value={ offPrice ?? price }
+						currency={ currency }
+						isOff={ ! isNotConvenientPrice }
+						hidePriceFraction={ hidePriceFraction }
+						inline={ true }
+					/>
+					<div>{ legend }</div>
+				</div>
+
+				{ showNotOffPrice && (
+					<div className={ styles.originalPrice }>
+						<Price
+							value={ price }
+							currency={ currency }
+							isOff={ false }
+							hidePriceFraction={ hidePriceFraction }
+							inline={ true }
+						/>
+						<div>
+							{ discount &&
+								discount > 0 &&
+								discount + __( '% off the first year', 'jetpack-components' ) }
+						</div>
+					</div>
+				) }
+			</div>
+		);
+	}
 
 	return (
 		<>
 			<div className={ styles.container }>
-				{ showNotOffPrice && <Price value={ price } currency={ currency } isOff={ false } /> }
-				<Price value={ offPrice || price } currency={ currency } isOff={ ! isNotConvenientPrice } />
+				<div className={ clsx( styles[ 'price-container' ], 'product-price_container' ) }>
+					<Price
+						value={ offPrice ?? price }
+						currency={ currency }
+						isOff={ ! isNotConvenientPrice }
+						hidePriceFraction={ hidePriceFraction }
+					/>
+					{ showNotOffPrice && (
+						<Price
+							value={ price }
+							currency={ currency }
+							isOff={ false }
+							hidePriceFraction={ hidePriceFraction }
+						/>
+					) }
+					{ discountElt && (
+						<Text className={ clsx( styles[ 'promo-label' ], 'product-price_promo_label' ) }>
+							{ discountElt }
+						</Text>
+					) }
+				</div>
 			</div>
-			{ leyend && <Text className={ styles.leyend }>{ leyend }</Text> }
+			<div className={ styles.footer }>
+				{ children ? (
+					children
+				) : (
+					<Text className={ clsx( styles.legend, 'product-price_legend' ) }>{ legend }</Text>
+				) }
+				{ promoLabel && (
+					<Text className={ clsx( styles[ 'promo-label' ], 'product-price_promo_label' ) }>
+						{ promoLabel }
+					</Text>
+				) }
+			</div>
 		</>
 	);
 };
 
 export default ProductPrice;
-export * from './price';
+export * from './price.tsx';

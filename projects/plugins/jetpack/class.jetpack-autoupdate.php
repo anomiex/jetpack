@@ -6,6 +6,10 @@
  * @package automattic/jetpack
  */
 
+if ( ! defined( 'ABSPATH' ) ) {
+	exit( 0 );
+}
+
 /**
  * Handles items that have been selected for automatic updates.
  * Hooks into WP_Automatic_Updater
@@ -92,6 +96,10 @@ class Jetpack_Autoupdate {
 			return true;
 		}
 
+		if ( ! isset( $item->slug ) || ! isset( $item->type ) ) {
+			return $update;
+		}
+
 		// Themes.
 		$autoupdate_themes_translations = Jetpack_Options::get_option( 'autoupdate_themes_translations', array() );
 		$autoupdate_theme_list          = Jetpack_Options::get_option( 'autoupdate_themes', array() );
@@ -128,6 +136,9 @@ class Jetpack_Autoupdate {
 	 * @return bool|null Whether to update.
 	 */
 	public function autoupdate_theme( $update, $item ) {
+		if ( ! isset( $item->theme ) ) {
+			return $update;
+		}
 		$autoupdate_theme_list = Jetpack_Options::get_option( 'autoupdate_themes', array() );
 		if ( in_array( $item->theme, $autoupdate_theme_list, true ) ) {
 			$this->expect( $item->theme, 'theme' );
@@ -233,12 +244,12 @@ class Jetpack_Autoupdate {
 		// Bump numbers.
 
 		if ( ! empty( $this->success['theme'] ) ) {
-			$instance->stat( 'autoupdates/theme-success', count( $this->success['theme'] ) );
+			$instance->stat( 'autoupdates/theme-success', is_countable( $this->success['theme'] ) ? count( $this->success['theme'] ) : 0 );
 			$log['themes_success'] = $this->success['theme'];
 		}
 
 		if ( ! empty( $this->failed['theme'] ) ) {
-			$instance->stat( 'autoupdates/theme-fail', count( $this->failed['theme'] ) );
+			$instance->stat( 'autoupdates/theme-fail', is_countable( $this->failed['theme'] ) ? count( $this->failed['theme'] ) : 0 );
 			$log['themes_failed'] = $this->failed['theme'];
 		}
 
@@ -344,12 +355,12 @@ class Jetpack_Autoupdate {
 	public static function get_plugin_slug( $plugin_file ) {
 		$update_plugins = get_site_transient( 'update_plugins' );
 		if ( isset( $update_plugins->no_update ) ) {
-			if ( isset( $update_plugins->no_update[ $plugin_file ] ) ) {
+			if ( isset( $update_plugins->no_update[ $plugin_file ]->slug ) ) {
 				$slug = $update_plugins->no_update[ $plugin_file ]->slug;
 			}
 		}
 		if ( empty( $slug ) && isset( $update_plugins->response ) ) {
-			if ( isset( $update_plugins->response[ $plugin_file ] ) ) {
+			if ( isset( $update_plugins->response[ $plugin_file ]->slug ) ) {
 				$slug = $update_plugins->response[ $plugin_file ]->slug;
 			}
 		}
@@ -363,7 +374,6 @@ class Jetpack_Autoupdate {
 		}
 		return $slug;
 	}
-
 }
 
 Jetpack_Autoupdate::init();

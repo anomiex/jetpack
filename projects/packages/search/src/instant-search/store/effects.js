@@ -1,5 +1,4 @@
-/*eslint lodash/import-scope: [2, "method"]*/
-import debounce from 'lodash/debounce';
+import debounce from 'debounce';
 import { search } from '../lib/api';
 import {
 	DEBOUNCED_TIME_TO_SET_QUERY_MILLISECONDS,
@@ -26,7 +25,7 @@ const debouncedSetQuery = debounce( setQuery, DEBOUNCED_TIME_TO_SET_QUERY_MILLIS
  * Effect handler which will fetch search results from the API.
  *
  * @param {object} action - Action which had initiated the effect handler.
- * @param {object} store -  Store instance.
+ * @param {object} store  - Store instance.
  */
 function makeSearchAPIRequest( action, store ) {
 	requestCounter++;
@@ -41,7 +40,7 @@ function makeSearchAPIRequest( action, store ) {
 		} )
 		.catch( error => {
 			// eslint-disable-next-line no-console
-			console.error( 'Jetpack Search encountered an error:', error );
+			console.error( 'Jetpack Search ', error );
 			store.dispatch( recordFailedSearchRequest( error ) );
 		} );
 }
@@ -50,7 +49,7 @@ function makeSearchAPIRequest( action, store ) {
  * Initialize query values from the browser's address bar.
  *
  * @param {object} action - Action which had initiated the effect handler.
- * @param {object} store -  Store instance.
+ * @param {object} store  - Store instance.
  */
 function initializeQueryValues( action, store ) {
 	const queryObject = getQuery();

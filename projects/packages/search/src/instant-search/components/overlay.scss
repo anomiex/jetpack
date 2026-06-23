@@ -1,4 +1,4 @@
-@import '../lib/styles/_helper.scss';
+@use "../lib/styles/helper";
 
 $overlay-vertical-padding-sm: 0;
 $overlay-vertical-padding-md: 3em;
@@ -14,15 +14,13 @@ $overlay-horizontal-padding-lg: 3em;
 	left: 0;
 	right: 0;
 
-	background: $color-modal-backdrop-background;
+	background: helper.$color-modal-backdrop-background;
 	box-sizing: border-box;
-	color: $color-text;
+	color: helper.$color-text;
 	font-size: 16px;
 	opacity: 1;
 	overflow-x: hidden;
 	overflow-y: auto;
-
-	transition: opacity 0.1s ease-in;
 
 	z-index: 9999999999999;
 
@@ -31,21 +29,27 @@ $overlay-horizontal-padding-lg: 3em;
 		font-family: Helvetica, sans-serif; // "Cabin" looks ridiculous in the overlay.
 	}
 
-	@include break-medium-down() {
+	@include helper.break-medium-down() {
 		padding: $overlay-vertical-padding-md $overlay-horizontal-padding-md;
 	}
 
 	// Order matters
-	@include break-small-down() {
+	@include helper.break-small-down() {
 		padding: $overlay-vertical-padding-sm $overlay-horizontal-padding-sm;
 	}
 
-	@include break-medium-up() {
+	@include helper.break-medium-up() {
 		padding: $overlay-vertical-padding-lg $overlay-horizontal-padding-lg;
 	}
 
-	h1, h2, h3, h4, h5, h6 {
-		@include remove-header-styling();
+	h1,
+	h2,
+	h3,
+	h4,
+	h5,
+	h6 {
+
+		@include helper.remove-header-styling();
 	}
 
 	&.is-hidden {
@@ -55,16 +59,24 @@ $overlay-horizontal-padding-lg: 3em;
 	}
 
 	*,
-	*:before,
-	*:after {
+	*::before,
+	*::after {
 		box-sizing: inherit;
 	}
 }
 
 // Ensure the hidden overlay doesn't add whitespace to printed pages
 @media print {
-    .jetpack-instant-search__overlay.is-hidden {
-        display: none;
-    }
+
+	.jetpack-instant-search__overlay.is-hidden {
+		display: none;
+	}
 }
 
+// Only show animation to users who have not chosen reduced motion
+@media ( prefers-reduced-motion: no-preference ) {
+
+	.jetpack-instant-search__overlay {
+		transition: opacity 0.1s ease-in;
+	}
+}

@@ -3,8 +3,8 @@ import { GUTTER_WIDTH } from '../../constants';
 /**
  * Distribute a difference across ns so that their sum matches the target
  *
- * @param {Array<number>}  parts  Array of numbers to fit
- * @param {number}         target Number that sum should match
+ * @param {Array<number>} parts  - Array of numbers to fit
+ * @param {number}        target - Number that sum should match
  * @return {Array<number>}        Adjusted parts
  */
 function adjustFit( parts, target ) {

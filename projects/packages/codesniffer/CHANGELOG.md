@@ -5,6 +5,132 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [8.0.0] - 2026-04-13
+### Changed
+- Jetpack-Tests: No longer exclude `test-*.php` type filenames from WordPress naming. We shouldn't have any anymore now that PHPUnit requires `*Test.php` style naming. [#46843]
+- Update mediawiki/mediawiki-codesniffer ruleset to v50. [#47168]
+- Update minimum WordPress version to 6.8 in README example. [#46801]
+
+### Removed
+- Drop support for PHP 8.1, following upstream dependencies. [#47168]
+
+## [7.0.0] - 2025-12-16
+
+As of version 7.0.0, this package is now under the MIT license.
+Previous versions were licensed GPL v2.0-or-later.
+
+### Added
+- Add `Jetpack-Compat-85` ruleset. [#45834]
+- Add `Automattic\Jetpack\Codesniffer\Utils\IsTestClassTrait`. [#46324]
+- New sniff `Jetpack.Functions.EscJs`. [#46243]
+- New sniff `Jetpack.Functions.JsonEncodeFlags`. [#46227]
+- New sniff `Jetpack.PHPUnit.FunctionCoversBackslash`. [#45829]
+
+### Changed
+- Relicense under the MIT license. [#46328]
+- Replace `MediaWiki.Usage.NestedFunctions` with `Squiz.PHP.InnerFunctions`. [#45910]
+- Update `mediawiki/mediawiki-codesniffer` to v48.0.0. [#45910]
+
+### Removed
+- Drop support for PHP 8.0, following upstream `mediawiki/mediawiki-codesniffer` package. [#45910]
+
+### Fixed
+- Ensure proper flags are used with `json_encode()`. [#46092]
+
+## [6.0.1] - 2025-08-06
+### Changed
+- Update package dependencies. [#43515]
+
+## [6.0.0] - 2025-05-13
+### Added
+- Add documentation for included custom sniffs. [#42752]
+- Add `Jetpack.PHPUnit.Attributes` sniff. [#43169]
+- Add `Jetpack.PHPUnit.TestMethodCovers` sniff. [#42758]
+- Ignore `WordPress.Security.ValidatedSanitizedInput.MissingUnslash` in `Jetpack-NoWP` ruleset. [#41860]
+- Jetpack-Tests: Exclude `WordPress.DB.DirectDatabaseQuery`; if tests trigger it they're probably doing it intentionally. [#42028]
+- New sniff `Jetpack.PHPUnit.TestClassName` to check PHPUnit test class names against PHPUnit's requirements. [#41930]
+- New sniff `Jetpack.PHPUnit.UseTestCase` to check that `use`s of PHPUnit `TestCase` base classes don't use aliases that will confuse our other sniffs. [#41930]
+
+### Changed
+- Jetpack-Tests: Exclude filenames semi-required by PHPUnit 10+ from `WordPress.Files.FileName` rules. [#42028]
+- Update package dependencies. [#41925]
+
+### Removed
+- Drop support for PHP <8.0. [#41930]
+- General: Update minimum WordPress version to 6.7. [#43192]
+
+## [5.0.0] - 2025-01-09
+### Added
+- Add `Jetpack-Compat-84` ruleset. [#40253]
+- Enable test coverage. [#39961]
+
+### Changed
+- Add `WordPress.WP.GlobalVariablesOverride` to `Jetpack-NoWP` ruleset. [#40016]
+- Disable new `Generic.CodeAnalysis.RequireExplicitBooleanOperatorPrecedence.MissingParentheses` sniff for now, pending discussion. [#39648]
+- Updated package dependencies. [#40283]
+- Update Jetpack-Compat rulesets. [#39665]
+- Use mediawiki/mediawiki-codesniffer v44. [#39648]
+
+### Removed
+- General: Remove PHP 7.0 and 7.1 support. [#40174]
+- General: Update minimum PHP version to 7.2. [#40147]
+- `MediaWiki.Usage.DoubleNotOperator` has been removed. `Universal.CodeAnalysis.NoDoubleNegative.FoundDouble`, which serves the same purpose, will be included via the WordPress-Extra ruleset v3.1.0. [#39648]
+
+## [4.0.0] - 2024-08-29
+### Added
+- Jetpack.Functions.SetCookie: Support new options syntax from PHP 7.3+. [#37062]
+
+### Changed
+- Jetpack-Tests: No longer exclude `Squiz.Commenting.*.WrongStyle`. [#37290]
+- Updated mediawiki/mediawiki-code-sniffer dep. This may bring new sniffs. [#36408]
+- Updated package dependencies. [#39004]
+
+### Fixed
+- Jetpack.Functions.SetCookie: Report correct line numbers for multi-line calls. [#37062]
+
+## [3.0.0] - 2024-02-07
+### Added
+- Add "Jetpack-NoWP" ruleset. [#33287]
+- Added rulesets `Jetpack-Compat-*` to disable PHPCompatibility rules that trigger with `testVersion` 5.6 but don't apply to various later PHP versions. [#31711]
+- Add `Jetpack-Compat-83` ruleset. [#34346]
+- Add `Jetpack-Compat-NoWP` ruleset. [#33287]
+- Declare requirement of PHP >= 7.4. [#34192]
+- Enable `MediaWiki.AlternativeSyntax.UnicodeEscape` sniff. [#34194]
+- Enable `MediaWiki.PHPUnit.MockBoilerplate` sniff. [#34338]
+- Enable `Modernize.FunctionCalls.Dirname.Nested` sniff that is currently being disabled by WordPress-Extra. [#34218]
+
+### Changed
+- BREAKING: Drop support for PHP 5.6. `testVersion` should be set to `7.0-`. [#34126]
+- Updated package dependencies. [#31609] [#32605] [#34338]
+- Update to WordPress-Coding-Standards 3.0. [#32608]
+- Update `Jetpack-Compat-*` rulesets against PHPCompatibility develop branch. [#33112]
+
+### Removed
+- Exclude new `WordPress.Security.EscapeOutput.ExceptionNotEscaped` sniff. https://core.trac.wordpress.org/ticket/59282 is the correct way to fix the underlying issue it's trying to avoid, this would cause other problems. [#32608]
+- Remove `MediaWiki.WhiteSpace.SpaceAfterClosure`, as `Squiz.Functions.MultiLineFunctionDeclaration` now catches the same thing and more. [#32608]
+
+## [2.8.0] - 2023-06-06
+### Added
+- Added MediaWiki.Usage.ForbiddenFunctions rule to use preferred functions
+- Set keywords to have `composer require` prompt for `--dev` on installation.
+
+### Changed
+- Updated package dependencies.
+
+## [2.7.0] - 2023-01-11
+### Added
+- Add `MediaWiki.WhiteSpace.EmptyLinesBetweenUse` sniff.
+
+### Changed
+- Updated to a newer snapshot of WordPress-Coding-Standards, which adds a number of new sniffs.
+
+### Fixed
+- Rolled back a dependency update that caused breaking changes in Jetpack trunk.
+
+## [2.6.1] - 2022-11-01
+### Changed
+- Updated package dependencies.
+
 ## [2.6.0] - 2022-07-06
 ### Added
 - Added lint to ensure httponly is set (or intentionally ignored) on setcookie. [#24418]
@@ -102,6 +228,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Codesniffer: Add a package to hold our coding standard
 
+[8.0.0]: https://github.com/Automattic/jetpack-codesniffer/compare/v7.0.0...v8.0.0
+[7.0.0]: https://github.com/Automattic/jetpack-codesniffer/compare/v6.0.1...v7.0.0
+[6.0.1]: https://github.com/Automattic/jetpack-codesniffer/compare/v6.0.0...v6.0.1
+[6.0.0]: https://github.com/Automattic/jetpack-codesniffer/compare/v5.0.0...v6.0.0
+[5.0.0]: https://github.com/Automattic/jetpack-codesniffer/compare/v4.0.0...v5.0.0
+[4.0.0]: https://github.com/Automattic/jetpack-codesniffer/compare/v3.0.0...v4.0.0
+[3.0.0]: https://github.com/Automattic/jetpack-codesniffer/compare/v2.8.0...v3.0.0
+[2.8.0]: https://github.com/Automattic/jetpack-codesniffer/compare/v2.7.0...v2.8.0
+[2.7.0]: https://github.com/Automattic/jetpack-codesniffer/compare/v2.6.1...v2.7.0
+[2.6.1]: https://github.com/Automattic/jetpack-codesniffer/compare/v2.6.0...v2.6.1
 [2.6.0]: https://github.com/Automattic/jetpack-codesniffer/compare/v2.5.0...v2.6.0
 [2.5.0]: https://github.com/Automattic/jetpack-codesniffer/compare/v2.4.0...v2.5.0
 [2.4.0]: https://github.com/Automattic/jetpack-codesniffer/compare/v2.3.0...v2.4.0

@@ -1,7 +1,7 @@
-import { InspectorControls, RichText } from '@wordpress/block-editor';
+import { InspectorControls, RichText, useBlockProps } from '@wordpress/block-editor';
 import { Placeholder } from '@wordpress/components';
 import { useResizeObserver } from '@wordpress/compose';
-import { useLayoutEffect, useRef } from '@wordpress/element';
+import { useLayoutEffect, useRef, useState } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 import { photonizedImgProps } from '../tiled-gallery/utils';
 import ImageCompareControls from './controls';
@@ -12,34 +12,40 @@ import './view.js';
 
 /* global juxtapose */
 
-const Edit = ( { attributes, className, clientId, isSelected, setAttributes } ) => {
+const Edit = ( { attributes, clientId, isSelected, setAttributes } ) => {
 	const { align, imageBefore, imageAfter, caption, orientation } = attributes;
-	// Check for useResizeObserver, not available in older Gutenberg.
-	let resizeListener = null;
-	let sizes = null;
-	const juxtaposeRef = useRef();
-	if ( useResizeObserver ) {
-		// Let's look for resize so we can trigger the thing.
-		[ resizeListener, sizes ] = useResizeObserver();
 
-		useDebounce(
-			sz => {
-				if ( sz > 0 ) {
-					if ( typeof juxtapose !== 'undefined' && juxtapose.sliders ) {
-						// only update for *this* slide
-						juxtapose.sliders.forEach( elem => {
-							const parentElem = elem.wrapper.parentElement;
-							if ( parentElem.id === clientId ) {
-								elem.optimizeWrapper( sz );
-							}
-						} );
-					}
+	const blockProps = useBlockProps();
+	const juxtaposeRef = useRef( undefined );
+	const [ containerWidth, setContainerWidth ] = useState( 0 );
+
+	// Let's look for resize so we can trigger the thing.
+	const setElement = useResizeObserver(
+		resizeObserverEntries => {
+			const width = resizeObserverEntries[ 0 ]?.contentRect.width;
+			if ( width ) {
+				setContainerWidth( width );
+			}
+		},
+		{ box: 'border-box' }
+	);
+
+	useDebounce(
+		sz => {
+			if ( sz > 0 ) {
+				if ( typeof juxtapose !== 'undefined' && juxtapose.sliders ) {
+					// only update for *this* slide
+					juxtapose.sliders.forEach( elem => {
+						if ( elem.wrapper.id === clientId ) {
+							elem.optimizeWrapper( sz );
+						}
+					} );
 				}
-			},
-			200,
-			sizes.width
-		);
-	}
+			}
+		},
+		200,
+		containerWidth
+	);
 
 	// Initial state if attributes already set or not.
 	// If both images are set, add juxtapose class, which is picked up by the library.
@@ -49,17 +55,24 @@ const Edit = ( { attributes, className, clientId, isSelected, setAttributes } ) 
 	// Watching for changes to key variables to trigger scan.
 	useLayoutEffect( () => {
 		if ( imageBefore.url && imageAfter.url && typeof juxtapose !== 'undefined' ) {
-			juxtapose.makeSlider( juxtaposeRef?.current );
+			if ( juxtaposeRef.current ) {
+				setElement( juxtaposeRef.current );
+				juxtapose.makeSlider( juxtaposeRef?.current );
+			}
 		}
-	}, [ align, imageBefore, imageAfter, orientation ] );
+	}, [ align, imageBefore, imageAfter, orientation, setElement ] );
 
 	return (
-		<figure className={ className } id={ clientId }>
-			{ resizeListener }
+		<figure { ...blockProps }>
 			<InspectorControls key="controls">
 				<ImageCompareControls { ...{ attributes, setAttributes } } />
 			</InspectorControls>
-			<div ref={ juxtaposeRef } className={ classes } data-mode={ orientation || 'horizontal' }>
+			<div
+				ref={ juxtaposeRef }
+				id={ clientId }
+				className={ classes }
+				data-mode={ orientation || 'horizontal' }
+			>
 				<Placeholder label={ null }>
 					<div className="image-compare__image-before">
 						<ImgUpload

@@ -1,9 +1,15 @@
 const path = require( 'path' );
+const nodeConfig = require( './config.node.js' );
 
 module.exports = {
-	testEnvironment: 'jsdom',
+	...nodeConfig,
+	testEnvironment: path.join( __dirname, 'fix-environment-jsdom.mjs' ),
+	testEnvironmentOptions: {
+		// Note we need to repeat the environment's default conditions here too, sigh.
+		customExportConditions: [ 'browser', 'jetpack:src' ],
+	},
 	transform: {
-		'\\.(gif|jpg|jpeg|png|svg|scss|sass|css|ttf|woff|woff2)$': path.join(
+		'\\.(gif|jpg|jpeg|png|webp|svg|scss|sass|css|ttf|woff|woff2)$': path.join(
 			__dirname,
 			'jest-extensions-asset-stub.js'
 		),
@@ -17,19 +23,22 @@ module.exports = {
 			},
 		],
 	},
-	testMatch: [
-		// Note: Keep the patterns here in sync with tools/js-tools/eslintrc/base.js.
-		'<rootDir>/**/__tests__/**/*.[jt]s?(x)',
-		'<rootDir>/**/?(*.)+(spec|test).[jt]s?(x)',
-		'<rootDir>/**/test/*.[jt]s?(x)',
-		'!**/.eslintrc.*',
+	// Unignore certain node_modules
+	// - uplot: for packages/components
+	// - @wordpress/admin-ui: for the unified admin page header styles
+	// - @gravatar-com: for the lifted Gravatar component's hovercard styles
+	// - uuid: v14 went esm-only, so it needs transforming
+	transformIgnorePatterns: [
+		'/node_modules/(?!\\.pnpm|uuid/|uplot/.*\\.css|@wordpress/admin-ui/.*\\.css|@gravatar-com/.*\\.css)',
 	],
 	moduleNameMapper: {
 		jetpackConfig: path.join( __dirname, 'jest-jetpack-config.js' ),
 	},
-	testPathIgnorePatterns: [ '/node_modules/', '<rootDir>/vendor/', '<rootDir>/jetpack_vendor/' ],
 	setupFiles: [ path.join( __dirname, 'setup-globals.js' ) ],
-	setupFilesAfterEnv: [ path.join( __dirname, 'setup-after-env.js' ) ],
+	setupFilesAfterEnv: [
+		path.join( __dirname, 'setup-jest-dom.js' ),
+		path.join( __dirname, 'setup-console.js' ),
+		path.join( __dirname, 'setup-client-zip.js' ),
+	],
 	extensionsToTreatAsEsm: [ '.jsx', '.ts', '.tsx' ],
-	resolver: require.resolve( 'jetpack-js-tools/jest/jest-resolver.js' ),
 };

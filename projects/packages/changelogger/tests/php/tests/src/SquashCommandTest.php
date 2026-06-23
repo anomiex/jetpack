@@ -11,6 +11,8 @@ use Automattic\Jetpack\Changelog\Changelog;
 use Automattic\Jetpack\Changelogger\FormatterPlugin;
 use Automattic\Jetpack\Changelogger\SquashCommand;
 use InvalidArgumentException;
+use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Output\BufferedOutput;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -22,17 +24,15 @@ use Wikimedia\TestingAccessWrapper;
  *
  * @covers \Automattic\Jetpack\Changelogger\SquashCommand
  */
+#[CoversClass( SquashCommand::class )]
 class SquashCommandTest extends CommandTestCase {
 	use \Yoast\PHPUnitPolyfills\Polyfills\AssertionRenames;
-	use \Yoast\PHPUnitPolyfills\Polyfills\AssertStringContains;
 
 	/**
 	 * Set up.
-	 *
-	 * @before
 	 */
-	public function set_up() {
-		parent::set_up();
+	public function setUp(): void {
+		parent::setUp();
 		$this->useTempDir();
 	}
 
@@ -47,6 +47,7 @@ class SquashCommandTest extends CommandTestCase {
 	 * @param string[]    $expectOutputRegexes Regexes to run against the output.
 	 * @param string|null $expectChangelog Expected changelog file contents, or null if it should be the same as $options['changelog'].
 	 */
+	#[DataProvider( 'provideExecute' )]
 	public function testExecute( array $args, array $options, array $inputs, $expectExitCode, $expectOutputRegexes = array(), $expectChangelog = null ) {
 		$options += array(
 			'changelog' => "# Changelog\n\n## 1.0.1 - 2021-02-23\nPrologue for v1.0.1\n\n### Added\n- Stuff.\n\n### Removed\n- Other stuff.\n\nEpilogue for v1.0.1\n\n## 1.0.1-beta - 2021-02-22\n\n### Added\n- A Stuff.\n- Z Stuff.\n\n### Removed\n- Other stuff.\n\n## 1.0.1+alpha - 2021-02-21\nPrologue for v1.0.1+alpha\n\n### Added\n- B Stuff.\n- Y Stuff.\n\n## 1.0.0 - 2021-02-20\n\n- Initial release.\n",
@@ -56,7 +57,7 @@ class SquashCommandTest extends CommandTestCase {
 			file_put_contents( 'composer.json', json_encode( array( 'extra' => array( 'changelogger' => $options['composer.json'] ) ), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
 			unset( $options['composer.json'] );
 		}
-		$changelog = isset( $options['changelog'] ) ? $options['changelog'] : null;
+		$changelog = $options['changelog'] ?? null;
 		unset( $options['changelog'] );
 		if ( null !== $changelog ) {
 			file_put_contents( 'CHANGELOG.md', $changelog );
@@ -84,7 +85,7 @@ class SquashCommandTest extends CommandTestCase {
 	/**
 	 * Data provider for testExecute.
 	 */
-	public function provideExecute() {
+	public static function provideExecute() {
 		return array(
 			'Normal run'                                  => array(
 				array(),
@@ -222,7 +223,7 @@ class SquashCommandTest extends CommandTestCase {
 				array(),
 				array(),
 				SquashCommand::FATAL_EXIT,
-				array( '{^Regex match failed: Delimiter must not be alphanumeric or backslash$}' ),
+				array( '{^Regex match failed: Delimiter must not be alphanumeric(?: or backslash|, backslash, or NUL(?: byte)?)$}' ),
 			),
 			'Squash by regex, regex matches nothing'      => array(
 				array(
@@ -573,9 +574,7 @@ class SquashCommandTest extends CommandTestCase {
 	 * Test failure to format changelog.
 	 */
 	public function testWriteChangelog_formatError() {
-		$formatter = $this->getMockBuilder( FormatterPlugin::class )
-			->setMethodsExcept( array() )
-			->getMock();
+		$formatter = $this->getMockBuilder( FormatterPlugin::class )->getMock();
 		$formatter->expects( $this->never() )->method( $this->logicalNot( $this->matches( 'format' ) ) );
 		$formatter->method( 'format' )->willThrowException( new InvalidArgumentException( 'Exception for test.' ) );
 
@@ -595,9 +594,7 @@ class SquashCommandTest extends CommandTestCase {
 	public function testWriteChangelog_writeError() {
 		mkdir( 'CHANGELOG.md' );
 
-		$formatter = $this->getMockBuilder( FormatterPlugin::class )
-			->setMethodsExcept( array() )
-			->getMock();
+		$formatter = $this->getMockBuilder( FormatterPlugin::class )->getMock();
 		$formatter->expects( $this->never() )->method( $this->logicalNot( $this->matches( 'format' ) ) );
 		$formatter->method( 'format' )->willReturn( "Changelog!\n" );
 
@@ -617,7 +614,7 @@ class SquashCommandTest extends CommandTestCase {
 	 */
 	public function testExecute_writeChangelog_fail() {
 		$command = $this->getMockBuilder( SquashCommand::class )
-			->setMethods( array( 'writeChangelog', 'deleteChanges' ) )
+			->onlyMethods( array( 'writeChangelog', 'deleteChanges' ) )
 			->getMock();
 		$command->setApplication( $this->getCommand( 'squash' )->getApplication() );
 		$command->method( 'writeChangelog' )->willReturn( SquashCommand::FATAL_EXIT );
@@ -629,5 +626,4 @@ class SquashCommandTest extends CommandTestCase {
 		$code   = $tester->execute( array() );
 		$this->assertSame( SquashCommand::FATAL_EXIT, $code );
 	}
-
 }

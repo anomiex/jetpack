@@ -15,7 +15,8 @@ For example, you can run: `git checkout trunk` and then `git checkout -b fix/wha
 
 The Jetpack repo uses the following "reserved" branch name conventions:
 
-* `{something}/branch-{X.Y|something}` -- Used for release branches
+* `prerelease` -- Used for the release process.
+* `{something}/branch-{X.Y|something}` -- Used for release branches.
 * `feature/{something}` -- Used for feature branches for larger feature projects when anticipated there will be multiple PRs into that feature branch.
 
 ## Mind your commits
@@ -38,7 +39,6 @@ There are two ways to update your branch with changes to `trunk` or a parent PR.
    * Pro: Keeps the branch's history cleaner.
    * Con: GitHub doesn't handle it very well. It may lose inline comments on the pre-rebase commits, and it will remove the old commit entries from the conversation (making it harder to determine the state of the PR when earlier comments were left) and instead show every one in the rebase as being "added" again at the time that the rebase was pushed.
    * Con: Anyone else who has checked out your branch pre-rebase can't just `git pull`.
-   * Con: Our pre-commit verification doesn't run on rebases, so you might wind up with all commits tagged as "[not verified]".
    * Note: When pushing the rebase to GitHub, use `git push --force-with-lease` as it's safer than the older `git push --force`.
 
 **In general, it's best to rebase if you haven't yet created the PR, and, in particular, it's good to rebase just before doing so. After the PR has been created, it's better for collaboration to merge instead.**
@@ -72,6 +72,28 @@ $ git rebase jetpack/trunk
 # Make more changes and commit OR resolve conflicts.
 # Then push your changes to your forked version of Jetpack
 $ git push -f origin update/my-changes
+```
+
+### Updating an external contributor's PR
+
+If you're working directly with Jetpack trunk and need to update an external contributor's PR, the below commands will be helpful. 
+This method assumes you are using the `gh` shorthand from the [Github CLI](https://cli.github.com/):
+
+```sh
+# Use the Github CLI to check out the PR with the PR number - for example gh pr checkout 12345.
+gh pr checkout xxxxx
+
+# Run merge-base to check where that branch differed from trunk - example git merge-base update/broken-jetpack-feature trunk.
+git merge-base forkedbranchname trunk
+
+## With the SHA returned from the above command, we can rebase from that.
+git rebase -i the-sha
+
+## Rebase the current branch onto origin/trunk.
+git rebase origin/trunk
+
+## Push the updated branch to the forked branch. Note that using --force-with-lease won't work due to an existing GitHub CLI issue, but --force will)
+git push --force
 ```
 
 ### Tips for common issues when merging

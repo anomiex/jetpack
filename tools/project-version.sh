@@ -2,7 +2,7 @@
 
 set -eo pipefail
 
-BASE=$(cd $(dirname "${BASH_SOURCE[0]}")/.. && pwd)
+BASE=$(cd "$(dirname "${BASH_SOURCE[0]}")"/.. && pwd)
 . "$BASE/tools/includes/check-osx-bash-version.sh"
 . "$BASE/tools/includes/chalk-lite.sh"
 . "$BASE/tools/includes/plugin-functions.sh"
@@ -39,7 +39,7 @@ fi
 OP=
 VERBOSE=false
 FIX_INTRA_MONOREPO_DEPS=false
-while getopts ":c:u:fvsh" opt; do
+while getopts ":c:u:fCvsh" opt; do
 	case ${opt} in
 		c)
 			[[ -z "$OP" ]] || die "Only one of -c or -u may be specified"
@@ -52,6 +52,9 @@ while getopts ":c:u:fvsh" opt; do
 			VERSION=$OPTARG
 			OP=update
 			OPING=Updating
+			;;
+		C)
+			die 'The -C option has been removed. Since we no longer set alpha versions in trunk, CI would just call for the version change to be reverted.'
 			;;
 		f)
 			FIX_INTRA_MONOREPO_DEPS=true
@@ -125,7 +128,7 @@ function sedver {
 		LINE=$(grep --line-number --max-count=1 -E "$2" "$1" || true)
 		if [[ -n "$CI" ]]; then
 			echo "---" # Bracket message containing newlines for better visibility in GH's logs.
-			echo "::error file=${1#$BASE/},line=${LINE%%:*}::Version mismatch, expected $3 but found $VER!%0AYou might use \`tools/project-version.sh -f -u $VERSION $SLUG\` or \`tools/fixup-project-versions.sh\` to fix this."
+			echo "::error file=${1#$BASE/},line=${LINE%%:*}::Version mismatch, expected $3 but found $VER!%0ABefore you can merge your PR, please run \`tools/fixup-project-versions.sh\`, commit, and push the generated changes to your branch to fix this."
 			echo "---"
 		else
 			error "${1#$BASE/}:${LINE%%:*}: Version mismatch, expected $3 but found $VER!"
@@ -143,7 +146,12 @@ function jsver {
 	if [[ "$OP" == "update" ]]; then
 		JSON=$(jq --tab --arg v "$3" "if $2 then $2 |= \$v else . end" "$1")
 		if [[ "$JSON" != "$(<"$FILE")" ]]; then
-			echo "$JSON" > "$FILE"
+			# Update atomically (with mv) to avoid partial writes to composer.json or package.json breaking parallel builds.
+			local TMPFILE
+			TMPFILE=$( mktemp "$FILE-XXXXXXXX" )
+			echo "$JSON" > "$TMPFILE"
+			chmod 0664 "$TMPFILE"
+			mv -f "$TMPFILE" "$FILE"
 		fi
 		return
 	fi
@@ -171,7 +179,7 @@ function jsver {
 		LINE=$(grep --line-number --max-count=1 -E "^	{$N}\"${X##*.}\": $VE,?$" "$1" || true)
 		if [[ -n "$CI" ]]; then
 			echo "---" # Bracket message containing newlines for better visibility in GH's logs.
-			echo "::error file=${1#$BASE/},line=${LINE%%:*}::Version mismatch, expected $3 but found $VER!%0AYou might use \`tools/project-version.sh -f -u $VERSION $SLUG\` or \`tools/fixup-project-versions.sh\` to fix this."
+			echo "::error file=${1#$BASE/},line=${LINE%%:*}::Version mismatch, expected $3 but found $VER!%0ABefore you can merge your PR, please run \`tools/fixup-project-versions.sh\`, commit, and push the generated changes to your branch to fix this."
 			echo "---"
 		else
 			error "${1#$BASE/}:${LINE%%:*}: Version mismatch, expected $3 but found $VER!"
@@ -202,7 +210,7 @@ done
 # Update branch-alias in composer.json
 FILE="$BASE/projects/$SLUG/composer.json"
 debug "$OPING branch-alias version, if any"
-jsver "$FILE" '.extra["branch-alias"]["dev-trunk"]' "$(sed -E 's/\.[0-9]+([-+].*)?$/.x-dev/' <<<"$SEMVERSION")"
+jsver "$FILE" '.extra["branch-alias"]["dev-trunk"]' "$(sed -E 's/^([0-9]+\.[0-9]+)(\.[0-9]+)*([-+].*)?$/\1.x-dev/' <<<"$SEMVERSION")"
 
 # Update autoloader-suffix in composer.json
 FILE="$BASE/projects/$SLUG/composer.json"
@@ -245,7 +253,7 @@ if $FIX_INTRA_MONOREPO_DEPS; then
 fi
 
 if $FIXHINT; then
-	green "You might use \`tools/project-version.sh -f -u $VERSION $SLUG\` or \`tools/fixup-project-versions.sh\` to fix this."
+	green "Before you can merge your PR, please run \`tools/fixup-project-versions.sh\`, commit, and push the generated changes to your branch to fix this."
 fi
 
 exit $EXIT

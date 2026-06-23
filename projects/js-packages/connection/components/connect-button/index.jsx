@@ -1,24 +1,23 @@
-import { ActionButton } from '@automattic/jetpack-components';
 import { __ } from '@wordpress/i18n';
+import { Button } from '@wordpress/ui';
 import PropTypes from 'prop-types';
-import React from 'react';
 import useConnection from '../use-connection';
 
 /**
  * The RNA connection component.
  *
  * @param {object} props -- The properties.
- * @returns {React.Component} The RNA connection component.
+ * @return {import('react').Component} The RNA connection component.
  */
 const ConnectButton = props => {
 	const {
 		apiRoot,
 		apiNonce,
-		connectLabel,
+		connectLabel = __( 'Connect', 'jetpack-connection-js' ),
 		registrationNonce,
-		redirectUri,
+		redirectUri = null,
 		from,
-		autoTrigger,
+		autoTrigger = false,
 	} = props;
 
 	const {
@@ -40,12 +39,16 @@ const ConnectButton = props => {
 	return (
 		<>
 			{ ( ! isRegistered || ! isUserConnected ) && (
-				<ActionButton
-					label={ connectLabel }
-					onClick={ handleRegisterSite }
-					displayError={ registrationError ? true : false }
-					isLoading={ siteIsRegistering || userIsConnecting }
-				/>
+				<>
+					<Button onClick={ handleRegisterSite } loading={ siteIsRegistering || userIsConnecting }>
+						{ connectLabel }
+					</Button>
+					{ registrationError && (
+						<p className="jp-action-button__error">
+							{ __( 'An error occurred. Please try again.', 'jetpack-connection-js' ) }
+						</p>
+					) }
+				</>
 			) }
 		</>
 	);
@@ -66,12 +69,6 @@ ConnectButton.propTypes = {
 	registrationNonce: PropTypes.string.isRequired,
 	/** Whether to initiate the connection process automatically upon rendering the component. */
 	autoTrigger: PropTypes.bool,
-};
-
-ConnectButton.defaultProps = {
-	connectLabel: __( 'Connect', 'jetpack' ),
-	redirectUri: null,
-	autoTrigger: false,
 };
 
 export default ConnectButton;

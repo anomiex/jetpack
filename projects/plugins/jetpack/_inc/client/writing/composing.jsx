@@ -1,27 +1,27 @@
 import { getRedirectUrl } from '@automattic/jetpack-components';
 import { __, _x } from '@wordpress/i18n';
+import { Component } from 'react';
+import { connect } from 'react-redux';
 import CompactCard from 'components/card/compact';
-import CompactFormToggle from 'components/form/form-toggle/compact';
 import { FormFieldset } from 'components/forms';
 import { withModuleSettingsFormHelpers } from 'components/module-settings/with-module-settings-form-helpers';
 import { ModuleToggle } from 'components/module-toggle';
 import SettingsCard from 'components/settings-card';
 import SettingsGroup from 'components/settings-group';
-import React from 'react';
-import { connect } from 'react-redux';
+import { showMyJetpack } from 'state/initial-state';
 import { getModule } from 'state/modules';
 import { isModuleFound as _isModuleFound } from 'state/search';
 
-export class Composing extends React.Component {
+export class Composing extends Component {
 	/**
 	 * If markdown module is inactive and this is toggling markdown for posts on, activate module.
 	 * If markdown for comments is off and this is toggling markdown for posts off, deactivate module.
 	 *
-	 * @param {string} module the slug of the module to update
-	 * @returns {*}           the updated value
+	 * @param {string} module - the slug of the module to update
+	 * @return {*}           the updated value
 	 */
 	updateFormStateByMarkdown = module => {
-		if ( !! this.props.getSettingCurrentValue( 'wpcom_publish_comments_with_markdown', module ) ) {
+		if ( this.props.getSettingCurrentValue( 'wpcom_publish_comments_with_markdown', module ) ) {
 			return this.props.updateFormStateModuleOption( module, 'wpcom_publish_posts_with_markdown' );
 		}
 		return this.props.updateFormStateModuleOption(
@@ -34,7 +34,7 @@ export class Composing extends React.Component {
 	/**
 	 * Update the option that disables Jetpack Blocks.
 	 *
-	 * @returns {*}           the updated value
+	 * @return {*}           the updated value
 	 */
 	toggleBlocks = () => {
 		const updateValue = ! this.props.getSettingCurrentValue( 'jetpack_blocks_disabled' );
@@ -46,7 +46,8 @@ export class Composing extends React.Component {
 			foundLatex = this.props.isModuleFound( 'latex' ),
 			foundMarkdown = this.props.isModuleFound( 'markdown' ),
 			foundShortcodes = this.props.isModuleFound( 'shortcodes' ),
-			foundBlocks = this.props.isModuleFound( 'blocks' );
+			foundBlocks = this.props.isModuleFound( 'blocks' ),
+			foundMyJetpack = this.props.isMyJetpackReachable;
 
 		if (
 			! foundCopyPost &&
@@ -77,9 +78,8 @@ export class Composing extends React.Component {
 					<FormFieldset>
 						<ModuleToggle
 							slug="copy-post"
-							activated={ !! this.props.getOptionValue( 'copy-post' ) }
-							toggling={ this.props.isSavingAnyOption( 'copy-post' ) }
 							disabled={ this.props.isSavingAnyOption( 'copy-post' ) }
+							activated={ !! this.props.getOptionValue( 'copy-post' ) }
 							toggleModule={ this.props.toggleModuleNow }
 						>
 							<span className="jp-form-toggle-explanation">{ copyPost.description }</span>
@@ -101,17 +101,13 @@ export class Composing extends React.Component {
 					<FormFieldset>
 						<ModuleToggle
 							slug="markdown"
-							activated={
-								!! this.props.getOptionValue( 'wpcom_publish_posts_with_markdown', 'markdown' )
-							}
-							toggling={ this.props.isSavingAnyOption( [
-								'markdown',
-								'wpcom_publish_posts_with_markdown',
-							] ) }
 							disabled={ this.props.isSavingAnyOption( [
 								'markdown',
 								'wpcom_publish_posts_with_markdown',
 							] ) }
+							activated={
+								!! this.props.getOptionValue( 'wpcom_publish_posts_with_markdown', 'markdown' )
+							}
 							toggleModule={ this.updateFormStateByMarkdown }
 						>
 							<span className="jp-form-toggle-explanation">{ markdown.description }</span>
@@ -133,9 +129,8 @@ export class Composing extends React.Component {
 					<FormFieldset>
 						<ModuleToggle
 							slug="latex"
-							activated={ !! this.props.getOptionValue( 'latex' ) }
-							toggling={ this.props.isSavingAnyOption( [ 'latex' ] ) }
 							disabled={ this.props.isSavingAnyOption( [ 'latex' ] ) }
+							activated={ !! this.props.getOptionValue( 'latex' ) }
 							toggleModule={ this.props.toggleModuleNow }
 						>
 							<span className="jp-form-toggle-explanation">{ latex.description }</span>
@@ -154,9 +149,8 @@ export class Composing extends React.Component {
 					<FormFieldset>
 						<ModuleToggle
 							slug="shortcodes"
-							activated={ !! this.props.getOptionValue( 'shortcodes' ) }
-							toggling={ this.props.isSavingAnyOption( [ 'shortcodes' ] ) }
 							disabled={ this.props.isSavingAnyOption( [ 'shortcodes' ] ) }
+							activated={ !! this.props.getOptionValue( 'shortcodes' ) }
 							toggleModule={ this.props.toggleModuleNow }
 						>
 							<span className="jp-form-toggle-explanation">
@@ -179,10 +173,11 @@ export class Composing extends React.Component {
 						} }
 					>
 						<FormFieldset>
-							<CompactFormToggle
-								checked={ ! this.props.getOptionValue( 'jetpack_blocks_disabled' ) }
-								disabled={ this.props.isSavingAnyOption( [ 'jetpack_blocks_disabled' ] ) }
-								onChange={ this.toggleBlocks }
+							<ModuleToggle
+								slug="blocks"
+								disabled={ this.props.isSavingAnyOption( [ 'blocks' ] ) }
+								activated={ !! this.props.getOptionValue( 'blocks' ) }
+								toggleModule={ this.props.toggleModuleNow }
 							>
 								<span className="jp-form-toggle-explanation">
 									{ __(
@@ -190,7 +185,7 @@ export class Composing extends React.Component {
 										'jetpack'
 									) }
 								</span>
-								{ ! this.props.getOptionValue( 'jetpack_blocks_disabled' ) && (
+								{ this.props.getOptionValue( 'blocks' ) && (
 									<span className="jp-form-setting-explanation">
 										{ __(
 											'Caution: if there are Jetpack blocks used in existing posts or pages, disabling this setting will cause those blocks to stop working.',
@@ -198,7 +193,7 @@ export class Composing extends React.Component {
 										) }
 									</span>
 								) }
-							</CompactFormToggle>
+							</ModuleToggle>
 						</FormFieldset>
 					</SettingsGroup>
 					<CompactCard
@@ -208,6 +203,13 @@ export class Composing extends React.Component {
 						{ __( 'Discover Jetpack tools in the block editor', 'jetpack' ) }
 					</CompactCard>
 				</>
+			),
+			aiAssistantLink = (
+				<CompactCard className="jp-settings-card__configure-link">
+					<a href={ `${ this.props.siteAdminUrl }admin.php?page=my-jetpack#/jetpack-ai` }>
+						{ __( 'Learn more about all Jetpack AI features', 'jetpack' ) }
+					</a>
+				</CompactCard>
 			);
 
 		return (
@@ -222,6 +224,9 @@ export class Composing extends React.Component {
 				{ foundLatex && latexSettings }
 				{ foundShortcodes && shortcodeSettings }
 				{ foundBlocks && blocksSettings }
+				{ foundMyJetpack &&
+					! this.props.getOptionValue( 'jetpack_blocks_disabled' ) &&
+					aiAssistantLink }
 			</SettingsCard>
 		);
 	}
@@ -231,5 +236,6 @@ export default connect( state => {
 	return {
 		module: module_name => getModule( state, module_name ),
 		isModuleFound: module_name => _isModuleFound( state, module_name ),
+		isMyJetpackReachable: showMyJetpack( state ),
 	};
 } )( withModuleSettingsFormHelpers( Composing ) );

@@ -1,8 +1,9 @@
 import { __, sprintf } from '@wordpress/i18n';
+import jQuery from 'jquery';
+import { Component } from 'react';
 import ModernOverlay from 'components/jetpack-dialogue-modern';
 import { withModuleSettingsFormHelpers } from 'components/module-settings/with-module-settings-form-helpers';
 import analytics from 'lib/analytics';
-import React, { Component } from 'react';
 
 const UpgradeNoticeContent = withModuleSettingsFormHelpers(
 	class extends Component {
@@ -65,7 +66,7 @@ const UpgradeNoticeContent = withModuleSettingsFormHelpers(
 
 			if ( ! title || 0 === title.length ) {
 				title = sprintf(
-					/* translators: Placeholder is a version number. */
+					/* translators: %s: a version number. */
 					__( 'New in Jetpack %s', 'jetpack' ),
 					this.props.version
 				);

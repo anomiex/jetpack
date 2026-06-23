@@ -10,6 +10,9 @@ class Jetpack_Sync_Server_Replicator {
 	private $store;
 
 	public function __construct( Replicastore_Interface $store ) {
+		if ( ! $store instanceof Jetpack_Sync_Test_Replicastore ) {
+			throw new InvalidArgumentException( 'Expected Jetpack_Sync_Test_Replicastore, got ' . get_class( $store ) );
+		}
 		$this->store = $store;
 	}
 
@@ -101,9 +104,16 @@ class Jetpack_Sync_Server_Replicator {
 				break;
 
 			case ( preg_match( '/^deleted_(.*)_meta$/', $action_name, $matches ) ? true : false ):
-				list( $meta_ids, $object_id, $meta_key, $meta_value ) = $args;
+				list( $meta_ids, $object_id, $meta_key, $meta_value ) = array_pad( $args, 4, '' );
 				$type = $matches[1];
-				$this->store->delete_metadata( $type, $object_id, $meta_ids );
+				if ( 0 === $object_id ) {
+					$this->store->delete_metadata_by_key_value( $type, $meta_key, $meta_value );
+				} else {
+					if ( ! is_numeric( $object_id ) || ! is_array( $meta_ids ) ) {
+						break;
+					}
+					$this->store->delete_metadata( $type, (int) $object_id, array_map( 'intval', $meta_ids ) );
+				}
 				break;
 			case 'jetpack_post_meta_batch_delete':
 				list( $object_ids, $meta_key ) = $args;

@@ -1,5 +1,4 @@
 import { getRedirectUrl } from '@automattic/jetpack-components';
-import React from 'react';
 import { render, screen, within } from 'test/test-utils';
 import { SettingsGroup } from '../index';
 
@@ -16,7 +15,6 @@ describe( 'SettingsGroup', () => {
 			'markdown',
 			'infinite-scroll',
 			'gravatar-hovercards',
-			'custom-css',
 			'sharedaddy',
 			'widgets',
 			'shortcodes',
@@ -35,7 +33,6 @@ describe( 'SettingsGroup', () => {
 			'notes',
 			'subscriptions',
 			'protect',
-			'enhanced-distribution',
 			'comments',
 			'json-api',
 			'photon',
@@ -57,7 +54,9 @@ describe( 'SettingsGroup', () => {
 	it( 'outputs a special CSS class when it has the hasChild property', () => {
 		const { container } = render( <SettingsGroup support={ testProps.info } hasChild /> );
 		// eslint-disable-next-line testing-library/no-container
-		expect( container.querySelector( '.dops-card' ) ).toHaveClass( 'jp-form-has-child' );
+		expect( container.querySelector( '.jp-form-settings-group' ) ).toHaveClass(
+			'jp-form-has-child'
+		);
 	} );
 
 	it( 'the support info icon has an informational tooltip', () => {

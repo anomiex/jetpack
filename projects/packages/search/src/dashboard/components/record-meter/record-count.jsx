@@ -1,15 +1,17 @@
-import { numberFormat } from '@automattic/jetpack-components';
+import { formatNumber } from '@automattic/number-formatters';
 import { createInterpolateElement } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
-import React from 'react';
+import { Icon, info } from '@wordpress/icons';
 
 import './record-count.scss';
+
+const DOCS_URL = 'https://jetpack.com/support/search/jetpack-search-record-meter/';
 
 /**
  * Returns record count component showing current records indexed and max records available for tier.
  *
  * @param {object} props - current record count and plan record limit.
- * @returns {React.Component} record count component.
+ * @return {import('react').Component} record count component.
  */
 export function RecordCount( props ) {
 	if ( ! props.recordCount ) {
@@ -17,11 +19,11 @@ export function RecordCount( props ) {
 	}
 
 	const recordCount =
-		typeof props.recordCount === 'number' ? numberFormat( props.recordCount ) : props.recordCount;
+		typeof props.recordCount === 'number' ? formatNumber( props.recordCount ) : props.recordCount;
 
 	const recordLimit =
 		typeof props.tierMaximumRecords === 'number'
-			? numberFormat( props.tierMaximumRecords )
+			? formatNumber( props.tierMaximumRecords )
 			: props.tierMaximumRecords;
 	let message;
 
@@ -55,7 +57,19 @@ export function RecordCount( props ) {
 
 	return (
 		<div data-testid="record-count" className="jp-search-record-count">
-			<p>{ message }</p>
+			<p className="jp-search-record-count__message">
+				{ message }
+				{ DOCS_URL && (
+					<a
+						href={ DOCS_URL }
+						className="jp-search-record-count__info"
+						title={ __( 'More info', 'jetpack-search-pkg' ) }
+					>
+						<Icon className="jp-search-record-count__info-icon" icon={ info } size={ 18 } />
+						<span className="screen-reader-text">{ __( 'More info', 'jetpack-search-pkg' ) }</span>
+					</a>
+				) }
+			</p>
 		</div>
 	);
 }

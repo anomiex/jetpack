@@ -1,6 +1,8 @@
-import QuerySite from 'components/data/query-site';
-import React from 'react';
+import { __ } from '@wordpress/i18n';
+import { Fragment } from 'react';
 import { connect } from 'react-redux';
+import QueryRecommendationsData from 'components/data/query-recommendations-data';
+import QuerySite from 'components/data/query-site';
 import { getSiteConnectionStatus } from 'state/connection';
 import {
 	getActiveFeatures,
@@ -13,6 +15,12 @@ import MyPlanBody from './my-plan-body';
 import MyPlanHeader from './my-plan-header';
 import MyPlanPartnerCoupon from './my-plan-partner-coupon';
 
+/**
+ * My Plan page component.
+ *
+ * @param {object} props - Component props.
+ * @return {import('react').ReactElement} React element.
+ */
 export function MyPlan( props ) {
 	let sitePlan = props.sitePlan.product_slug || '',
 		availableFeatures = props.availableFeatures,
@@ -24,8 +32,10 @@ export function MyPlan( props ) {
 	}
 
 	return (
-		<React.Fragment>
+		<Fragment>
+			<h1 className="screen-reader-text">{ __( 'Jetpack My Plan Details', 'jetpack' ) }</h1>
 			<QuerySite />
+			<QueryRecommendationsData />
 			<MyPlanPartnerCoupon siteRawUrl={ props.siteRawUrl } />
 			<MyPlanHeader
 				activeProducts={ props.activeProducts }
@@ -40,8 +50,9 @@ export function MyPlan( props ) {
 				rewindStatus={ props.rewindStatus }
 				siteAdminUrl={ props.siteAdminUrl }
 				siteRawUrl={ props.siteRawUrl }
+				blogID={ props.blogID }
 			/>
-		</React.Fragment>
+		</Fragment>
 	);
 }
 

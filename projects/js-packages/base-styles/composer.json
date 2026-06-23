@@ -4,15 +4,6 @@
 	"type": "library",
 	"license": "GPL-2.0-or-later",
 	"require": {},
-	"require-dev": {
-		"yoast/phpunit-polyfills": "1.0.3",
-		"automattic/jetpack-changelogger": "^3.1"
-	},
-	"autoload": {
-		"classmap": [
-			"src/"
-		]
-	},
 	"repositories": [
 		{
 			"type": "path",

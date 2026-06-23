@@ -10,12 +10,11 @@ namespace Automattic\Jetpack\Changelogger\Tests;
 use Automattic\Jetpack\Changelogger\Config;
 use PHPUnit\Framework\TestCase as PHPUnit_TestCase;
 use Wikimedia\TestingAccessWrapper;
-use function Wikimedia\quietCall;
 
 /**
  * Base test case for the changelogger tool.
  */
-class TestCase extends PHPUnit_TestCase {
+abstract class TestCase extends PHPUnit_TestCase {
 
 	/**
 	 * Value of COMPOSER environment variable to restore in tear_down.
@@ -40,20 +39,18 @@ class TestCase extends PHPUnit_TestCase {
 
 	/**
 	 * Setup test.
-	 *
-	 * @before
 	 */
-	public function set_up() {
+	public function setUp(): void {
+		parent::setUp();
 		$this->oldenv = getenv( 'COMPOSER' );
 		$this->resetConfigCache();
 	}
 
 	/**
 	 * Teardown test.
-	 *
-	 * @after
 	 */
-	public function tear_down() {
+	public function tearDown(): void {
+		parent::tearDown();
 		$this->cleanupTempDir();
 		$this->resetConfigCache();
 		putenv( false === $this->oldenv ? 'COMPOSER' : "COMPOSER=$this->oldenv" );
@@ -75,7 +72,8 @@ class TestCase extends PHPUnit_TestCase {
 		$mask = rand( 0, 0xffffff );
 		for ( $i = 0; $i < 0xffffff; $i++ ) {
 			$tmpdir = $base . sprintf( '%06x', $i ^ $mask );
-			if ( quietCall( 'mkdir', $tmpdir, 0700 ) ) {
+			// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+			if ( @mkdir( $tmpdir, 0700 ) ) {
 				// Success!
 				file_put_contents( "$tmpdir/composer.json", "{}\n" );
 				$this->oldcwd = getcwd();
@@ -128,5 +126,4 @@ class TestCase extends PHPUnit_TestCase {
 		$w->loaded = false;
 		Config::setComposerJsonPath( null );
 	}
-
 }

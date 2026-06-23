@@ -1,23 +1,22 @@
 import { getRedirectUrl } from '@automattic/jetpack-components';
 import { __ } from '@wordpress/i18n';
+import { Component } from 'react';
+import { connect } from 'react-redux';
 import { FormLabel, FormLegend } from 'components/forms';
 import ModuleOverriddenBanner from 'components/module-overridden-banner';
 import { withModuleSettingsFormHelpers } from 'components/module-settings/with-module-settings-form-helpers';
-import { ModuleToggle } from 'components/module-toggle';
 import SettingsCard from 'components/settings-card';
 import SettingsGroup from 'components/settings-group';
 import analytics from 'lib/analytics';
-import React from 'react';
-import { connect } from 'react-redux';
 import { currentThemeSupports } from 'state/initial-state';
 import { getModule } from 'state/modules';
 import { isModuleFound } from 'state/search';
 
-class ThemeEnhancements extends React.Component {
+class ThemeEnhancements extends Component {
 	/**
 	 * Translate Infinite Scroll module and option status into our three values for the options.
 	 *
-	 * @returns {string} Check the Infinite Scroll and its mode and translate into a string.
+	 * @return {string} Check the Infinite Scroll and its mode and translate into a string.
 	 */
 	getInfiniteMode = () => {
 		if ( ! this.props.getOptionValue( 'infinite-scroll' ) ) {
@@ -32,7 +31,7 @@ class ThemeEnhancements extends React.Component {
 	/**
 	 * Update the state for infinite scroll options and prepare options to submit
 	 *
-	 * @param {string} radio Update options to save when Infinite Scroll options change.
+	 * @param {string} radio - Update options to save when Infinite Scroll options change.
 	 */
 	updateInfiniteMode = radio => {
 		this.setState(
@@ -63,8 +62,8 @@ class ThemeEnhancements extends React.Component {
 	/**
 	 * Update state so toggles are updated.
 	 *
-	 * @param {string} optionName option slug
-	 * @param {string} module module slug
+	 * @param {string} optionName - option slug
+	 * @param {string} module     - module slug
 	 */
 	updateOptions = ( optionName, module ) => {
 		this.setState(
@@ -83,19 +82,11 @@ class ThemeEnhancements extends React.Component {
 		} );
 	};
 
-	trackVisitCustomizer = () => {
-		analytics.tracks.recordJetpackClick( {
-			target: 'visit-customizer',
-			feature: 'custom-css',
-			extra: 'not-supported-link',
-		} );
-	};
-
 	/**
 	 * Get options for initial state.
 	 *
-	 * @returns {Object} {{
-	 * 		infinite_scroll: *
+	 * @return {object} {{
+	 * infinite_scroll: *
 	 * }}
 	 */
 	state = {
@@ -107,15 +98,13 @@ class ThemeEnhancements extends React.Component {
 	};
 
 	render() {
-		const foundInfiniteScroll = this.props.isModuleFound( 'infinite-scroll' ),
-			foundCustomCSS = this.props.isModuleFound( 'custom-css' );
+		const foundInfiniteScroll = this.props.isModuleFound( 'infinite-scroll' );
 
-		if ( ! foundInfiniteScroll && ! foundCustomCSS ) {
+		if ( ! foundInfiniteScroll ) {
 			return null;
 		}
 
 		const infScr = this.props.getModule( 'infinite-scroll' );
-		const customCSS = this.props.getModule( 'custom-css' );
 
 		const infiniteScrollDisabledByOverride =
 			'inactive' === this.props.getModuleOverride( 'infinite-scroll' );
@@ -192,46 +181,6 @@ class ThemeEnhancements extends React.Component {
 								</a>
 							</span>
 						) }
-					</SettingsGroup>
-				) }
-				{ foundCustomCSS && (
-					<SettingsGroup
-						module={ { module: customCSS.module } }
-						support={ {
-							text: customCSS.description,
-							link: getRedirectUrl( 'jetpack-support-custom-css' ),
-						} }
-					>
-						<FormLegend className="jp-form-label-wide">{ customCSS.name }</FormLegend>
-						<span>
-							<p>
-								{ __(
-									'Additional CSS can be added from the Customizer. Enable the enhanced Custom CSS feature below to add additional features.',
-									'jetpack'
-								) + ' ' }
-								<a
-									onClick={ this.trackVisitCustomizer }
-									href={ `${ this.props.siteAdminUrl }customize.php?autofocus%5Bsection%5D=custom_css` }
-									title={ __(
-										'Edit and add CSS directly on your site from the Customizer.',
-										'jetpack'
-									) }
-								>
-									{ __( 'Access the Customizer here.', 'jetpack' ) }
-								</a>
-							</p>
-						</span>
-						<ModuleToggle
-							slug="custom-css"
-							activated={ !! this.props.getOptionValue( 'custom-css' ) }
-							toggling={ this.props.isSavingAnyOption( [ 'custom-css' ] ) }
-							disabled={ this.props.isSavingAnyOption( [ 'custom-css' ] ) }
-							toggleModule={ this.props.toggleModuleNow }
-						>
-							<span className="jp-form-toggle-explanation">
-								{ __( 'Enhance CSS customization panel', 'jetpack' ) }
-							</span>
-						</ModuleToggle>
 					</SettingsGroup>
 				) }
 			</SettingsCard>

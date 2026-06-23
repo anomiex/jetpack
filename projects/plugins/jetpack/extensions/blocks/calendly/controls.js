@@ -1,7 +1,7 @@
+import { isWpcomPlatformSite } from '@automattic/jetpack-script-data';
 import { BlockControls, InspectorControls } from '@wordpress/block-editor';
 import {
 	Button,
-	ExternalLink,
 	Notice,
 	PanelBody,
 	ToggleControl,
@@ -9,6 +9,7 @@ import {
 	ToolbarGroup,
 } from '@wordpress/components';
 import { __, _x } from '@wordpress/i18n';
+import { Link } from '@wordpress/ui';
 import BlockStylesSelector from '../../shared/components/block-styles-selector';
 
 export const CalendlyBlockControls = ( { onEditClick } ) => {
@@ -31,6 +32,14 @@ export const CalendlyInspectorControls = props => {
 		setEmbedCode,
 	} = props;
 
+	let externalDocLink = null;
+
+	if ( url ) {
+		externalDocLink = isWpcomPlatformSite()
+			? 'https://wordpress.com/support/wordpress-editor/blocks/calendly-block/#customize-the-calendly-block'
+			: 'https://jetpack.com/support/jetpack-blocks/calendly-block/#customizing-a-calendly-block';
+	}
+
 	return (
 		<>
 			<PanelBody PanelBody title={ __( 'Calendar settings', 'jetpack' ) } initialOpen={ false }>
@@ -51,16 +60,17 @@ export const CalendlyInspectorControls = props => {
 				</form>
 
 				<ToggleControl
+					__nextHasNoMarginBottom={ true }
 					label={ __( 'Hide event type details', 'jetpack' ) }
 					checked={ hideEventTypeDetails }
 					onChange={ () => setAttributes( { hideEventTypeDetails: ! hideEventTypeDetails } ) }
 				/>
 			</PanelBody>
-			{ url && (
+			{ externalDocLink && (
 				<Notice className={ `${ defaultClassName }-color-notice` } isDismissible={ false }>
-					<ExternalLink href="https://help.calendly.com/hc/en-us/community/posts/360033166114-Embed-Widget-Color-Customization-Available-Now-">
-						{ __( 'Follow these instructions to change the colors in this block.', 'jetpack' ) }
-					</ExternalLink>
+					<Link openInNewTab href={ externalDocLink }>
+						{ __( 'Explore more customization options.', 'jetpack' ) }
+					</Link>
 				</Notice>
 			) }
 		</>

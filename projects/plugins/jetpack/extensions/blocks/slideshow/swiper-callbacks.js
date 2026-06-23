@@ -1,5 +1,4 @@
 import { escapeHTML } from '@wordpress/escape-html';
-import { forEach } from 'lodash';
 
 const SIXTEEN_BY_NINE = 16 / 9;
 const MAX_HEIGHT_PERCENT_OF_WINDOW_HEIGHT = 0.8;
@@ -7,15 +6,17 @@ const SANITY_MAX_HEIGHT = 600;
 const PAUSE_CLASS = 'wp-block-jetpack-slideshow_autoplay-paused';
 
 function swiperInit( swiper ) {
+	// Enable loop mode after init if we have enough slides
+	// See also: https://stackoverflow.com/a/78680695
+	if ( swiper.slides.length > 1 ) {
+		swiper.loopDestroy();
+		swiper.params.loop = true;
+		swiper.loopCreate();
+		swiper.update();
+	}
+
 	swiperResize( swiper );
 	swiperApplyAria( swiper );
-
-	/*
-	 * Dispatch the jetpack-lazy-images-load event to set up lazy loading for
-	 * the slideshow's duplicate first and last images.
-	 */
-	const bodyEl = document.querySelector( 'body' );
-	bodyEl.dispatchEvent( new Event( 'jetpack-lazy-images-load' ) );
 
 	swiper.el
 		.querySelector( '.wp-block-jetpack-slideshow_button-pause' )
@@ -40,12 +41,51 @@ function swiperResize( swiper ) {
 	if ( ! swiper || ! swiper.el ) {
 		return;
 	}
-	const img = swiper.el.querySelector( '.swiper-slide[data-swiper-slide-index="0"] img' );
+	const img = swiper.params.loop
+		? swiper.el.querySelector( '.swiper-slide[data-swiper-slide-index="0"] img' )
+		: swiper.el.querySelector( '.swiper-slide img' );
 	if ( ! img ) {
 		return;
 	}
-	const aspectRatio = img.clientWidth / img.clientHeight;
+
+	let aspectRatio;
+
+	// If the image element has `naturalWidth` and `naturalHeight` defined, we prefer using
+	// those numbers, because they're guaranteed to be up to date and correct, since they're
+	// taken from the actual image that the browser loaded.
+	//
+	// However, in some cases these numbers will be missing, due to e.g. lazy image loading.
+	// In those situations, we first fall back to the recorded aspect ratio in the <img>
+	// element, then the `width` and `height` attributes in the same element.
+	if ( img.naturalWidth > 0 && img.naturalHeight > 0 ) {
+		aspectRatio = img.naturalWidth / img.naturalHeight;
+	} else if ( img.dataset.aspectRatio ) {
+		const matches = img.dataset.aspectRatio.match( /(\d+) \/ (\d+)/ );
+		if ( matches && matches[ 1 ] && matches[ 2 ] ) {
+			aspectRatio = parseInt( matches[ 1 ], 10 ) / parseInt( matches[ 2 ], 10 );
+		}
+	} else if ( img.getAttribute( 'width' ) && img.getAttribute( 'height' ) ) {
+		aspectRatio =
+			parseInt( img.getAttribute( 'width' ), 10 ) / parseInt( img.getAttribute( 'height' ), 10 );
+	}
+
+	// If we don't have a valid aspect ratio at this point, we set it to a sane default.
+	if ( ! aspectRatio ) {
+		aspectRatio = SIXTEEN_BY_NINE;
+
+		// Then, if the image is still loading, we schedule a new resize for once it loads.
+		// This might cause a layout shift, but it improves the chances that we display the
+		// slideshow at the correct aspect ratio, based on the image's natural dimensions.
+		if ( ! img.complete ) {
+			img.addEventListener( 'load', () => swiperResize( swiper ), { once: true } );
+		}
+	}
+
+	// After we have an aspect ratio, we run a final check to make sure it's within an
+	// acceptable range of values, and clamp it if necessary.
 	const sanityAspectRatio = Math.max( Math.min( aspectRatio, SIXTEEN_BY_NINE ), 1 );
+
+	// Finally, we also clamp the height to a sane maximum.
 	const sanityHeight =
 		typeof window !== 'undefined'
 			? window.innerHeight * MAX_HEIGHT_PERCENT_OF_WINDOW_HEIGHT
@@ -75,7 +115,7 @@ function announceCurrentSlide( swiper ) {
 }
 
 function swiperApplyAria( swiper ) {
-	forEach( swiper.slides, ( slide, index ) => {
+	( swiper.slides || [] ).forEach( ( slide, index ) => {
 		slide.setAttribute( 'aria-hidden', index === swiper.activeIndex ? 'false' : 'true' );
 		if ( index === swiper.activeIndex ) {
 			slide.setAttribute( 'tabindex', '-1' );
@@ -87,7 +127,7 @@ function swiperApplyAria( swiper ) {
 }
 
 function swiperPaginationRender( swiper ) {
-	forEach( swiper.pagination.bullets, bullet => {
+	( swiper.pagination.bullets || [] ).forEach( bullet => {
 		bullet.addEventListener( 'click', () => {
 			const currentSlide = swiper.slides[ swiper.realIndex ];
 			setTimeout( () => {

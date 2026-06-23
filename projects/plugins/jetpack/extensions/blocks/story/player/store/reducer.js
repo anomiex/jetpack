@@ -1,4 +1,4 @@
-import { merge } from 'lodash';
+import merge from 'deepmerge';
 import {
 	defaultCurrentSlideState,
 	defaultSlideProgressState,
@@ -96,7 +96,7 @@ export function player( state = defaultPlayerState, action ) {
 						: state.playing,
 			};
 		case 'INIT': {
-			const playerSettings = merge( {}, state.settings, action.settings );
+			const playerSettings = merge( state.settings, action.settings );
 
 			return {
 				...state,
@@ -129,9 +129,9 @@ export function player( state = defaultPlayerState, action ) {
 /**
  * Reducer managing all players state
  *
- * @param {Object} state  - Current state.
- * @param {Object} action - Dispatched action.
- * @returns {Object} Updated state.
+ * @param {object} state  - Current state.
+ * @param {object} action - Dispatched action.
+ * @return {object} Updated state.
  */
 export default function ( state = {}, action ) {
 	if ( ! action.playerId ) {

@@ -6,7 +6,8 @@ It has been modified to work with Preact, and only includes the icons that we ne
 !!! */
 
 import { __ } from '@wordpress/i18n';
-import React, { Component } from 'react';
+import * as React from 'react';
+import { Component } from 'react';
 
 import './style.scss';
 
@@ -228,6 +229,7 @@ class Gridicon extends Component {
 
 		return (
 			<svg
+				aria-label={ this.props.description }
 				className={ iconClass }
 				focusable={ this.props.focusable }
 				height={ height }

@@ -1,30 +1,48 @@
-@import '@wordpress/base-styles/breakpoints';
-@import '@wordpress/base-styles/mixins';
+@use "@wordpress/base-styles/breakpoints";
 
 .jp-connection__connect-screen {
+	--spacing-base: 8px;
+
 	&__loading {
 		display: none;
 	}
 
-	&__tos {
-		margin-top: 28px;
+	.terms-of-service {
+		margin-top: calc(var(--spacing-base) * 4);
+		margin-bottom: calc(var(--spacing-base) * 3);
 		max-width: 360px;
+
+		a {
+			text-decoration: underline;
+		}
 	}
 
-	.jp-action-button {
+	// Structural-only: top spacing + responsive width. All other treatment
+	// (colors, padding, border-radius, font-weight) honors the
+	// @wordpress/ui Button defaults.
+	.jp-connection__connect-screen__action-button {
 		margin-top: 40px;
+		max-width: 100%;
 
-		button {
-			max-width: 100%;
+		@media ( max-width: breakpoints.$break-medium ) {
+			max-width: none;
+			width: 100%;
+		}
+	}
 
-			&:disabled {
-				color: hsla( 0, 0%, 100%, 0.4 );
-			}
+	&__loading-message {
+		// Hidden visually but not from screen readers
+		position: absolute;
+		clip-path: inset(50%);
+		padding: 0;
+		border: 0;
+		height: 1px;
+		width: 1px;
+		overflow: hidden;
+		white-space: nowrap;
 
-			@media ( max-width: $break-medium ) {
-				max-width: none;
-				width: 100%;
-			}
+		&:empty {
+			display: none;
 		}
 	}
 

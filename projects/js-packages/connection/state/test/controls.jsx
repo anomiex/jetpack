@@ -1,6 +1,15 @@
 import restApi from '@automattic/jetpack-api';
 import { jest } from '@jest/globals';
-import controls from '../controls';
+
+jest.unstable_mockModule( '../assignLocation', () => {
+	return {
+		__esModule: true,
+		assignLocation: jest.fn(),
+	};
+} );
+
+const { default: controls } = await import( '../controls' );
+const { assignLocation: stubAssign } = await import( '../assignLocation' );
 
 const {
 	REGISTER_SITE: registerSite,
@@ -8,9 +17,8 @@ const {
 	FETCH_AUTHORIZATION_URL: fetchAuthorizationUrl,
 } = controls;
 
-const stubRegisterSite = jest.spyOn( restApi, 'registerSite' ).mockReset();
-const stubFetchAuthorizationUrl = jest.spyOn( restApi, 'fetchAuthorizationUrl' ).mockReset();
-const stubAssign = jest.spyOn( window.location, 'assign' ).mockReset();
+const stubRegisterSite = jest.spyOn( restApi, 'registerSite' ).mockReturnValue();
+const stubFetchAuthorizationUrl = jest.spyOn( restApi, 'fetchAuthorizationUrl' ).mockReturnValue();
 
 const getAuthorizationUrl = jest.fn();
 const resolveSelect = () => ( { getAuthorizationUrl } );
@@ -24,14 +32,14 @@ describe( 'controls', () => {
 
 	describe( 'REGISTER_SITE', () => {
 		it( 'resolves with result', async () => {
-			const registrationNonce = 'REGISTRATION_NONCE';
 			const redirectUri = 'REDIRECT_URI';
+			const from = 'FROM';
 			const fakeResult = {};
 			stubRegisterSite.mockResolvedValue( fakeResult );
 
-			const result = await registerSite( { registrationNonce, redirectUri } );
+			const result = await registerSite( { redirectUri, from } );
 			expect( result ).toEqual( fakeResult );
-			expect( stubRegisterSite ).toHaveBeenCalledWith( registrationNonce, redirectUri );
+			expect( stubRegisterSite ).toHaveBeenCalledWith( null, redirectUri, from );
 		} );
 
 		it( 'resolves with error', async () => {

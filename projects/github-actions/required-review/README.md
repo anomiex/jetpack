@@ -65,11 +65,66 @@ This action is intended to be triggered by the `pull_request_review` event.
     # this to instead fail the status checks instead of leaving them pending.
     fail: true
 
+    # By default required reviewers are not requested. Set this to true to
+    # request reviews.
+    request-reviews: true
+
     # GitHub Access Token. The user associated with this token will show up
-    # as the "creator" of the status check, and must have access to read
-    # pull request data, create status checks (`repo:status`), and to read
-    # your organization's teams (`read:org`).
+    # as the "creator" of the status check, and must have the permissions
+    # documented below.
     token: ${{ secrets.SOME_TOKEN }}
+```
+
+### Permissions required
+
+This action needs access to read pull request data, request reviewers, create status checks, and to read your organization's teams.
+
+For OAuth apps and classic access tokens, that's `repo:status` and `read:org`.
+
+For GitHub Apps and fine-grained access tokens, that's read and write for repository "Commit statuses" (`statuses`) and "Pull requests" (`pull-requests`), and read-only for organization "Members".
+
+### Outputs
+
+Ths action produces the following outputs:
+
+* `requirements-satisfied` is a boolean that is `true` if all requirements are satisfied, `false` otherwise.
+* `teams-needed-for-review` is a JSON-stringified array of team names that are needed to review the PR.
+
+These outputs can be used in subsequent steps in the workflow. Below is an example of commenting on the PR with the teams that are needed to review the PR.
+
+```yaml
+name: Required review check
+on:
+  pull_request_review:
+  pull_request:
+    types: [ opened, reopened, synchronize ]
+
+jobs:
+  check:
+    name: Checking required reviews
+    runs-on: ubuntu-latest
+
+    # GitHub should provide a "pull_request_review_target", but they don't and
+    # the action will fail if run on a forked PR.
+    if: github.event.pull_request.head.repo.full_name == github.event.pull_request.base.repo.full_name
+
+    steps:
+      - uses: Automattic/action-required-review@v3
+        id: review-check
+        with:
+          token: ${{ secrets.REQUIRED_REVIEWS_TOKEN }}
+          requirements: |
+            - paths: unmatched
+              teams:
+                - maintenance
+
+      - name: Comment on the PR
+        if: ${{ review-check.outputs.requirements-satisfied == 'false' }}
+        run: |
+          teams_needed_for_review=$(echo "$TEAMS_NEEDED_FOR_REVIEW" | jq -r '. | join(", ")')
+          gh pr comment ${{ github.event.pull_request.number }} -b "The following teams are needed to review the PR: $teams_needed_for_review"
+        env:
+          TEAMS_NEEDED_FOR_REVIEW: ${{ review-check.outputs.teams-needed-for-review }}
 ```
 
 ## Requirements Format
@@ -80,13 +135,19 @@ The requirements consist of an array of requirement objects. A requirement objec
 * `paths` is an array of path patterns, or the string "unmatched". If an array, the reviewers
   specified will be checked if any path in the array matches any path in the PR. If the string
   "unmatched", the reviewers are checked if any file in the PR has not been matched yet.
+* `consume` is a boolean, defaulting to false. If set, any paths that match this rule will be ignored
+  for all following rules.
+
+  This is intended for things like lockfiles or changelogs that you might want to allow everyone
+  to edit in any package in a monorepo, to avoid having to manually exclude these files in every
+  requirement for each different team owning some package.
 * `teams` is an array of strings that are GitHub team slugs in the organization or repository. A
   review is required from a member of any of these teams.
 
-  Instead of a string, a single-keyed object may be specified. The key is either `all-of` or
-  `any-of`, and the value is an array as for `teams`. When the key is `all-of`, a review is required
-  from every team (but if a person is a member of multiple teams, they can satisfy multiple
-  requirements). When it's `any-of`, one review from any team is needed.
+  Instead of a string, a single-keyed object may be specified. The key is `all-of`, `any-of`, or `is-author-or-reviewer`, and the value is an array as for `teams`.
+  When the key is `all-of`, a review is required from every team (but if a person is a member of multiple teams, they can satisfy multiple requirements).
+  When it's `any-of`, one review from any team is needed.
+  When it's `is-author-or-reviewer`, it works like `any-of` but the author of the PR is considered to have self-reviewed.
 
   Additionally, you can specify a single user by prefixing their username with `@`. For example,
   `@example` will be treated as a virtual team with one member; `example`.
@@ -107,6 +168,23 @@ the "Docs" and "Front end" review requirements. If you wanted to avoid that, you
    - 'docs/**'
   teams:
    - documentation
+
+# Everyone can update lockfiles, even if later rules might otherwise match.
+- name: Lockfiles
+  paths:
+   - 'packages/*/composer.lock'
+   - '**.css'
+  consume: true
+  teams:
+   - everyone
+
+# The "Some package" team must approve anything in `packages/some-package/`.
+# Except for changes to `packages/some-package/composer.lock`, because the previous requirement consumed that path.
+- name: Some package
+  paths:
+   - 'packages/some-package/**'
+  teams:
+   - some-package-team
 
 # Any CSS and React .jsx files must be reviewed by a front-end developer AND by a designer,
 # OR by a member of the maintenance team.

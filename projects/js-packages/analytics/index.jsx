@@ -5,6 +5,7 @@ let _superProps, _user;
 
 // Load tracking scripts
 window._tkq = window._tkq || [];
+
 window.ga =
 	window.ga ||
 	function () {
@@ -19,8 +20,8 @@ window.ga.l = +new Date();
  * Build a query string
  *
  * @param {string} group - the group
- * @param {string} name - the name
- * @returns {string} - the uricomponent
+ * @param {string} name  - the name
+ * @return {string} - the uricomponent
  */
 function buildQuerystring( group, name ) {
 	let uriComponent = '';
@@ -42,8 +43,8 @@ function buildQuerystring( group, name ) {
  * Build a query string with no prefix
  *
  * @param {string} group - the group
- * @param {string} name - the name
- * @returns {string} - the uricomponent
+ * @param {string} name  - the name
+ * @return {string} - the uricomponent
  */
 function buildQuerystringNoPrefix( group, name ) {
 	let uriComponent = '';
@@ -146,6 +147,13 @@ const analytics = {
 				return;
 			}
 
+			if (
+				! eventProperties.blog_id &&
+				typeof window.jpTracksContext === 'object' &&
+				window.jpTracksContext.blog_id
+			) {
+				eventProperties.blog_id = window.jpTracksContext.blog_id;
+			}
 			if ( _superProps ) {
 				debug( '- Super Props: %o', _superProps );
 				eventProperties = Object.assign( eventProperties, _superProps );

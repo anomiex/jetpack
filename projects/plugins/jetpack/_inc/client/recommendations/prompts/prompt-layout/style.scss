@@ -1,6 +1,6 @@
-@import '../../mixin';
-@import '../../../scss/mixin_breakpoint.scss';
-@import '../../../scss/variables/colors';
+@use "../../mixin";
+@use "../../../scss/mixins/breakpoints";
+@use "../../../scss/variables/colors";
 
 .jp-recommendations-question__content {
 	display: flex;
@@ -8,51 +8,55 @@
 }
 
 .jp-recommendations-question__main--with-sidebar .jp-recommendations-question__content {
-	@include breakpoint( '>660px' ) {
+
+	@include breakpoints.breakpoint( ">660px" ) {
 		padding-right: 48px;
 	}
 }
 
 .jp-recommendations-question__progress-bar {
+
 	.progress-bar {
+		--spacing-base: 8px;
 		width: 70px;
+
+		.progress-bar__progress {
+			background-color: #00a32a;
+		}
 	}
 }
 
 .jp-recommendations-question__progress-bar-wrap {
 	display: flex;
 	align-items: center;
+	gap: 1rem;
 	margin: 32px 32px 0 32px;
 
-	@include breakpoint( '<480px' ) {
+	@include breakpoints.breakpoint( "<480px" ) {
 		margin: 16px 16px 32px 16px;
-	}
-
-	.jp-recommendations__new-badge {
-		margin-right: 1rem;
 	}
 }
 
 .jp-recommendations-question__question {
-	color: var( --jp-gray-80 );
+	color: var(--jp-gray-80);
 
 	font-size: 1.5rem;
-	margin: 40px 40px 0 40px;
+	margin: 2.5rem 2.5rem 1rem 2.5rem;
 
-	@include breakpoint( '<480px' ) {
-		margin: 0 16px 32px 16px;
+	@include breakpoints.breakpoint( "<480px" ) {
+		margin: 0 1rem 2rem 1rem;
 	}
 }
 
 .jp-recommendations-question__description {
-	color: var( --jp-gray-100 );
+	color: var(--jp-gray-100);
 
-	font-size: 16px;
+	font-size: 1rem;
 
-	margin: 32px 32px 32px 40px;
+	margin: 1rem 2rem 2rem 2.5rem;
 
-	@include breakpoint( '<480px' ) {
-		margin: 0 16px 16px 16px;
+	@include breakpoints.breakpoint( "<480px" ) {
+		margin: 0 1rem 1rem 1rem;
 	}
 
 	.gridicons-external {
@@ -62,24 +66,42 @@
 	a {
 		white-space: nowrap;
 	}
+
+	.components-external-link__contents {
+		text-decoration: none;
+	}
 }
 
 .jp-recommendations-question__description-list {
-	color: var( --jp-gray-100 );
-	font-size: 16px;
-	margin: 0 32px 0 32px;
-	list-style: disc;
-	padding-left: 16px;
+	color: var(--jp-gray-100);
+	font-size: 1rem;
+	margin: 0 2rem 2rem 2.5rem;
 
-	@include breakpoint( '<480px' ) {
-		margin: 0 16px 0 16px;
+	list-style-type: none;
+	padding: 0;
+
+	li {
+		background: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAMAAABg3Am1AAAANlBMVEVHcEwFnwUInggGnggGnggHnAcAnwUFnQcAnwcGnwkFnQgGnQgFnwcGnQYFnQcFnAcGnQkDnwdhiL0pAAAAEnRSTlMAMF//f2Aw7yBQ3+9gcIBgcED+HDbkAAAAZklEQVR4Ae3LNwICARDDQC0+cv7/Y8mwV9odSfWIcf/+VegnGkIvDaGXKvTTn/Gz+Uf5xTL0K1XotS7fs5H6GHvvaO8d7c3j7rdgHne/A/PYt/cO+R42oYdN6OEQetiFHo4A//6dAXqtBEkmtWutAAAAAElFTkSuQmCC) no-repeat;
+		background-size: 1.25rem;
+		padding-left: 1.75rem;
+		margin-bottom: 0.5rem;
 	}
+
+	@include breakpoints.breakpoint( "<480px" ) {
+		margin: 0 1rem 0 1rem;
+	}
+}
+
+// When a description section follows the list, remove
+// the extra margin from the top of the description.
+.jp-recommendations-question__description-list + .jp-recommendations-question__description {
+	margin-top: 0;
 }
 
 .jp-recommendations-question__main--with-sidebar .jp-recommendations-question__description {
 	margin-right: 0;
 
-	@include breakpoint( '<782px' ) {
+	@include breakpoints.breakpoint( "<782px" ) {
 		margin-right: 32px;
 	}
 }
@@ -98,16 +120,9 @@
 	width: 100%;
 	height: 100%;
 
-	@include breakpoint( '<1040px' ) {
+	@include breakpoints.breakpoint( "<1040px" ) {
 		display: none;
 	}
-}
-
-.jp-recommendations-question__illustration-picture {
-	display: flex;
-	justify-content: center;
-
-	width: 100%;
 }
 
 .jp-recommendations-question__sidebar-card {
@@ -134,11 +149,12 @@
 	margin-bottom: 16px;
 
 	.gridicons-checkmark-circle {
-		fill: $green-primary;
+		fill: colors.$green-primary;
 	}
 }
 
 .jp-recommendations-question__settings-button {
+
 	.components-external-link {
 		display: flex;
 		align-items: center;
@@ -169,13 +185,17 @@
 			margin-bottom: 16px;
 			text-align: center;
 
-			@include breakpoint( '<480px' ) {
+			@include breakpoints.breakpoint( "<480px" ) {
 				width: 100%;
 			}
 		}
+
+		.components-external-link__contents {
+			text-decoration: none;
+		}
 	}
 
-	@include breakpoint( '<480px' ) {
+	@include breakpoints.breakpoint( "<480px" ) {
 		padding: 64px 16px 0 16px;
 	}
 }

@@ -1,11 +1,14 @@
 # jetpack CLI
 
-The `jetpack` CLI tool is used to help with development in [the Jetpack monorepo].
+The `jetpack` CLI tool is used to help with development in [the Jetpack monorepo](https://github.com/Automattic/jetpack).
 
 ## Installation
 
 If you normally use just one Jetpack Monorepo checkout, you can add `jetpack` to your path by running
 ```sh
+pnpm setup
+# Make sure the above succeeds, and do anything it tells you to.
+
 pnpm install
 pnpm jetpack cli link
 ```
@@ -26,14 +29,21 @@ The CLI commands can be run from anywhere, and the changes will be made in which
 ## Available Commands
 
 * `build` - Build a project in the monorepo.
-* `changelog` -  Manage changelog files for a project.
+* `changelog` - Manage changelog files for a project.
 * `clean` - Clean unwanted files in the monorepo.
 * `cli` - Manage global symlink for the CLI.
-* `completion` - Generate bash/zsh completions
+* `completion` - Generate bash/zsh completions.
+* `dependencies` - Analyze and display project dependencies.
 * `docker` - Manage docker containers.
+* `docs` - Parse PHPDoc documentation from a project and output it into a JSON file.
+* `draft` - Enable or disable draft mode for relaxed pre-commit/pre-push checks.
 * `generate` - Create a new project in the monorepo.
 * `install` - Install project dependencies.
-* `watch` - Watch a specific project.
+* `phan` - Run PHP static analysis using Phan.
+* `release` - Manage releases and versioning.
+* `rsync` - rsync projects/plugins to external destinations.
+* `test` - Run PHP, JavaScript, or E2E tests for a project.
+* `watch` - Watch a specific project and rebuild on changes.
 
 ## Examples
 
@@ -76,7 +86,7 @@ Lets you create a new project in the monorepo. Running the command with no argum
 
 **Install**: Install project dependencies.
 
-- Install dependencies for the Jetpack plugin project: `jetpack install projects/plugins`
+- Install dependencies for the Jetpack plugin project: `jetpack install plugins/jetpack`
 - Installs dependencies for all projects in the monorepo: `jetpack install --all`
 
 Lets you install project dependencies by selecting a project from a list, or providing one as an argument.
@@ -87,7 +97,12 @@ Watch a monorepo project, which will rebuild the project as changes are made so 
 
 - Watch the Jetpack plugin: `jetpack watch plugins/jetpack`
 
-[the Jetpack monorepo]: https://github.com/Automattic/jetpack
+**Rsync**: rsync projects/plugins to external destinations.
+
+Maybe you'd prefer to develop against a live site instead of Docker. Or maybe you want to quickly push the plugin you're building to a live JN site without waiting for the builds. This rsync wrapper knows which files to send and not send. 
+
+- Rsync the Jetpack plugin to server destination: `jetpack rsync jetpack user@your.server.example.com:/home/path/to/wp-content/plugins`
+- Note: You need to git add new files so jetpack rsync will take them into account.
 
 **Draft**: Enable or disable "draft mode" for the repo.
 
@@ -123,3 +138,7 @@ And the following effects on pre-push:
 You will still see all the output from these various commands, it's just that fewer of them will block the commit or push from succeeding.
 
 In addition, when you run `jetpack draft disable`, it will offer to run the pre-commit checks for you right away so you can start fixing errors.
+
+## Privacy
+
+To effectively improve the Jetpack CLI tool, we optionally collect [general analytics data](https://jetpack.com/support/privacy/#analytics). Jetpack CLI will ask before enabling data collection, and you can always enable or disable the data collection preference by running: `jetpack cli analytics <on|off>`

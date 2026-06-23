@@ -9,8 +9,8 @@ const webpack = jetpackWebpackConfig.webpack;
 const RemoveAssetWebpackPlugin = require( '@automattic/remove-asset-webpack-plugin' );
 const CopyWebpackPlugin = require( 'copy-webpack-plugin' );
 const jsdom = require( 'jsdom' );
-const StaticSiteGeneratorPlugin = require( 'static-site-generator-webpack-plugin' );
 const CopyBlockEditorAssetsPlugin = require( './copy-block-editor-assets' );
+const StaticSiteGeneratorPlugin = require( './static-site-generator-webpack-plugin' );
 
 /**
  * Internal variables
@@ -18,15 +18,14 @@ const CopyBlockEditorAssetsPlugin = require( './copy-block-editor-assets' );
 const editorSetup = path.join( __dirname, '../extensions', 'editor' );
 const viewSetup = path.join( __dirname, '../extensions', 'view' );
 const blockEditorDirectories = [ 'plugins', 'blocks' ];
-const noop = function () {};
 
 /**
  * Filters block editor scripts
  *
- * @param {string} type - script type
- * @param {string} inputDir - input directory
- * @param {Array} presetBlocks - preset blocks
- * @returns {Array} list of block scripts
+ * @param {string} type         - script type
+ * @param {string} inputDir     - input directory
+ * @param {Array}  presetBlocks - preset blocks
+ * @return {Array} list of block scripts
  */
 function presetProductionExtensions( type, inputDir, presetBlocks ) {
 	return presetBlocks
@@ -55,6 +54,15 @@ const viewBlocksScripts = presetBetaBlocks.reduce( ( viewBlocks, block ) => {
 		viewBlocks[ block + '/view' ] = [ viewSetup, ...[ viewScriptPath ] ];
 	}
 	return viewBlocks;
+}, {} );
+
+// Helps split up each block into its own folder admin script
+const adminBlocksScripts = presetBetaBlocks.reduce( ( adminBlocks, block ) => {
+	const adminScriptPath = path.join( __dirname, '../extensions/blocks', block, 'admin.js' );
+	if ( fs.existsSync( adminScriptPath ) ) {
+		adminBlocks[ block + '/admin' ] = adminScriptPath;
+	}
+	return adminBlocks;
 }, {} );
 
 // Combines all the different production blocks into one editor.js script
@@ -99,6 +107,7 @@ const editorNoPostEditorScript = [
 const sharedWebpackConfig = {
 	mode: jetpackWebpackConfig.mode,
 	devtool: jetpackWebpackConfig.devtool,
+	cache: jetpackWebpackConfig.cache( __filename ),
 	output: {
 		...jetpackWebpackConfig.output,
 		path: path.join( __dirname, '../_inc/blocks' ),
@@ -112,9 +121,38 @@ const sharedWebpackConfig = {
 	node: {},
 	plugins: [
 		...jetpackWebpackConfig.StandardPlugins( {
-			DependencyExtractionPlugin: { injectPolyfill: true },
+			MiniCssExtractPlugin: {
+				// This is a bit of a hack to handle simple cases of `import( './file.css' )` in block editor scripts.
+				// If we're ever able to get rid of the monolithic editor.js files, this should go away in favor
+				// of doing the `import()` from inside the `script` (not `editorScript` or `viewScript`).
+				insert: linkTag => {
+					// Insert at the top level, in the way minicss does normally.
+					/* global oldTag */
+					if ( oldTag ) {
+						oldTag.parentNode.insertBefore( linkTag, oldTag.nextSibling );
+					} else {
+						document.head.appendChild( linkTag );
+					}
+
+					// Also insert into any editor-canvas iframes.
+					for ( const iframe of document.querySelectorAll( 'iframe[name=editor-canvas]' ) ) {
+						try {
+							const iframeDoc = iframe.contentDocument;
+							iframeDoc.head.appendChild( iframeDoc.importNode( linkTag ) );
+						} catch {
+							// Browser won't allow access. Never mind.
+						}
+					}
+				},
+			},
 		} ),
 	],
+	externals: {
+		...jetpackWebpackConfig.externals,
+		jetpackConfig: JSON.stringify( {
+			consumer_slug: 'jetpack',
+		} ),
+	},
 	module: {
 		strictExportPresence: true,
 		rules: [
@@ -136,6 +174,9 @@ const sharedWebpackConfig = {
 				],
 			} ),
 
+			// Workarounds for non-extracted `@wordpress/*` packages.
+			...jetpackWebpackConfig.BundledWpPkgsTranspileRules(),
+
 			// Handle CSS.
 			jetpackWebpackConfig.CssRule( {
 				extensions: [ 'css', 'sass', 'scss' ],
@@ -146,7 +187,7 @@ const sharedWebpackConfig = {
 							postcssOptions: { config: path.join( __dirname, 'postcss.config.js' ) },
 						},
 					},
-					'sass-loader',
+					{ loader: 'sass-loader', options: { api: 'modern-compiler' } },
 				],
 			} ),
 
@@ -156,8 +197,10 @@ const sharedWebpackConfig = {
 	},
 };
 
-// We export two configuration files: One for admin.js, and one for components.jsx.
-// The latter produces pre-rendered components HTML.
+// We export three configuration files:
+// - admin.js
+// - components.jsx, which produces pre-rendered components HTML
+// - swiper.js
 module.exports = [
 	{
 		...sharedWebpackConfig,
@@ -167,6 +210,7 @@ module.exports = [
 			'editor-beta': editorBetaScript,
 			'editor-no-post-editor': editorNoPostEditorScript,
 			...viewBlocksScripts,
+			...adminBlocksScripts,
 		},
 		plugins: [
 			...sharedWebpackConfig.plugins,
@@ -178,9 +222,40 @@ module.exports = [
 					},
 				],
 			} ),
+			new CopyWebpackPlugin( {
+				patterns: [
+					{
+						from: '**/block.json',
+						to: '[path][name][ext]',
+						context: path.join( __dirname, '../extensions/blocks' ),
+						noErrorOnMissing: true,
+						// Automatically link scripts and styles
+						transform( content ) {
+							const metadata = JSON.parse( content.toString() );
+							const name = metadata.name.replace( 'jetpack/', '' );
+
+							if ( ! name ) {
+								return metadata;
+							}
+
+							// `editorScript` is required for block.json to be valid and WordPress.org to be able
+							// to parse it before building the page at https://wordpress.org/plugins/jetpack/.
+							// Don't add other scripts or styles while block assets are still enqueued manually
+							// in the backend.
+							const result = {
+								...metadata,
+								editorScript: `jetpack-blocks-editor`,
+							};
+
+							return JSON.stringify( result, null, 4 );
+						},
+					},
+				],
+			} ),
 			new CopyBlockEditorAssetsPlugin(),
 		],
 	},
+	// Components configuration
 	{
 		...sharedWebpackConfig,
 		entry: {
@@ -204,7 +279,7 @@ module.exports = [
 					if ( ! resource.contextInfo.issuer.includes( 'extensions/shared/i18n-to-php' ) ) {
 						resource.request = path.join(
 							path.dirname( __dirname ),
-							'./extensions/shared/i18n-to-php'
+							'./extensions/shared/i18n-to-php.js'
 						);
 					}
 				}
@@ -215,43 +290,20 @@ module.exports = [
 			),
 			new StaticSiteGeneratorPlugin( {
 				// The following mocks are required to make `@wordpress/` npm imports work with server-side rendering.
-				// Hopefully, most of them can be dropped once https://github.com/WordPress/gutenberg/pull/16227 lands.
 				globals: {
-					Mousetrap: {
-						init: noop,
-						prototype: {},
-					},
 					document: new jsdom.JSDOM().window.document,
-					navigator: {},
-					window: {
-						addEventListener: noop,
-						console: {
-							error: noop,
-							warn: noop,
-						},
-						// See https://github.com/WordPress/gutenberg/blob/f3b6379327ce3fb48a97cb52ffb7bf9e00e10130/packages/jest-preset-default/scripts/setup-globals.js
-						matchMedia: () => ( {
-							addListener: () => {},
-						} ),
-						navigator: { platform: '', userAgent: '' },
-						Node: {
-							TEXT_NODE: '',
-							ELEMENT_NODE: '',
-							DOCUMENT_POSITION_PRECEDING: '',
-							DOCUMENT_POSITION_FOLLOWING: '',
-						},
-						removeEventListener: noop,
-						URL: {},
-					},
-					CSS: {
-						supports: () => false,
-					},
-					MessageChannel: null, // React <17.1 is broken on Node 16 if this is set. https://github.com/facebook/react/issues/20756#issuecomment-780927519
+					window: {},
 				},
 			} ),
 			new RemoveAssetWebpackPlugin( {
 				assets: [ 'components.js', 'components.js.map' ],
 			} ),
 		],
+	},
+	{
+		...sharedWebpackConfig,
+		entry: {
+			swiper: path.join( __dirname, '../extensions/blocks/slideshow/swiper-entry.js' ),
+		},
 	},
 ];

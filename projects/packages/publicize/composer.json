@@ -4,33 +4,58 @@
 	"type": "jetpack-library",
 	"license": "GPL-2.0-or-later",
 	"require": {
-		"automattic/jetpack-connection": "^1.41",
-		"automattic/jetpack-autoloader": "^2.11",
-		"automattic/jetpack-config": "^1.9"
+		"php": ">=7.2",
+		"automattic/jetpack-admin-ui": "@dev",
+		"automattic/jetpack-connection": "@dev",
+		"automattic/jetpack-autoloader": "@dev",
+		"automattic/jetpack-config": "@dev",
+		"automattic/jetpack-assets": "@dev",
+		"automattic/jetpack-image-cdn": "@dev",
+		"automattic/jetpack-redirect": "@dev",
+		"automattic/jetpack-plans": "@dev",
+		"automattic/jetpack-post-media": "@dev",
+		"automattic/jetpack-status": "@dev",
+		"automattic/jetpack-wp-build-polyfills": "@dev"
 	},
 	"require-dev": {
-		"yoast/phpunit-polyfills": "1.0.3",
-		"automattic/jetpack-changelogger": "^3.1",
-		"automattic/wordbless": "0.3.1"
+		"yoast/phpunit-polyfills": "^4.0.0",
+		"automattic/jetpack-test-environment": "@dev",
+		"automattic/phpunit-select-config": "@dev"
+	},
+	"suggest": {
+		"automattic/jetpack-autoloader": "Allow for better interoperability with other plugins that use this package."
 	},
 	"autoload": {
 		"classmap": [
 			"src/"
+		],
+		"files": [
+			"actions.php",
+			"src/social-image-generator/utilities.php"
 		]
 	},
 	"scripts": {
 		"phpunit": [
-			"./vendor/phpunit/phpunit/phpunit --colors=always"
+			"phpunit-select-config phpunit.#.xml.dist --colors=always"
 		],
-		"test-coverage": [
-			"php -dpcov.directory=. ./vendor/bin/phpunit --coverage-clover \"$COVERAGE_DIR/clover.xml\""
+		"test-js": "pnpm run test",
+		"test-js-coverage": "pnpm run test-coverage",
+		"test-php": "@composer phpunit",
+		"test-php-coverage": "php -dpcov.directory=. ./vendor/bin/phpunit-select-config phpunit.#.xml.dist --coverage-php \"$COVERAGE_DIR/php.cov\"",
+		"build-development": [
+			"pnpm run build"
 		],
-		"test-php": [
-			"@composer phpunit"
+		"watch": [
+			"Composer\\Config::disableProcessTimeout",
+			"pnpm run watch"
 		],
-		"post-update-cmd": "php -r \"copy('vendor/automattic/wordbless/src/dbless-wpdb.php', 'wordpress/wp-content/db.php');\"",
-		"build-production": "echo 'Add your build step to composer.json, please!'",
-		"build-development": "echo 'Add your build step to composer.json, please!'"
+		"watch-hot": [
+			"Composer\\Config::disableProcessTimeout",
+			"pnpm run watch:hot"
+		],
+		"build-production": [
+			"pnpm run build-production"
+		]
 	},
 	"repositories": [
 		{
@@ -51,7 +76,7 @@
 			"link-template": "https://github.com/Automattic/jetpack-publicize/compare/v${old}...v${new}"
 		},
 		"branch-alias": {
-			"dev-trunk": "0.8.x-dev"
+			"dev-trunk": "0.83.x-dev"
 		}
 	},
 	"config": {

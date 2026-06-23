@@ -8,6 +8,8 @@
 namespace Automattic\Jetpack\Changelogger\Tests;
 
 use Automattic\Jetpack\Changelogger\Utils;
+use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Symfony\Component\Console\Helper\DebugFormatterHelper;
 use Symfony\Component\Console\Output\ConsoleOutput;
 use Symfony\Component\Console\Output\NullOutput;
@@ -18,16 +20,15 @@ use Wikimedia\TestingAccessWrapper;
  *
  * @covers \Automattic\Jetpack\Changelogger\AddCommand
  */
+#[CoversClass( \Automattic\Jetpack\Changelogger\AddCommand::class )]
 class AddCommandTest extends CommandTestCase {
 	use \Yoast\PHPUnitPolyfills\Polyfills\AssertionRenames;
 
 	/**
 	 * Set up.
-	 *
-	 * @before
 	 */
-	public function set_up() {
-		parent::set_up();
+	public function setUp(): void {
+		parent::setUp();
 		$this->useTempDir();
 	}
 
@@ -53,6 +54,7 @@ class AddCommandTest extends CommandTestCase {
 			array(
 				'mustRun' => true,
 				'env'     => array(
+					'GIT_CONFIG_GLOBAL'   => '/dev/null',
 					'GIT_AUTHOR_NAME'     => 'Dummy',
 					'GIT_AUTHOR_EMAIL'    => 'dummy@example.com',
 					'GIT_COMMITTER_NAME'  => 'Dummy',
@@ -137,6 +139,7 @@ class AddCommandTest extends CommandTestCase {
 	 * @param string|null $expectFile Expected change file contents, or null if no file should exist.
 	 * @param string[]    $expectOutputRegexes Regexes to run against the output.
 	 */
+	#[DataProvider( 'provideExecute' )]
 	public function testExecute( array $args, array $options, array $inputs, $expectExitCode, $expectFile, $expectOutputRegexes = array() ) {
 		if ( isset( $options['composer.json'] ) ) {
 			file_put_contents( 'composer.json', json_encode( $options['composer.json'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
@@ -163,7 +166,7 @@ class AddCommandTest extends CommandTestCase {
 	/**
 	 * Data provider for testExecute.
 	 */
-	public function provideExecute() {
+	public static function provideExecute() {
 		$composerWithTypes   = array(
 			'extra' => array(
 				'changelogger' => array(
@@ -388,7 +391,7 @@ class AddCommandTest extends CommandTestCase {
 			),
 			'Non-interactive use with missing entry'       => array(
 				array(
-					'--significance' => 'patch',
+					'--significance' => 'minor',
 					'--type'         => 'fixed',
 				),
 				array( 'interactive' => false ),
@@ -397,6 +400,20 @@ class AddCommandTest extends CommandTestCase {
 				null,
 				array(
 					'/Entry must be specified in non-interactive mode/',
+				),
+			),
+			'Non-interactive use with missing entry and significance of patch' => array(
+				array(
+					'--significance' => 'patch',
+					'--type'         => 'fixed',
+				),
+				array( 'interactive' => false ),
+				array(),
+				1,
+				null,
+				array(
+					'/Entry must be specified in non-interactive mode\./',
+					'/If you want to have an empty entry for this change, pass the empty string as the entry \(like --entry=\) and also please provide a comment \(using --comment\)\./',
 				),
 			),
 			'Non-interactive use with invalid entry'       => array(
@@ -478,5 +495,4 @@ class AddCommandTest extends CommandTestCase {
 			),
 		);
 	}
-
 }

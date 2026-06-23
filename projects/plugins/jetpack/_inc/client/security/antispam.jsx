@@ -1,5 +1,8 @@
 import { createInterpolateElement } from '@wordpress/element';
 import { __, _x } from '@wordpress/i18n';
+import { debounce, isEmpty } from 'lodash';
+import { Component } from 'react';
+import { connect } from 'react-redux';
 import FoldableCard from 'components/foldable-card';
 import FormInputValidation from 'components/form-input-validation';
 import { FormFieldset, FormLabel } from 'components/forms';
@@ -10,9 +13,6 @@ import SettingsGroup from 'components/settings-group';
 import TextInput from 'components/text-input';
 import analytics from 'lib/analytics';
 import { FEATURE_SPAM_AKISMET_PLUS } from 'lib/plans/constants';
-import { assign, debounce, isEmpty, trim } from 'lodash';
-import React, { Component } from 'react';
-import { connect } from 'react-redux';
 import { isAkismetKeyValid, checkAkismetKey, isCheckingAkismetKey } from 'state/at-a-glance';
 
 export const Antispam = withModuleSettingsFormHelpers(
@@ -38,8 +38,8 @@ export const Antispam = withModuleSettingsFormHelpers(
 		};
 
 		updateText = event => {
-			const currentEvent = assign( {}, event );
-			currentEvent.currentTarget.value = trim( currentEvent.currentTarget.value );
+			const currentEvent = Object.assign( {}, event );
+			currentEvent.currentTarget.value = String( currentEvent.currentTarget.value ).trim();
 			this.setState(
 				{
 					apiKey: currentEvent.currentTarget.value,
@@ -157,7 +157,8 @@ export const Antispam = withModuleSettingsFormHelpers(
 						<SettingsGroup
 							support={ {
 								text: __( 'Removes spam from comments and contact forms.', 'jetpack' ),
-								link: 'https://akismet.com/jetpack/',
+								link: 'https://akismet.com/support/getting-started/activate/',
+								privacyLink: 'https://akismet.com/privacy/',
 							} }
 						>
 							<FormFieldset>

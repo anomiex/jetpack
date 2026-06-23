@@ -1,20 +1,24 @@
-@import './view.scss';
+@use "@automattic/jetpack-base-styles/gutenberg-base-styles" as gb;
+@use "view";
 
 .wp-block-jetpack-instagram-gallery .components-placeholder {
+
 	.components-radio-control {
-		margin-bottom: $default-block-margin;
+		margin-bottom: gb.$default-block-margin;
+
 		label {
-			font-weight: normal;
+			font-weight: 400;
 		}
 	}
 
 	.wp-block-jetpack-instagram-gallery__new-account-instructions {
-		font-family: $default-font;
-		font-size: $default-font-size;
+		font-family: gb.$default-font;
+		font-size: gb.$default-font-size;
 	}
 }
 
 .wp-block-jetpack-instagram-gallery__count-notice {
+
 	.components-notice {
 		margin: 0 0 15px 0;
 	}
@@ -22,7 +26,7 @@
 	.components-notice__content {
 		margin: 0;
 		line-height: inherit;
-		padding-right: 0;
+		padding-inline-end: 0;
 	}
 }
 
@@ -57,33 +61,42 @@
 }
 
 @keyframes fadeIn {
+
 	0% {
 		opacity: 0;
 	}
+
 	50% {
 		opacity: 0.5;
 	}
+
 	100% {
 		opacity: 1;
 	}
 }
+
 @keyframes pulse {
+
 	0% {
 		opacity: 1;
 	}
+
 	50% {
 		opacity: 0.5;
 	}
+
 	100% {
 		opacity: 1;
 	}
 }
 
 @supports ( object-fit: cover ) {
+
 	.wp-block-jetpack-instagram-gallery__placeholder.is-loaded {
 		display: flex;
 		flex-direction: column;
 		flex-grow: 1;
+
 		img {
 			height: auto;
 			object-fit: cover;
@@ -93,6 +106,7 @@
 }
 
 .wp-block-jetpack-instagram-gallery__grid {
+
 	.wp-block-jetpack-instagram-gallery__grid-post {
 		display: flex;
 		flex-direction: column;
@@ -100,8 +114,11 @@
 }
 
 @supports ( display: grid ) {
-	@media ( max-width: $break-small ) {
+
+	@media ( max-width: gb.$break-small ) {
+
 		.wp-block-jetpack-instagram-gallery__grid.is-stacked-on-mobile {
+
 			.wp-block-jetpack-instagram-gallery__placeholder {
 				margin: 0 !important;
 			}

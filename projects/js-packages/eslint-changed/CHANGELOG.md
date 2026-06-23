@@ -5,6 +5,71 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.6] - 2026-02-24
+### Changed
+- Make it explicit that this package has no JS exports by setting `exports` in package.json. [#47283]
+- Set `.repository.url` in `package.json` to the mirror repo rather than the monorepo. Required for enabling provenance. [#47149]
+
+## [2.1.5] - 2025-12-04
+### Fixed
+- Do the right thing for `--git --diff-only` and input paths not relative to the repo root. [#46180]
+- Try accounting for forward-slash vs backslash paths on Windows. [#46180]
+
+## [2.1.4] - 2025-11-25
+### Changed
+- Update package dependencies. [#45590] [#45958]
+
+### Fixed
+- Do the right thing when running with `--git` from a subdirectory of the repository. [#46064]
+
+## [2.1.3] - 2025-10-16
+### Changed
+- Update package dependencies. [#45001]
+
+## [2.1.2] - 2025-08-06
+### Changed
+- Update package dependencies. [#44217]
+
+## [2.1.1] - 2025-05-13
+### Added
+- Add keywords in package.json for npm search. [#42948]
+
+## [2.1.0] - 2025-01-09
+### Added
+- Add `--eslint-options` option. [#40446]
+- Enable test coverage. [#39961]
+
+### Changed
+- Updated package dependencies. [#40786] [#40828]
+
+### Fixed
+- Detect whether to use eslintrc or flat config in the same way eslint does. [#40446]
+- Tests: Use fs.realpath() for macOS compatibility. [#40451]
+
+## [2.0.9] - 2024-08-29
+### Changed
+- Internal updates.
+
+## [2.0.8] - 2024-02-07
+### Changed
+- Updated package dependencies. [#34427]
+
+## [2.0.7] - 2023-07-12
+### Fixed
+- Fix package name in readme. [#31844]
+
+## [2.0.6] - 2023-06-06
+### Changed
+- Updated package dependencies.
+
+## [2.0.5] - 2023-02-07
+### Fixed
+- Clean up JavaScript eslint issues.
+
+## [2.0.4] - 2022-11-01
+### Changed
+- Updated package dependencies.
+
 ## [2.0.3] - 2022-07-06
 ### Changed
 - Convert code to ESM. [#24626]
@@ -59,6 +124,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 * Created as a tool within the monorepo.
 
+[2.1.6]: https://github.com/Automattic/eslint-changed/compare/2.1.5...2.1.6
+[2.1.5]: https://github.com/Automattic/eslint-changed/compare/2.1.4...2.1.5
+[2.1.4]: https://github.com/Automattic/eslint-changed/compare/2.1.3...2.1.4
+[2.1.3]: https://github.com/Automattic/eslint-changed/compare/2.1.2...2.1.3
+[2.1.2]: https://github.com/Automattic/eslint-changed/compare/2.1.1...2.1.2
+[2.1.1]: https://github.com/Automattic/eslint-changed/compare/2.1.0...2.1.1
+[2.1.0]: https://github.com/Automattic/eslint-changed/compare/2.0.9...2.1.0
+[2.0.9]: https://github.com/Automattic/eslint-changed/compare/2.0.8...2.0.9
+[2.0.8]: https://github.com/Automattic/eslint-changed/compare/2.0.7...2.0.8
+[2.0.7]: https://github.com/Automattic/eslint-changed/compare/2.0.6...2.0.7
+[2.0.6]: https://github.com/Automattic/eslint-changed/compare/2.0.5...2.0.6
+[2.0.5]: https://github.com/Automattic/eslint-changed/compare/2.0.4...2.0.5
+[2.0.4]: https://github.com/Automattic/eslint-changed/compare/2.0.3...2.0.4
 [2.0.3]: https://github.com/Automattic/eslint-changed/compare/2.0.2...2.0.3
 [2.0.2]: https://github.com/Automattic/eslint-changed/compare/2.0.1...2.0.2
 [2.0.1]: https://github.com/Automattic/eslint-changed/compare/2.0.0...2.0.1

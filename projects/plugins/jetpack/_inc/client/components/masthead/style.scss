@@ -1,81 +1,115 @@
-@import '../../scss/calypso-colors';
+@use "../../scss/variables/colors";
+
+#jp-plugin-container {
+	background-color: var(--wpds-color-bg-surface-neutral, #fcfcfc);
+	min-height: calc(100vh - 32px);
+}
 
 .jp-masthead {
-	background-color: $white;
-	text-align: center;
-	box-shadow:
-		0 1px 0 $light-gray-700,
-		0 1px 1px 1px  rgba(0,0,0,.04);
-
-	@media (max-width: rem( 782px ) ) {
-		padding: 0 rem( 24px );
-
-		.jetpack-masterbar & {
-			padding-left: rem( 64px );
-		}
-	}
+	background-color: var(--wpds-color-bg-surface-neutral-strong, #fff);
+	border-bottom: var(--wpds-border-width-xs, 1px) solid var(--wpds-color-stroke-surface-neutral-weak, #e4e4e4);
+	padding: var(--wpds-dimension-padding-lg, 16px) var(--wpds-dimension-padding-2xl, 24px);
 }
 
 .jp-masthead__inside-container {
 	display: flex;
-	flex-wrap: wrap;
-	margin: 0 auto;
-	width: 100%;
-	max-width: rem( 1040px );
-	padding-bottom: rem( 6px );
-
-	@media (max-width: 1250px) {
-		max-width: 95%;
-	}
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	min-height: 40px;
 }
 
-.jp-masthead__logo-container {
-	flex-grow: 0;
-	flex-shrink: 0;
-	padding: rem( 11px ) 0 0;
-
-	@include breakpoint( "<480px" ) {
-		margin-right: rem( 16px );
-	}
+.jp-masthead__title-container {
+	display: flex;
+	align-items: center;
+	gap: 8px;
 }
 
 .jp-masthead__logo-link {
-	display: inline-block;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: calc(var(--wpds-dimension-base, 4px) * 6);
+	height: calc(var(--wpds-dimension-base, 4px) * 6);
+	flex-shrink: 0;
 	outline: none;
-	vertical-align: middle;
 
 	&:focus {
-		line-height: 0; // fixes rectangle gap
-		box-shadow: 0 0 0 2px $blue-light;
-	}
-
-	& + code {
-		margin: 0 10px;
-		padding: 5px 9px;
+		box-shadow: 0 0 0 2px colors.$blue-light;
 		border-radius: 2px;
-		background: #e6ecf1;
-		color: #647a88;
 	}
+}
+
+.jp-masthead__title {
+	font-family: var(--wpds-typography-font-family-heading, -apple-system, system-ui, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif);
+	font-size: var(--_gcd-heading-font-size, var(--wpds-typography-font-size-lg, 15px));
+	font-weight: var(--_gcd-heading-font-weight, var(--wpds-typography-font-weight-medium, 499));
+	line-height: var(--_gcd-heading-line-height, var(--wpds-typography-line-height-sm, 1.3));
+	margin: 0;
+	color: var(--wpds-color-fg-content-neutral, #1e1e1e);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.jp-masthead__title-link {
+	color: #1e1e1e;
+	text-decoration: none;
+	font-weight: inherit;
+
+	&:hover,
+	&:focus {
+		color: #1e1e1e;
+		text-decoration: underline;
+	}
+}
+
+.jp-masthead__title-separator {
+	color: #757575;
+	font-weight: 400;
+	margin: 0 4px;
+}
+
+.jp-masthead__title-current {
+	font-weight: 700;
 }
 
 .jp-masthead__nav {
 	display: flex;
 	flex-wrap: nowrap;
-	flex-grow: 1;
 	flex-shrink: 0;
-	text-align: right;
-	margin-top: rem( 6px );
-	padding: rem( 4px ) 0;
 
 	.dops-button-group {
-		flex-grow: 1;
 		align-self: center;
-		/* This fixes an unwanted space between the buttons in the network settings caused by a line break. */
-		/* Fixed here to keep PHP code readable. It's safe: .dops-button and .dops-button.is-compact specify a font size. */
+
+		/* This fixes an unwanted space between the buttons in the
+		 * network settings caused by a line break. */
+
+		/* Fixed here to keep PHP code readable. It's safe:
+		 * .dops-button and .dops-button.is-compact specify a font size. */
 		font-size: 0;
 	}
-	@include breakpoint( "<480px" ) {
-		text-align: left;
+
+	.dops-button {
+		background: colors.$white;
+		color: colors.$black;
+		font-weight: 600;
+		border: 1.5px solid colors.$black;
+		box-shadow: none;
+
+		&:first-child {
+			border-right: 0;
+		}
+
+		&.is-primary {
+			background: colors.$black;
+			color: #fff;
+			border: 1.5px solid colors.$black;
+
+			&:last-child {
+				border-left: 0;
+			}
+		}
 	}
 }
 
@@ -85,7 +119,7 @@
 	letter-spacing: 0.2em;
 	text-shadow: none;
 	font-size: 9px;
-	font-weight: bold;
+	font-weight: 700;
 	cursor: pointer;
-	color: #ffffff;
+	color: #fff;
 }

@@ -8,6 +8,10 @@
  * @since 4.8.0
  */
 
+if ( ! defined( 'ABSPATH' ) ) {
+	exit( 0 );
+}
+
 /**
  * Builds the XSL files required by Jetpack_Sitemap_Manager.
  *
@@ -310,9 +314,7 @@ XSL;
 		$header_url       = esc_html( ent2ncr( __( 'Page URL', 'jetpack' ) ) );
 		$header_image_url = esc_html( ent2ncr( __( 'Image URL', 'jetpack' ) ) );
 		$header_thumbnail = esc_html( ent2ncr( __( 'Thumbnail', 'jetpack' ) ) );
-		$header_title     = esc_html( ent2ncr( __( 'Title', 'jetpack' ) ) );
 		$header_lastmod   = esc_html( ent2ncr( __( 'Last Modified', 'jetpack' ) ) );
-		$header_caption   = esc_html( ent2ncr( __( 'Caption', 'jetpack' ) ) );
 
 		$description = self::sanitize_with_links(
 			/* translators: %1$s: jetpack.com URL. %2$s: google.com URL. %3$s: bing.com URL. */
@@ -381,8 +383,6 @@ $css
 				<th>#</th>
 				<th>$header_url</th>
 				<th>$header_image_url</th>
-				<th>$header_title</th>
-				<th>$header_caption</th>
 				<th>$header_lastmod</th>
 				<th>$header_thumbnail</th>
 			</tr>
@@ -411,12 +411,6 @@ $css
 						<a href='{\$itemURL}'>
 							<xsl:value-of select='image:image/image:loc'/>
 						</a>
-					</td>
-					<td>
-						<xsl:value-of select='image:image/image:title'/>
-					</td>
-					<td>
-						<xsl:value-of select='image:image/image:caption'/>
 					</td>
 					<td>
 						<xsl:value-of select='sitemap:lastmod'/>
@@ -719,7 +713,7 @@ XSL;
 	 * @return string The CSS.
 	 */
 	public static function sitemap_xsl_css() {
-		return <<<CSS
+		return <<<'CSS'
 		body {
 			font: 14px 'Open Sans', Helvetica, Arial, sans-serif;
 			margin: 0;
@@ -735,13 +729,13 @@ XSL;
 		}
 
 		#description {
-			background-color: #81a844;
-			color: #FFF;
+			background-color: #f0f2eb;
+			color: #000;
 			padding: 30px 30px 20px;
 		}
 
 		#description a {
-			color: #fff;
+			color: #008710;
 		}
 
 		#content {
@@ -767,7 +761,7 @@ XSL;
 		}
 
 		.odd {
-			background-color: #E7F1D4;
+			background: linear-gradient( 159.87deg, #f6f6f4 7.24%, #f7f4ea 64.73%, #ddedd5 116.53% );
 		}
 
 		#footer {
@@ -794,5 +788,4 @@ XSL;
 		}
 CSS;
 	}
-
 }

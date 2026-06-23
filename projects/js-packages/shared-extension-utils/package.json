@@ -1,6 +1,6 @@
 {
 	"name": "@automattic/jetpack-shared-extension-utils",
-	"version": "0.4.13",
+	"version": "2.0.2",
 	"description": "Utility functions used by the block editor extensions",
 	"homepage": "https://github.com/Automattic/jetpack/tree/HEAD/projects/js-packages/shared-extension-utils/#readme",
 	"bugs": {
@@ -8,29 +8,63 @@
 	},
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/Automattic/jetpack.git",
-		"directory": "projects/js-packages/shared-extension-utils"
+		"url": "git+https://github.com/Automattic/jetpack-shared-extension-utils.git"
 	},
 	"license": "GPL-2.0-or-later",
 	"author": "Automattic",
-	"scripts": {},
+	"exports": {
+		".": "./index.js",
+		"./components": "./src/components/index.js",
+		"./components/wpcom-support-link": "./src/components/wpcom-support-link.jsx",
+		"./icons": "./src/icons.js",
+		"./site-type-utils": "./src/site-type-utils.js",
+		"./store/wordpress-com": "./src/store/wordpress-com/index.ts",
+		"./store/wordpress-com/types": "./src/store/wordpress-com/types.ts"
+	},
+	"scripts": {
+		"test": "jest",
+		"test-coverage": "pnpm run test --coverage",
+		"typecheck": "tsgo --noEmit"
+	},
 	"dependencies": {
-		"@wordpress/compose": "5.10.0",
-		"@wordpress/i18n": "4.12.0",
-		"@wordpress/plugins": "4.10.0",
-		"@wordpress/url": "3.13.0",
-		"lodash": "4.17.21"
+		"@automattic/color-studio": "4.1.0",
+		"@automattic/jetpack-analytics": "workspace:*",
+		"@automattic/jetpack-base-styles": "workspace:*",
+		"@automattic/jetpack-components": "workspace:*",
+		"@automattic/jetpack-connection": "workspace:*",
+		"@automattic/jetpack-script-data": "workspace:*",
+		"@automattic/jetpack-shared-stores": "workspace:*",
+		"@types/jest": "30.0.0",
+		"@wordpress/api-fetch": "7.48.1",
+		"@wordpress/block-editor": "15.21.1",
+		"@wordpress/components": "35.0.1",
+		"@wordpress/compose": "8.1.1",
+		"@wordpress/data": "10.48.1",
+		"@wordpress/dom-ready": "4.48.1",
+		"@wordpress/element": "8.0.1",
+		"@wordpress/hooks": "4.48.1",
+		"@wordpress/i18n": "6.21.1",
+		"@wordpress/plugins": "7.48.1",
+		"@wordpress/primitives": "4.48.1",
+		"@wordpress/ui": "0.13.0",
+		"@wordpress/url": "4.48.1",
+		"clsx": "2.1.1",
+		"debug": "4.4.3"
 	},
 	"devDependencies": {
-		"@babel/core": "7.18.6",
-		"@babel/preset-react": "7.18.6",
-		"react": "17.0.2"
-	},
-	"engines": {
-		"node": "^16.13.2",
-		"yarn": "use pnpm instead - see docs/yarn-upgrade.md"
-	},
-	"exports": {
-		".": "./index.js"
+		"@automattic/jetpack-webpack-config": "workspace:*",
+		"@babel/core": "7.29.7",
+		"@babel/plugin-transform-react-jsx": "7.29.7",
+		"@babel/preset-react": "7.29.7",
+		"@babel/runtime": "7.29.7",
+		"@testing-library/dom": "10.4.1",
+		"@testing-library/react": "16.3.2",
+		"@testing-library/user-event": "14.6.1",
+		"@typescript/native-preview": "7.0.0-dev.20260225.1",
+		"babel-jest": "30.4.1",
+		"jest": "30.4.2",
+		"jetpack-js-tools": "workspace:*",
+		"react": "18.3.1",
+		"react-dom": "18.3.1"
 	}
 }

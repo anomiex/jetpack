@@ -1,6 +1,7 @@
-@import '../../lib/base-styles';
+@use "@wordpress/base-styles/colors";
 
 #jp-search-configure {
+
 	.hide-if-no-js {
 		height: 100vh;
 		margin: 0;
@@ -12,12 +13,12 @@
 			position: absolute;
 			top: 50%;
 			left: 50%;
-			transform: translate( -50%, -50% );
+			transform: translate(-50%, -50%);
 		}
 	}
 
 	.interface-interface-skeleton__header {
-		background-color: $white;
+		background-color: colors.$white;
 	}
 }
 

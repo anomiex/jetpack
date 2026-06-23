@@ -1,6 +1,7 @@
-// eslint-disable-next-line lodash/import-scope
-import uniqueId from 'lodash/uniqueId';
-import React, { createRef, Component } from 'react';
+import clsx from 'clsx';
+import * as React from 'react';
+import { createRef, Component } from 'react';
+import { connect } from 'react-redux';
 import strip from 'strip';
 import { getCheckedInputNames } from '../lib/dom';
 
@@ -8,7 +9,7 @@ import { getCheckedInputNames } from '../lib/dom';
  * Get date options given an interval.
  *
  * @param {string} interval - Duration interval.
- * @returns {object} - Object containing date options.
+ * @return {object} - Object containing date options.
  */
 function getDateOptions( interval ) {
 	switch ( interval ) {
@@ -28,19 +29,27 @@ export const fixDateFormat = dateString => {
 	return dateString.split( ' ' ).join( 'T' );
 };
 
-export default class SearchFilter extends Component {
+let searchFilterCounter = 0;
+
+class SearchFilter extends Component {
 	filtersList = createRef();
-	idPrefix = uniqueId( 'jetpack-instant-search__search-filter-' );
+	idPrefix = `jetpack-instant-search__search-filter-${ ++searchFilterCounter }`;
 
 	getIdentifier() {
 		if ( this.props.type === 'postType' ) {
 			return 'post_types';
+		} else if ( this.props.type === 'author' ) {
+			return 'authors';
+		} else if ( this.props.type === 'blogId' ) {
+			return 'blog_ids';
 		} else if ( this.props.type === 'date' ) {
 			// (month || year)_(post_date || post_date_gmt || post_modified || post_modified_gmt )
 			// Ex: month_post_date_gmt
 			return `${ this.props.configuration.interval }_${ this.props.configuration.field }`;
 		} else if ( this.props.type === 'taxonomy' ) {
 			return this.props.configuration.taxonomy;
+		} else if ( this.props.type === 'productAttribute' ) {
+			return this.props.configuration.attribute;
 		} else if ( this.props.type === 'group' ) {
 			return this.props.configuration.filter_id;
 		}
@@ -110,6 +119,57 @@ export default class SearchFilter extends Component {
 		);
 	};
 
+	renderAuthor = ( { key, doc_count: count } ) => {
+		const [ slug, name ] = key && key.split( /\/(.+)/ );
+
+		return (
+			<div>
+				<input
+					checked={ this.isChecked( slug ) }
+					disabled={ ! this.isChecked( slug ) && count === 0 }
+					id={ `${ this.idPrefix }-authors-${ slug }` }
+					name={ slug }
+					onChange={ this.toggleFilter }
+					type="checkbox"
+					className="jetpack-instant-search__search-filter-list-input"
+				/>
+				<label
+					htmlFor={ `${ this.idPrefix }-authors-${ slug }` }
+					className="jetpack-instant-search__search-filter-list-label"
+				>
+					{ strip( name ) } ({ count })
+				</label>
+			</div>
+		);
+	};
+
+	renderBlogId = ( { key, doc_count: count } ) => {
+		const strKey = key.toString();
+		// Looking up the corresponding label from the "blogIdFilteringLabels" option
+		// If it doesn't exist, fallback to the key (blog_id)
+		const name = this.props.blogIdFilteringLabels?.[ key ] || strKey;
+
+		return (
+			<div>
+				<input
+					checked={ this.isChecked( strKey ) }
+					disabled={ ! this.isChecked( strKey ) && count === 0 }
+					id={ `${ this.idPrefix }-blog-ids-${ strKey }` }
+					name={ strKey }
+					onChange={ this.toggleFilter }
+					type="checkbox"
+					className="jetpack-instant-search__search-filter-list-input"
+				/>
+				<label
+					htmlFor={ `${ this.idPrefix }-blog-ids-${ strKey }` }
+					className="jetpack-instant-search__search-filter-list-label"
+				>
+					{ strip( name ) } ({ count })
+				</label>
+			</div>
+		);
+	};
+
 	renderTaxonomy = ( { key, doc_count: count } ) => {
 		// Taxonomy keys contain slug and name separated by a slash
 		const [ slug, name ] = key && key.split( /\/(.+)/ );
@@ -136,9 +196,35 @@ export default class SearchFilter extends Component {
 		);
 	};
 
-	renderGroup = group => {
+	renderProductAttribute = ( { key, doc_count: count } ) => {
+		// Product attribute keys contain slug and name separated by a slash
+		const [ slug, name ] = key && key.split( /\/(.+)/ );
+
 		return (
 			<div>
+				<input
+					checked={ this.isChecked( slug ) }
+					disabled={ ! this.isChecked( slug ) && count === 0 }
+					id={ `${ this.idPrefix }-product-attributes-${ slug }` }
+					name={ slug }
+					onChange={ this.toggleFilter }
+					type="checkbox"
+					className="jetpack-instant-search__search-filter-list-input"
+				/>
+
+				<label
+					htmlFor={ `${ this.idPrefix }-product-attributes-${ slug }` }
+					className="jetpack-instant-search__search-filter-list-label"
+				>
+					{ strip( name ) } ({ count })
+				</label>
+			</div>
+		);
+	};
+
+	renderGroup = group => {
+		return (
+			<div className="jetpack-instant-search__search-filter-group-item">
 				<input
 					checked={ this.isChecked( group.value ) }
 					id={ `${ this.idPrefix }-groups-${ group.value }` }
@@ -171,8 +257,20 @@ export default class SearchFilter extends Component {
 		return this.props.aggregation.buckets.map( this.renderPostType );
 	}
 
+	renderAuthors() {
+		return this.props.aggregation.buckets.map( this.renderAuthor );
+	}
+
+	renderBlogIds() {
+		return this.props.aggregation.buckets.map( this.renderBlogId );
+	}
+
 	renderTaxonomies() {
 		return this.props.aggregation.buckets.map( this.renderTaxonomy );
+	}
+
+	renderProductAttributes() {
+		return this.props.aggregation.buckets.map( this.renderProductAttribute );
 	}
 
 	renderGroups() {
@@ -181,13 +279,20 @@ export default class SearchFilter extends Component {
 
 	render() {
 		return (
-			<div>
+			// The ID of the (container) element is for customization purposes (by CSS or JS)
+			<div id={ `${ this.idPrefix }-${ this.props.type }` }>
 				<h3 className="jetpack-instant-search__search-filter-sub-heading">
 					{ this.props.configuration.name }
 				</h3>
 
 				<div ref={ this.filtersList }>
-					<div className="jetpack-instant-search__search-filter-list jetpack-instant-search__search-static-filter-list">
+					<div
+						className={ clsx(
+							'jetpack-instant-search__search-filter-list',
+							'jetpack-instant-search__search-static-filter-list',
+							`jetpack-instant-search__search-static-filter-variation-${ this.props.configuration.variation }`
+						) }
+					>
 						{ this.props.type === 'group' && this.renderGroups() }
 					</div>
 
@@ -195,7 +300,10 @@ export default class SearchFilter extends Component {
 						<div className="jetpack-instant-search__search-filter-list">
 							{ this.props.type === 'date' && this.renderDates() }
 							{ this.props.type === 'postType' && this.renderPostTypes() }
+							{ this.props.type === 'author' && this.renderAuthors() }
+							{ this.props.type === 'blogId' && this.renderBlogIds() }
 							{ this.props.type === 'taxonomy' && this.renderTaxonomies() }
+							{ this.props.type === 'productAttribute' && this.renderProductAttributes() }
 						</div>
 					) }
 				</div>
@@ -203,3 +311,7 @@ export default class SearchFilter extends Component {
 		);
 	}
 }
+
+export default connect( state => ( {
+	blogIdFilteringLabels: state.serverOptions.blogIdFilteringLabels,
+} ) )( SearchFilter );

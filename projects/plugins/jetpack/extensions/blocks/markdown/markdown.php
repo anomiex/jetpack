@@ -11,8 +11,9 @@ namespace Automattic\Jetpack\Extensions\Markdown;
 
 use Automattic\Jetpack\Blocks;
 
-const FEATURE_NAME = 'markdown';
-const BLOCK_NAME   = 'jetpack/' . FEATURE_NAME;
+if ( ! defined( 'ABSPATH' ) ) {
+	exit( 0 );
+}
 
 /**
  * Registers the block for use in Gutenberg
@@ -20,6 +21,6 @@ const BLOCK_NAME   = 'jetpack/' . FEATURE_NAME;
  * registration if we need to.
  */
 function register_block() {
-	Blocks::jetpack_register_block( BLOCK_NAME );
+	Blocks::jetpack_register_block( __DIR__ );
 }
 add_action( 'init', __NAMESPACE__ . '\register_block' );

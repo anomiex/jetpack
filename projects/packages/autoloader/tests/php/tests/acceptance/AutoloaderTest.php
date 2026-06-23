@@ -1,9 +1,12 @@
-<?php // phpcs:ignore WordPress.Files.FileName
+<?php
 /**
  * Acceptance test suite for the current autoloader.
  *
  * @package automattic/jetpack-autoloader
  */
+
+use PHPUnit\Framework\Attributes\PreserveGlobalState;
+use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
 
 /**
  * Test suite class for verifying the functionality of the current autoloader.
@@ -11,7 +14,9 @@
  * @runTestsInSeparateProcesses Ensure each test has a fresh process as if it was a real request.
  * @preserveGlobalState disabled
  */
-class AutoloaderTest extends Acceptance_Test_Case {
+#[RunTestsInSeparateProcesses]
+#[PreserveGlobalState( false )]
+class AutoloaderTest extends Acceptance_TestCase {
 
 	/**
 	 * Tests that the autoloader works properly in the standard case.
@@ -72,6 +77,7 @@ class AutoloaderTest extends Acceptance_Test_Case {
 		$this->assertAutoloaderProvidesClass( \Automattic\Jetpack\AutoloaderTesting\SharedTestClass::class );
 
 		$this->markTestIncomplete( 'The autoloader does not currently support PSR-4 loading from multiple directories.' );
+		// @phan-suppress-next-line PhanPluginUnreachableCode
 		$this->assertAutoloaderProvidesClass( \Automattic\Jetpack\AutoloaderTesting\Current\UniqueTestClass::class );
 		$this->assertAutoloaderProvidesClass( \Automattic\Jetpack\AutoloaderTesting\Currentmu\UniqueTestClass::class );
 	}
@@ -99,6 +105,7 @@ class AutoloaderTest extends Acceptance_Test_Case {
 		$this->assertAutoloaderProvidesClass( \Automattic\Jetpack\AutoloaderTesting\SharedTestClass::class );
 
 		$this->markTestIncomplete( 'The autoloader does not currently support PSR-4 loading from multiple directories.' );
+		// @phan-suppress-next-line PhanPluginUnreachableCode
 		$this->assertAutoloaderProvidesClass( \Automattic\Jetpack\AutoloaderTesting\Current\UniqueTestClass::class );
 		$this->assertAutoloaderProvidesClass( \Automattic\Jetpack\AutoloaderTesting\Currentmu\UniqueTestClass::class );
 	}

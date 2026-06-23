@@ -1,18 +1,18 @@
-import { JetpackLogo } from '@automattic/jetpack-components';
-import { ConnectButton, ToS } from '@automattic/jetpack-connection';
+import { JetpackLogo, TermsOfService } from '@automattic/jetpack-components';
+import { ConnectButton } from '@automattic/jetpack-connection';
 import { Button } from '@wordpress/components';
 import { createInterpolateElement } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
-import analytics from 'lib/analytics';
 import PropTypes from 'prop-types';
-import React, { useEffect, useCallback } from 'react';
+import { useEffect, useCallback } from 'react';
+import analytics from 'lib/analytics';
 import './style.scss';
 
 /**
  * The Contextualized Connection component.
  *
  * @param {object} props -- The properties.
- * @returns {React.Component} The `ContextualizedConnection` component.
+ * @return {import('react').Component} The `ContextualizedConnection` component.
  */
 const ContextualizedConnection = props => {
 	const {
@@ -23,7 +23,6 @@ const ContextualizedConnection = props => {
 		buttonLabel,
 		apiRoot,
 		apiNonce,
-		registrationNonce,
 		redirectUri,
 		redirectTo,
 		autoTrigger,
@@ -66,11 +65,13 @@ const ContextualizedConnection = props => {
 							autoTrigger={ autoTrigger }
 							apiRoot={ apiRoot }
 							apiNonce={ apiNonce }
-							registrationNonce={ registrationNonce }
+							registrationNonce=""
 							redirectUri={ redirectUri }
 							connectLabel={ buttonLabel }
 						/>
-						<div className="jp-contextualized-connection__tos">{ ToS }</div>
+						<div className="jp-contextualized-connection__tos">
+							<TermsOfService agreeButtonLabel={ buttonLabel } />
+						</div>
 					</>
 				) }
 			</div>
@@ -103,12 +104,6 @@ const ContextualizedConnection = props => {
 							<li>
 								{ createInterpolateElement(
 									__( '<strong>Free</strong> Content Delivery Network (CDN)', 'jetpack' ),
-									{ strong: <strong /> }
-								) }
-							</li>
-							<li>
-								{ createInterpolateElement(
-									__( '<strong>Free</strong> lazy image loading', 'jetpack' ),
 									{ strong: <strong /> }
 								) }
 							</li>
@@ -170,8 +165,6 @@ ContextualizedConnection.propTypes = {
 	apiRoot: PropTypes.string.isRequired,
 	/** API nonce. */
 	apiNonce: PropTypes.string.isRequired,
-	/** Registration nonce. */
-	registrationNonce: PropTypes.string.isRequired,
 	/** The redirect admin URI. */
 	redirectUri: PropTypes.string.isRequired,
 	/** Where the user will be redirected to after clicking to continue to Jetpack */

@@ -7,6 +7,7 @@
 
 namespace Automattic\JetpackBeta;
 
+use Automattic\Jetpack\Assets\Logo;
 use Jetpack;
 use Language_Pack_Upgrader;
 use Plugin_Upgrader;
@@ -21,9 +22,16 @@ class Hooks {
 	/**
 	 * Singleton class instance.
 	 *
-	 * @var static
+	 * @var self
 	 */
-	protected static $instance = null;
+	private static $instance = null;
+
+	/**
+	 * Previous error handler.
+	 *
+	 * @var callable|null
+	 */
+	private static $prev_error_handler = null;
 
 	/**
 	 * Main Instance
@@ -50,11 +58,16 @@ class Hooks {
 
 		add_filter( 'all_plugins', array( $this, 'update_all_plugins' ) );
 
+		add_action( 'deleted_plugin', array( $this, 'maybe_delete_dev_plugin_too' ), 10, 2 );
+
 		add_filter( 'plugins_api', array( $this, 'get_plugin_info' ), 10, 3 );
 
 		add_action( 'jetpack_beta_autoupdate_hourly_cron', array( self::class, 'run_autoupdate' ) );
 
 		add_filter( 'jetpack_options_whitelist', array( $this, 'add_to_options_whitelist' ) );
+
+		// Override the filter from projects/plugins/wpcomsh/feature-plugins/managed-plugins.php that forces jetpack/jetpack.php to be enabled.
+		add_filter( 'pre_update_option_active_plugins', array( $this, 'unbreak_wpcomsh' ), 11 );
 
 		if ( is_admin() ) {
 			self::maybe_schedule_autoupdate();
@@ -83,6 +96,7 @@ class Hooks {
 			unset( $transient->no_update[ $dev ] );
 
 			// If the dev version is active, populate it into the transient.
+			// (no need to care about mu-plugins here, they can't be updated in the normal way)
 			if ( is_plugin_active( $dev ) ) {
 				list( $response, $no_update ) = Plugin::get_plugin( dirname( $nondev ) )->dev_upgrader_response();
 				if ( $response ) {
@@ -172,7 +186,7 @@ class Hooks {
 	 *
 	 * @param string[] $actions Array of plugin action links.
 	 * @param string   $plugin_file Plugin file.
-	 * @return $actions
+	 * @return string[]
 	 */
 	public function remove_activate_link( $actions, $plugin_file ) {
 		if ( isset( $actions['activate'] ) ) {
@@ -195,7 +209,7 @@ class Hooks {
 	 */
 	public function update_all_plugins( $plugins ) {
 		foreach ( Plugin::get_plugin_file_map() as $nondev => $dev ) {
-			// WP.com requests away show regular plugin.
+			// WP.com requests always show regular plugin.
 			if ( defined( 'REST_API_REQUEST' ) && REST_API_REQUEST ) {
 				// Ensure that it reports the version it's using on account of the Jetpack Beta plugin to Calypso.
 				if ( is_plugin_active( $dev ) ) {
@@ -204,11 +218,43 @@ class Hooks {
 				unset( $plugins[ $dev ] );
 			} elseif ( is_plugin_active( $dev ) ) {
 				unset( $plugins[ $nondev ] );
-			} else {
+			} elseif ( isset( $plugins[ $dev ] ) && isset( $plugins[ $nondev ] ) ) {
 				unset( $plugins[ $dev ] );
 			}
 		}
 		return $plugins;
+	}
+
+	/**
+	 * Action: Delete dev plugin when non-dev version is deleted.
+	 *
+	 * Handler for 'deleted_plugin' action.
+	 *
+	 * @param string $plugin_file Deleted plugin.
+	 * @param bool   $deleted Whether the deletion was successful.
+	 */
+	public function maybe_delete_dev_plugin_too( $plugin_file, $deleted ) {
+		if ( ! $deleted ) {
+			return;
+		}
+		$plugin = Plugin::get_plugin( dirname( $plugin_file ) );
+		if ( ! $plugin ) {
+			return;
+		}
+		// If somehow the non-dev got deleted while the dev is active, don't delete the dev.
+		if ( $plugin->is_active( 'dev' ) ) {
+			return;
+		}
+
+		// $wp_filesystem should already be functional thanks to Core just deleting the non-dev plugin. But check it just in case.
+		global $wp_filesystem;
+		if ( ! $wp_filesystem ) {
+			return;
+		}
+		$working_dir = dirname( $plugin->dev_plugin_path() );
+		if ( $wp_filesystem->is_dir( $working_dir ) ) {
+			$wp_filesystem->delete( $working_dir, true );
+		}
 	}
 
 	/**
@@ -226,7 +272,7 @@ class Hooks {
 	 */
 	public function get_plugin_info( $result, $action, $args ) {
 		// Check if this is a 'plugin_information' request for a '-dev' plugin.
-		if ( 'plugin_information' !== $action || substr( $args->slug, -4 ) !== '-dev' ) {
+		if ( 'plugin_information' !== $action || ! str_ends_with( $args->slug, '-dev' ) ) {
 			return $result;
 		}
 
@@ -293,7 +339,7 @@ class Hooks {
 
 		// Initialize the WP_Filesystem API.
 		require_once ABSPATH . 'wp-admin/includes/file.php';
-		$creds = request_filesystem_credentials( site_url() . '/wp-admin/', '', false, false, array() );
+		$creds = request_filesystem_credentials( site_url() . '/wp-admin/', '', false, '', array() );
 		if ( ! WP_Filesystem( $creds ) ) {
 			// Any problems and we exit.
 			return;
@@ -305,7 +351,7 @@ class Hooks {
 
 		// Delete dev plugin dirs.
 		foreach ( $plugins as $plugin ) {
-			$working_dir = WP_PLUGIN_DIR . '/' . $plugin->dev_plugin_slug();
+			$working_dir = dirname( $plugin->dev_plugin_path() );
 			if ( $wp_filesystem->is_dir( $working_dir ) ) {
 				$wp_filesystem->delete( $working_dir, true );
 			}
@@ -327,9 +373,11 @@ class Hooks {
 		require_once ABSPATH . 'wp-admin/includes/plugin.php';
 
 		// If no managed plugins are active, we don't want to display anything.
+		// Assume any mu-plugins will have a corresponding <slug>-loader.php, and there isn't any weirdness about having a mu-plugin loader named the same as a non-mu-plugin.
+		// (We don't want to actually create Plugin objects here to avoid unnecessary network fetches, even though they're cached).
 		$any = array();
 		foreach ( Plugin::get_plugin_file_map() as $nondev => $dev ) {
-			if ( is_plugin_active( $nondev ) || is_plugin_active( $dev ) ) {
+			if ( is_plugin_active( $nondev ) || is_plugin_active( $dev ) || file_exists( WPMU_PLUGIN_DIR . '/' . dirname( $nondev ) . '-loader.php' ) ) {
 				$any = true;
 				break;
 			}
@@ -341,7 +389,7 @@ class Hooks {
 		// Add the main menu.
 		$args = array(
 			'id'     => 'jetpack-beta_admin_bar',
-			'title'  => 'Jetpack Beta',
+			'title'  => '<span class="jpbeta-logo">' . ( new Logo() )->get_jp_emblem() . '</span><span class="screen-reader-text">Jetpack </span>Beta',
 			'parent' => 'top-secondary',
 			'href'   => current_user_can( 'update_plugins' ) ? Utils::admin_url() : '',
 		);
@@ -362,11 +410,11 @@ class Hooks {
 			$wp_admin_bar->add_node( $args );
 		}
 		foreach ( $plugins as $slug => $plugin ) {
-			if ( is_plugin_active( $plugin->plugin_file() ) ) {
+			if ( $plugin->is_active( 'stable' ) ) {
 				$is_dev   = false;
 				$version  = $plugin->stable_pretty_version();
 				$dev_info = null;
-			} elseif ( is_plugin_active( $plugin->dev_plugin_file() ) ) {
+			} elseif ( $plugin->is_active( 'dev' ) ) {
 				$is_dev   = true;
 				$any_dev  = true;
 				$version  = $plugin->dev_pretty_version();
@@ -417,6 +465,9 @@ class Hooks {
 			}
 		}
 
+		// Output styles for the logo in the admin bar.
+		echo '<style>#wpadminbar .jpbeta-logo svg { width: 20px; height: 20px; vertical-align: middle; margin-right: 6px; position: relative; top: -1px; } #wpadminbar .jpbeta-logo svg path { fill: currentColor; }</style>';
+
 		// Highlight the menu if you are running the BETA Versions..
 		if ( $any_dev ) {
 			$wp_admin_bar->add_node(
@@ -426,8 +477,8 @@ class Hooks {
 				)
 			);
 			// Use Jetpack Green 50 rather than 40 for accessibility, per pcdRpT-if-p2.
-			echo "<style>#wpadminbar #wp-admin-bar-jetpack-beta_admin_bar.jpbeta-highlight, #wpadminbar #wp-admin-bar-jetpack-beta_admin_bar .jpbeta-highlight { background: #008710; }\n";
-			echo '#wpadminbar #wp-admin-bar-jetpack-beta_admin_bar.jpbeta-highlight > .ab-item, #wpadminbar #wp-admin-bar-jetpack-beta_admin_bar .jpbeta-highlight > .ab-item { color: white; }</style>';
+			echo "<style>#wpadminbar #wp-admin-bar-jetpack-beta_admin_bar.jpbeta-highlight:not(.hover), #wpadminbar #wp-admin-bar-jetpack-beta_admin_bar .jpbeta-highlight:not(.hover) { background: #008710; }\n";
+			echo '#wpadminbar #wp-admin-bar-jetpack-beta_admin_bar.jpbeta-highlight:not(.hover) > .ab-item, #wpadminbar #wp-admin-bar-jetpack-beta_admin_bar .jpbeta-highlight:not(.hover) > .ab-item { color: white; }</style>';
 		}
 	}
 
@@ -440,9 +491,7 @@ class Hooks {
 		}
 		wp_clear_scheduled_hook( 'jetpack_beta_autoupdate_hourly_cron' );
 
-		if ( function_exists( 'wp_unschedule_hook' ) ) { // New in WP `4.9`.
-			wp_unschedule_hook( 'jetpack_beta_autoupdate_hourly_cron' );
-		}
+		wp_unschedule_hook( 'jetpack_beta_autoupdate_hourly_cron' );
 	}
 
 	/**
@@ -484,8 +533,8 @@ class Hooks {
 		// This avoids the plugin to be deactivated.
 		// Using bulk upgrade puts the site into maintenance mode during the upgrades.
 		$result = $upgrader->bulk_upgrade( $plugins );
-		$errors = $upgrader->skin->get_errors();
-		$log    = $upgrader->skin->get_upgrade_messages();
+		$errors = $skin->get_errors();
+		$log    = $skin->get_upgrade_messages();
 
 		if ( is_wp_error( $errors ) && $errors->get_error_code() ) {
 			return $errors;
@@ -497,10 +546,10 @@ class Hooks {
 	}
 
 	/**
-	 * Builds and sends an email about succesfull plugin autoupdate.
+	 * Builds and sends an email about successful plugin autoupdate.
 	 *
-	 * @param Array  $plugins - List of plugins that were updated.
-	 * @param String $log     - Upgrade message from core's plugin upgrader.
+	 * @param array    $plugins - List of plugins that were updated.
+	 * @param string[] $log     - Upgrade message from core's plugin upgrader.
 	 */
 	private static function send_autoupdate_email( $plugins, $log ) {
 		$admin_email = get_site_option( 'admin_email' );
@@ -509,8 +558,15 @@ class Hooks {
 			return;
 		}
 
-		$site_title = get_bloginfo( 'name' ) ? get_bloginfo( 'name' ) : get_site_url();
-		// translators: %s: The site title.
+		$site_title = get_bloginfo( 'name' );
+		$site_url   = get_site_url();
+
+		// Check if the site title is empty or literally 'Site Title', then use the site URL instead.
+		if ( empty( $site_title ) || $site_title === 'Site Title' ) {
+			$site_title = $site_url;
+		}
+
+		// translators: %s: The site title or URL.
 		$subject = sprintf( __( '[%s] Jetpack Beta Tester auto-updates', 'jetpack-beta' ), $site_title );
 
 		$message = sprintf(
@@ -540,7 +596,7 @@ class Hooks {
 				continue;
 			}
 
-			$file     = WP_PLUGIN_DIR . '/' . $plugin->dev_plugin_file();
+			$file     = $plugin->dev_plugin_path();
 			$tmp      = get_plugin_data( $file, false, false );
 			$message .= sprintf(
 				$fmt,
@@ -577,6 +633,13 @@ class Hooks {
 	}
 
 	/**
+	 * Set up at plugin load.
+	 */
+	public static function setup() {
+		self::$prev_error_handler = set_error_handler( array( self::class, 'custom_error_handler' ) ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_set_error_handler
+	}
+
+	/**
 	 * Custom error handler to intercept errors and log them using Jetpack's own logger.
 	 *
 	 * @param int    $errno   - Error code.
@@ -595,7 +658,29 @@ class Hooks {
 			}
 		}
 
-		// Returning false makes the error go through the standard error handler as well.
-		return false;
+		if ( self::$prev_error_handler ) {
+			return call_user_func( self::$prev_error_handler, $errno, $errstr, $errfile, $errline );
+		} else {
+			// Returning false makes the error go through the standard error handler as well.
+			return false;
+		}
+	}
+
+	/**
+	 * Filter: Ensure wpcomsh doesn't reactivate the non-dev Jetpack.
+	 *
+	 * @param mixed $value The new, unserialized option value.
+	 * @return array The filtered array of active plugins.
+	 */
+	public function unbreak_wpcomsh( $value ) {
+		if ( ! is_array( $value ) ) {
+			return $value;
+		}
+
+		if ( in_array( 'jetpack/jetpack.php', $value, true ) && in_array( 'jetpack-dev/jetpack.php', $value, true ) ) {
+			$value = array_diff( $value, array( 'jetpack/jetpack.php' ) );
+		}
+
+		return $value;
 	}
 }

@@ -1,7 +1,7 @@
+import PropTypes from 'prop-types';
+import { cloneElement, useCallback, useEffect } from 'react';
 import { imagePath } from 'constants/urls';
 import analytics from 'lib/analytics';
-import PropTypes from 'prop-types';
-import React, { useCallback, useEffect } from 'react';
 import MyPlanCard from '../my-plan-card';
 
 /**
@@ -36,7 +36,7 @@ const MyPlanBanner = props => {
 			>
 				<MyPlanCard
 					productSlug={ productSlug }
-					action={ React.cloneElement( action, { onClick: trackActionClick } ) }
+					action={ cloneElement( action, { onClick: trackActionClick } ) }
 					title={ title }
 					tagLine={ tagLine }
 				/>

@@ -1,13 +1,16 @@
-import { imagePath } from 'constants/urls';
 import restApi from '@automattic/jetpack-api';
 import { getRedirectUrl } from '@automattic/jetpack-components';
 import { ConnectScreen, CONNECTION_STORE_ID } from '@automattic/jetpack-connection';
 import { ActivationScreen } from '@automattic/jetpack-licensing';
+import ConnectScreenBody from '@automattic/jetpack-my-jetpack/components/connection-screen/body';
 import { PartnerCouponRedeem } from '@automattic/jetpack-partner-coupon';
-import { Dashicon } from '@wordpress/components';
+import { isWoASite } from '@automattic/jetpack-script-data';
 import { withDispatch } from '@wordpress/data';
-import { createInterpolateElement } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
+import jQuery from 'jquery';
+import { Component } from 'react';
+import { connect } from 'react-redux';
+import { useLocation, useNavigate } from 'react-router';
 import AtAGlance from 'at-a-glance/index.jsx';
 import AdminNotices from 'components/admin-notices';
 import AppsCard from 'components/apps-card';
@@ -20,28 +23,29 @@ import Navigation from 'components/navigation';
 import NavigationSettings from 'components/navigation-settings';
 import NonAdminView from 'components/non-admin-view';
 import ReconnectModal from 'components/reconnect-modal';
+import SettingsAdminPage from 'components/settings-admin-page';
+import SettingsNavTabs from 'components/settings-nav-tabs';
 import SupportCard from 'components/support-card';
 import Tracker from 'components/tracker';
+import { imagePath } from 'constants/urls';
 import analytics from 'lib/analytics';
 import MyPlan from 'my-plan/index.jsx';
 import ProductDescriptions from 'product-descriptions';
 import { productDescriptionRoutes } from 'product-descriptions/constants';
-import React from 'react';
-import { connect } from 'react-redux';
-import { withRouter, Prompt } from 'react-router-dom';
 import { Recommendations } from 'recommendations';
 import SearchableSettings from 'settings/index.jsx';
 import {
 	getSiteConnectionStatus,
+	getConnectedWpComUser,
 	isCurrentUserLinked,
 	isSiteConnected,
 	isConnectionOwner,
 	isConnectingUser,
 	resetConnectUser,
 	isReconnectingSite,
-	reconnectSite,
 	getConnectUrl,
 	getConnectingUserFeatureLabel,
+	getConnectingUserFrom,
 	getConnectionStatus,
 	hasConnectedOwner,
 	getHasSeenWCConnectionModal,
@@ -51,20 +55,23 @@ import {
 import {
 	setInitialState,
 	getSiteRawUrl,
+	getSiteId,
 	getSiteAdminUrl,
 	getApiNonce,
 	getApiRootUrl,
-	getRegistrationNonce,
 	userCanManageModules,
 	userCanConnectSite,
+	userCanViewStats,
 	getCurrentVersion,
 	getTracksUserData,
 	showRecommendations,
 	getInitialRecommendationsStep,
 	getPluginBaseUrl,
 	getPartnerCoupon,
-	isWoASite,
+	showMyJetpack,
 	isWooCommerceActive,
+	userIsSubscriber,
+	getJetpackManageInfo,
 } from 'state/initial-state';
 import {
 	updateLicensingActivationNoticeDismiss as updateLicensingActivationNoticeDismissAction,
@@ -82,24 +89,52 @@ import {
 	fetchSiteData as fetchSiteDataAction,
 	fetchSitePurchases as fetchSitePurchasesAction,
 } from 'state/site';
+import JetpackManageBanner from './components/jetpack-manage-banner';
 
 const recommendationsRoutes = [
 	'/recommendations',
 	'/recommendations/site-type',
 	'/recommendations/product-suggestions',
 	'/recommendations/product-purchased',
+	'/recommendations/agency',
 	'/recommendations/woocommerce',
 	'/recommendations/monitor',
+	'/recommendations/newsletter',
 	'/recommendations/related-posts',
 	'/recommendations/creative-mail',
 	'/recommendations/site-accelerator',
 	'/recommendations/publicize',
-	'/recommendations/security-plan',
+	'/recommendations/protect',
 	'/recommendations/anti-spam',
 	'/recommendations/videopress',
+	'/recommendations/backup-plan',
+	'/recommendations/boost',
 	'/recommendations/summary',
+	'/recommendations/vaultpress-backup',
+	'/recommendations/vaultpress-for-woocommerce',
+	'/recommendations/welcome-backup',
+	'/recommendations/welcome-complete',
+	'/recommendations/welcome-security',
+	'/recommendations/welcome-starter',
+	'/recommendations/welcome-antispam',
+	'/recommendations/welcome-videopress',
+	'/recommendations/welcome-search',
+	'/recommendations/welcome-scan',
+	'/recommendations/welcome-social-basic',
+	'/recommendations/welcome-social-v1',
+	'/recommendations/welcome-social-image-generator',
+	'/recommendations/welcome-golden-token',
+	'/recommendations/backup-activated',
+	'/recommendations/scan-activated',
+	'/recommendations/unlimited-sharing-activated',
+	'/recommendations/social-v1-activated',
+	'/recommendations/antispam-activated',
+	'/recommendations/videopress-activated',
+	'/recommendations/search-activated',
+	'/recommendations/server-credentials',
 ];
 
+const myJetpackRoutes = [ 'my-jetpack ' ];
 const dashboardRoutes = [ '/', '/dashboard', '/reconnect', '/my-plan', '/plans' ];
 const settingsRoutes = [
 	'/settings',
@@ -108,11 +143,13 @@ const settingsRoutes = [
 	'/writing',
 	'/sharing',
 	'/discussion',
+	'/earn',
+	'/reader',
 	'/traffic',
 	'/privacy',
 ];
 
-class Main extends React.Component {
+class Main extends Component {
 	constructor( props ) {
 		super( props );
 		this.closeReconnectModal = this.closeReconnectModal.bind( this );
@@ -126,7 +163,7 @@ class Main extends React.Component {
 		this.initializeAnalytics();
 
 		// Handles refresh, closing and navigating away from Jetpack's Admin Page
-		// beforeunload can not handle confirm calls in most of the browsers, so just clean up the flag.
+		// beforeunload cannot handle confirm calls in most of the browsers, so just clean up the flag.
 		window.addEventListener( 'beforeunload', this.props.clearUnsavedSettingsFlag );
 
 		// Track initial page view
@@ -156,10 +193,13 @@ class Main extends React.Component {
 			! this.props.hasSeenWCConnectionModal &&
 			this.props.userCanManageModules
 		) {
-			this.props.history.replace( {
-				pathname: '/woo-setup',
-				state: { previousPath: this.props.location.pathname },
-			} );
+			this.props.navigate(
+				{
+					pathname: '/woo-setup',
+					state: { previousPath: this.props.location.pathname },
+				},
+				{ replace: true }
+			);
 		}
 	}
 
@@ -174,6 +214,7 @@ class Main extends React.Component {
 			'jetpack'
 		);
 
+		// eslint-disable-next-line no-alert -- Needs a blocking dialog.
 		if ( confirm( question ) ) {
 			window.setTimeout( this.props.clearUnsavedSettingsFlag, 10 );
 			return true;
@@ -233,6 +274,81 @@ class Main extends React.Component {
 		this.props.setConnectionStatus( this.props.connectionStatus );
 	}
 
+	/**
+	 * Render the main navigation bar.
+	 *
+	 * @param {string} route - The current page route.
+	 * @return {import('react').ReactElement|null} - The navigation component or `null` if not available.
+	 */
+	renderMainNav = route => {
+		if ( this.shouldShowWooConnectionScreen() ) {
+			return null;
+		}
+
+		if ( this.props.partnerCoupon ) {
+			const forceShow = new URLSearchParams( window.location.search ).get( 'showCouponRedemption' );
+
+			if ( ! this.props.isOfflineMode && ( ! this.props.isSiteConnected || forceShow ) ) {
+				return null;
+			}
+		}
+
+		if (
+			this.isUserConnectScreen() &&
+			( this.props.userCanManageModules || this.props.hasConnectedOwner )
+		) {
+			return null;
+		}
+
+		if ( ! this.props.userCanManageModules ) {
+			if ( ! this.props.siteConnectionStatus ) {
+				return null;
+			}
+
+			switch ( route ) {
+				case '/settings':
+				case '/writing':
+				case '/sharing':
+				case '/performance':
+					if ( ! this.props.isSubscriber ) {
+						return <NavigationSettings { ...this.props } />;
+					}
+			}
+
+			return <Navigation { ...this.props } />;
+		}
+
+		if ( this.isMainConnectScreen() ) {
+			return null;
+		}
+
+		switch ( route ) {
+			case '/settings':
+			case '/security':
+			case '/performance':
+			case '/writing':
+			case '/sharing':
+			case '/discussion':
+			case '/earn':
+			case '/reader':
+			case '/traffic':
+			case '/privacy':
+				return (
+					<NavigationSettings
+						routeName={ this.props.routeName }
+						siteRawUrl={ this.props.siteRawUrl }
+						siteAdminUrl={ this.props.siteAdminUrl }
+					/>
+				);
+			case '/license/activation':
+				if ( this.props.isLinked && this.props.isConnectionOwner ) {
+					return null;
+				}
+		}
+
+		return <Navigation routeName={ this.props.routeName } blogID={ this.props.blogID } />;
+	};
+
 	renderMainContent = route => {
 		if ( this.shouldShowWooConnectionScreen() ) {
 			const previousPath = this.props.location.state?.previousPath;
@@ -242,7 +358,6 @@ class Main extends React.Component {
 			return (
 				<ContextualizedConnection
 					apiNonce={ this.props.apiNonce }
-					registrationNonce={ this.props.registrationNonce }
 					apiRoot={ this.props.apiRoot }
 					title={ __(
 						'Welcome to Jetpack! Security, Growth, & Performance tools for WordPress businesses',
@@ -297,7 +412,7 @@ class Main extends React.Component {
 				return (
 					<PartnerCouponRedeem
 						apiNonce={ this.props.apiNonce }
-						registrationNonce={ this.props.registrationNonce }
+						registrationNonce=""
 						apiRoot={ this.props.apiRoot }
 						assetBaseUrl={ this.props.pluginBaseUrl }
 						connectionStatus={ this.props.connectionStatus }
@@ -314,55 +429,25 @@ class Main extends React.Component {
 			this.isUserConnectScreen() &&
 			( this.props.userCanManageModules || this.props.hasConnectedOwner )
 		) {
+			const searchParams = new URLSearchParams( location.search.split( '?' )[ 1 ] );
+
 			return (
-				<ConnectScreen
-					apiNonce={ this.props.apiNonce }
-					registrationNonce={ this.props.registrationNonce }
-					apiRoot={ this.props.apiRoot }
-					images={ [ '/images/connect-right-secondary.png' ] }
-					assetBaseUrl={ this.props.pluginBaseUrl }
+				<ConnectScreenBody
 					title={
-						this.props.connectingUserFeatureLabel
-							? sprintf(
-									/* translators: placeholder is a feature label (e.g. SEO, Notifications) */
-									__( 'Unlock %s and more amazing features', 'jetpack' ),
-									this.props.connectingUserFeatureLabel
-							  )
-							: __( 'Unlock all the amazing features of Jetpack by connecting now', 'jetpack' )
+						this.props.connectingUserFeatureLabel &&
+						sprintf(
+							/* translators: %s: a feature label (e.g. SEO, Notifications) */
+							__( 'Unlock %s and more amazing features', 'jetpack' ),
+							this.props.connectingUserFeatureLabel
+						)
 					}
-					buttonLabel={ __( 'Connect your user account', 'jetpack' ) }
+					from={ ( searchParams && searchParams.get( 'from' ) ) || this.props.connectingUserFrom }
 					redirectUri="admin.php?page=jetpack"
-				>
-					<ul>
-						<li>{ __( 'Receive instant downtime alerts', 'jetpack' ) }</li>
-						<li>{ __( 'Automatically share your content on social media', 'jetpack' ) }</li>
-						<li>{ __( 'Let your subscribers know when you post', 'jetpack' ) }</li>
-						<li>{ __( 'Receive notifications about new likes and comments', 'jetpack' ) }</li>
-						<li>{ __( 'Let visitors share your content on social media', 'jetpack' ) }</li>
-						<li>
-							{ createInterpolateElement(
-								__( 'And more! <a>See all Jetpack features</a>', 'jetpack' ),
-								{
-									a: (
-										<a
-											href={ getRedirectUrl( 'jetpack-features' ) }
-											target="_blank"
-											rel="noreferrer"
-										/>
-									),
-								}
-							) }
-							<a
-								className="jp-connection-screen-icon"
-								href={ getRedirectUrl( 'jetpack-features' ) }
-								target="_blank"
-								rel="noreferrer"
-							>
-								<Dashicon icon="external" />
-							</a>
-						</li>
-					</ul>
-				</ConnectScreen>
+					apiRoot={ this.props.apiRoot }
+					apiNonce={ this.props.apiNonce }
+					registrationNonce=""
+					autoTrigger={ this.shouldAutoTriggerConnection() }
+				/>
 			);
 		}
 
@@ -378,15 +463,18 @@ class Main extends React.Component {
 		}
 
 		if ( this.isMainConnectScreen() ) {
+			const searchParams = new URLSearchParams( location.search.split( '?' )[ 1 ] );
+
 			return (
 				<ConnectScreen
 					apiNonce={ this.props.apiNonce }
-					registrationNonce={ this.props.registrationNonce }
+					registrationNonce=""
 					apiRoot={ this.props.apiRoot }
 					images={ [ '/images/connect-right.jpg' ] }
 					assetBaseUrl={ this.props.pluginBaseUrl }
 					autoTrigger={ this.shouldAutoTriggerConnection() }
 					redirectUri="admin.php?page=jetpack"
+					from={ searchParams && searchParams.get( 'from' ) }
 				>
 					<p>
 						{ __(
@@ -395,8 +483,11 @@ class Main extends React.Component {
 						) }
 					</p>
 
-					<ul>
-						<li>{ __( 'Measure your impact with beautiful stats', 'jetpack' ) }</li>
+					{ /*
+					Since the list style type is set to none, `role=list` is required for VoiceOver (on Safari) to announce the list.
+					See: https://www.scottohara.me/blog/2019/01/12/lists-and-safari.html
+					*/ }
+					<ul role="list">
 						<li>{ __( 'Speed up your site with optimized images', 'jetpack' ) }</li>
 						<li>{ __( 'Protect your site against bot attacks', 'jetpack' ) }</li>
 						<li>{ __( 'Get notifications if your site goes offline', 'jetpack' ) }</li>
@@ -406,23 +497,15 @@ class Main extends React.Component {
 			);
 		}
 
-		const settingsNav = (
-			<NavigationSettings
-				routeName={ this.props.routeName }
-				siteRawUrl={ this.props.siteRawUrl }
-				siteAdminUrl={ this.props.siteAdminUrl }
-			/>
-		);
-		let pageComponent,
-			navComponent = <Navigation routeName={ this.props.routeName } />;
+		let pageComponent;
 
 		switch ( route ) {
 			case '/dashboard':
 			case '/reconnect':
 			case '/disconnect':
 			case '/connect-user':
+			case '/connect-user-setup':
 			case '/woo-setup':
-			case '/setup':
 				pageComponent = (
 					<AtAGlance
 						siteRawUrl={ this.props.siteRawUrl }
@@ -431,10 +514,17 @@ class Main extends React.Component {
 					/>
 				);
 				break;
+			case '/setup':
+				if ( this.props.isSiteConnected ) {
+					this.props.navigate( '/dashboard', { replace: true } );
+					pageComponent = this.getAtAGlance();
+				}
+				break;
 			case '/my-plan':
 				pageComponent = (
 					<MyPlan
 						siteRawUrl={ this.props.siteRawUrl }
+						blogID={ this.props.blogID }
 						siteAdminUrl={ this.props.siteAdminUrl }
 						rewindStatus={ this.props.rewindStatus }
 					/>
@@ -446,19 +536,24 @@ class Main extends React.Component {
 			case '/plans-prompt':
 				window.location.href = getRedirectUrl( 'jetpack-plans', { site: this.props.siteRawUrl } );
 				break;
+			case '/newsletter':
+				window.location.href = `${ this.props.siteAdminUrl }admin.php?page=jetpack-newsletter`;
+				break;
 			case '/settings':
 			case '/security':
 			case '/performance':
 			case '/writing':
 			case '/sharing':
 			case '/discussion':
+			case '/earn':
+			case '/reader':
 			case '/traffic':
 			case '/privacy':
-				navComponent = settingsNav;
 				pageComponent = (
 					<SearchableSettings
 						siteAdminUrl={ this.props.siteAdminUrl }
 						siteRawUrl={ this.props.siteRawUrl }
+						blogID={ this.props.blogID }
 						searchTerm={ this.props.searchTerm }
 						rewindStatus={ this.props.rewindStatus }
 						userCanManageModules={ this.props.userCanManageModules }
@@ -467,7 +562,6 @@ class Main extends React.Component {
 				break;
 			case '/license/activation':
 				if ( this.props.isLinked && this.props.isConnectionOwner ) {
-					navComponent = null;
 					pageComponent = (
 						<ActivationScreen
 							siteRawUrl={ this.props.siteRawUrl }
@@ -477,7 +571,7 @@ class Main extends React.Component {
 						/>
 					);
 				} else {
-					this.props.history.replace( '/dashboard' );
+					this.props.navigate( '/dashboard', { replace: true } );
 					pageComponent = this.getAtAGlance();
 				}
 				break;
@@ -485,20 +579,46 @@ class Main extends React.Component {
 			case '/recommendations/site-type':
 			case '/recommendations/product-suggestions':
 			case '/recommendations/product-purchased':
+			case '/recommendations/agency':
 			case '/recommendations/woocommerce':
 			case '/recommendations/monitor':
+			case '/recommendations/newsletter':
 			case '/recommendations/related-posts':
 			case '/recommendations/creative-mail':
 			case '/recommendations/site-accelerator':
 			case '/recommendations/publicize':
-			case '/recommendations/security-plan':
+			case '/recommendations/protect':
 			case '/recommendations/anti-spam':
 			case '/recommendations/videopress':
+			case '/recommendations/backup-plan':
+			case '/recommendations/boost':
 			case '/recommendations/summary':
+			case '/recommendations/vaultpress-backup':
+			case '/recommendations/vaultpress-for-woocommerce':
+			case '/recommendations/welcome-backup':
+			case '/recommendations/welcome-complete':
+			case '/recommendations/welcome-security':
+			case '/recommendations/welcome-starter':
+			case '/recommendations/welcome-antispam':
+			case '/recommendations/welcome-videopress':
+			case '/recommendations/welcome-search':
+			case '/recommendations/welcome-scan':
+			case '/recommendations/welcome-social-basic':
+			case '/recommendations/welcome-social-v1':
+			case '/recommendations/welcome-golden-token':
+			case '/recommendations/backup-activated':
+			case '/recommendations/scan-activated':
+			case '/recommendations/unlimited-sharing-activated':
+			case '/recommendations/social-v1-activated':
+			case '/recommendations/welcome-social-image-generator':
+			case '/recommendations/antispam-activated':
+			case '/recommendations/videopress-activated':
+			case '/recommendations/search-activated':
+			case '/recommendations/server-credentials':
 				if ( this.props.showRecommendations ) {
 					pageComponent = <Recommendations />;
 				} else {
-					this.props.history.replace( '/dashboard' );
+					this.props.navigate( '/dashboard', { replace: true } );
 					pageComponent = this.getAtAGlance();
 				}
 				break;
@@ -508,20 +628,25 @@ class Main extends React.Component {
 					break;
 				}
 
-				this.props.history.replace( '/dashboard' );
+				this.props.navigate( '/dashboard', { replace: true } );
 				pageComponent = this.getAtAGlance();
 				break;
 		}
 
-		if ( this.props.isWoaSite ) {
+		if ( isWoASite() && ! this.props.showMyJetpack ) {
 			window.wpNavMenuClassChange( { dashboard: 1, settings: 1 } );
+		} else if ( ! this.props.isLinked && ! this.props.showMyJetpack ) {
+			window.wpNavMenuClassChange( { dashboard: 1, settings: 2 } );
+		} else if ( ! this.props.isLinked && this.props.showMyJetpack ) {
+			window.wpNavMenuClassChange( { myJetpack: 1, dashboard: 2, settings: 3 } );
+		} else if ( this.props.isLinked && ! this.props.showMyJetpack ) {
+			window.wpNavMenuClassChange( { activityLog: 1, dashboard: 2, settings: 3 } );
 		} else {
 			window.wpNavMenuClassChange();
 		}
 
 		return (
 			<div aria-live="assertive" className={ `${ this.shouldBlurMainContent() ? 'blur' : '' }` }>
-				{ navComponent }
 				{ pageComponent }
 			</div>
 		);
@@ -542,6 +667,21 @@ class Main extends React.Component {
 		return (
 			this.props.isSiteConnected &&
 			! this.shouldShowWooConnectionScreen() &&
+			this.props.userCanViewStats &&
+			dashboardRoutes.includes( this.props.location.pathname )
+		);
+	}
+
+	shouldShowJetpackManageBanner() {
+		const { site_count } = this.props.connectedWpComUser;
+
+		// Only show on dashboard when users are managing 2 or more sites
+		return (
+			this.props.userCanConnectSite &&
+			site_count >= 2 &&
+			this.props.isSiteConnected &&
+			! isWoASite() &&
+			! this.shouldShowWooConnectionScreen() &&
 			dashboardRoutes.includes( this.props.location.pathname )
 		);
 	}
@@ -551,6 +691,7 @@ class Main extends React.Component {
 		return (
 			this.props.isSiteConnected &&
 			! this.shouldShowWooConnectionScreen() &&
+			this.props.userCanManageModules &&
 			dashboardRoutes.includes( this.props.location.pathname )
 		);
 	}
@@ -561,6 +702,10 @@ class Main extends React.Component {
 	}
 
 	shouldShowMasthead() {
+		if ( this.isMainConnectScreen() ) {
+			return false;
+		}
+
 		// Only show on the setup pages, dashboard, and settings page
 		return [ ...dashboardRoutes, ...recommendationsRoutes, ...settingsRoutes ].includes(
 			this.props.location.pathname
@@ -586,13 +731,13 @@ class Main extends React.Component {
 	}
 
 	closeReconnectModal() {
-		this.props.history.replace( '/dashboard' );
+		this.props.navigate( '/dashboard', { replace: true } );
 	}
 
 	/**
 	 * Checks if this is the main connection screen page.
 	 *
-	 * @returns {boolean} Whether this is the main connection screen page.
+	 * @return {boolean} Whether this is the main connection screen page.
 	 */
 	isMainConnectScreen() {
 		return false === this.props.siteConnectionStatus && this.props.userCanConnectSite;
@@ -601,16 +746,19 @@ class Main extends React.Component {
 	/**
 	 * Checks if this is the user connection screen page.
 	 *
-	 * @returns {boolean} Whether this is the user connection screen page.
+	 * @return {boolean} Whether this is the user connection screen page.
 	 */
 	isUserConnectScreen() {
-		return '/connect-user' === this.props.location.pathname;
+		return (
+			'/connect-user' === this.props.location.pathname ||
+			'/connect-user-setup' === this.props.location.pathname
+		);
 	}
 
 	/**
 	 * Checks whether we should show the Woo Connection screen page.
 	 *
-	 * @returns {boolean} Whether we should show the Woo connection screen page.
+	 * @return {boolean} Whether we should show the Woo connection screen page.
 	 */
 	shouldShowWooConnectionScreen() {
 		return '/woo-setup' === this.props.location.pathname;
@@ -619,7 +767,7 @@ class Main extends React.Component {
 	/**
 	 * Check if the user connection has been triggered.
 	 *
-	 * @returns {boolean} Whether the user connection has been triggered.
+	 * @return {boolean} Whether the user connection has been triggered.
 	 */
 	shouldConnectUser() {
 		return this.props.isConnectingUser;
@@ -630,13 +778,13 @@ class Main extends React.Component {
 	 */
 	connectUser() {
 		this.props.resetConnectUser();
-		this.props.history.replace( '/connect-user' );
+		this.props.navigate( '/connect-user', { replace: true } );
 	}
 
 	/**
 	 * Checks if this is a licensing screen page.
 	 *
-	 * @returns {boolean} Whether this is a licensing screen page.
+	 * @return {boolean} Whether this is a licensing screen page.
 	 */
 	isLicensingScreen() {
 		return this.props.location.pathname.startsWith( '/license' );
@@ -645,10 +793,13 @@ class Main extends React.Component {
 	/**
 	 * Check if the connection flow should get triggered automatically.
 	 *
-	 * @returns {boolean} Whether to trigger the connection flow automatically.
+	 * @return {boolean} Whether to trigger the connection flow automatically.
 	 */
 	shouldAutoTriggerConnection() {
-		return this.props.location.pathname.startsWith( '/setup' );
+		return (
+			this.props.location.pathname.startsWith( '/setup' ) ||
+			this.props.location.pathname.startsWith( '/connect-user-setup' )
+		);
 	}
 
 	/**
@@ -670,6 +821,10 @@ class Main extends React.Component {
 		this.props.fetchSettings();
 	}
 
+	isSettingsRoute() {
+		return settingsRoutes.includes( this.props.location.pathname );
+	}
+
 	render() {
 		const jpClasses = [ 'jp-lower' ];
 
@@ -685,23 +840,60 @@ class Main extends React.Component {
 			jpClasses.push( 'jp-licensing-screen' );
 		}
 
+		const pathname = this.props.location.pathname;
+		const mainNav = this.renderMainNav( pathname );
+
+		// Settings routes use the shared AdminPage component for header and footer.
+		if ( this.isSettingsRoute() ) {
+			return (
+				<div>
+					{ this.shouldShowReconnectModal() && (
+						<ReconnectModal show={ true } onHide={ this.closeReconnectModal } />
+					) }
+					<SettingsAdminPage location={ this.props.location } tabs={ <SettingsNavTabs /> }>
+						<div className={ jpClasses.join( ' ' ) }>
+							<AdminNotices />
+							<JetpackNotices />
+							{ this.shouldConnectUser() && this.connectUser() }
+							{ this.renderMainContent( pathname ) }
+						</div>
+					</SettingsAdminPage>
+					<Tracker analytics={ analytics } />
+				</div>
+			);
+		}
+
+		const showHeader = mainNav || this.shouldShowMasthead() || this.shouldShowRewindStatus();
+
 		return (
 			<div>
 				{ this.shouldShowReconnectModal() && (
 					<ReconnectModal show={ true } onHide={ this.closeReconnectModal } />
 				) }
-				{ this.shouldShowMasthead() && <Masthead location={ this.props.location } /> }
+
+				{ showHeader && (
+					<div className="jp-top">
+						{ this.shouldShowMasthead() && <Masthead location={ this.props.location } /> }
+						<div className="jp-top-inside">
+							{ this.shouldShowRewindStatus() && <QueryRewindStatus /> }
+							{ mainNav }
+						</div>
+					</div>
+				) }
+
 				<div className={ jpClasses.join( ' ' ) }>
-					{ this.shouldShowRewindStatus() && <QueryRewindStatus /> }
 					<AdminNotices />
 					<JetpackNotices />
 					{ this.shouldConnectUser() && this.connectUser() }
-					<Prompt
-						when={ this.props.areThereUnsavedSettings }
-						message={ this.handleRouterWillLeave }
-					/>
-					{ this.renderMainContent( this.props.location.pathname ) }
-					{ this.shouldShowSupportCard() && <SupportCard path={ this.props.location.pathname } /> }
+
+					{ this.renderMainContent( pathname ) }
+					{ this.shouldShowJetpackManageBanner() && (
+						<JetpackManageBanner
+							path={ pathname }
+							isAgencyAccount={ this.props.jetpackManage.isAgencyAccount }
+						/>
+					) }
+					{ this.shouldShowSupportCard() && <SupportCard path={ pathname } /> }
 					{ this.shouldShowAppsCard() && <AppsCard /> }
 				</div>
 				{ this.shouldShowFooter() && <Footer siteAdminUrl={ this.props.siteAdminUrl } /> }
@@ -717,20 +909,22 @@ export default connect(
 			isOfflineMode: isOfflineMode( state ),
 			connectionStatus: getConnectionStatus( state ),
 			siteConnectionStatus: getSiteConnectionStatus( state ),
+			connectedWpComUser: getConnectedWpComUser( state ),
 			isLinked: isCurrentUserLinked( state ),
 			isConnectingUser: isConnectingUser( state ),
 			hasConnectedOwner: hasConnectedOwner( state ),
 			isConnectionOwner: isConnectionOwner( state ),
 			siteRawUrl: getSiteRawUrl( state ),
+			blogID: getSiteId( state ),
 			siteAdminUrl: getSiteAdminUrl( state ),
 			searchTerm: getSearchTerm( state ),
 			apiRoot: getApiRootUrl( state ),
 			apiNonce: getApiNonce( state ),
-			registrationNonce: getRegistrationNonce( state ),
 			tracksUserData: getTracksUserData( state ),
 			areThereUnsavedSettings: areThereUnsavedSettings( state ),
 			userCanManageModules: userCanManageModules( state ),
 			userCanConnectSite: userCanConnectSite( state ),
+			userCanViewStats: userCanViewStats( state ),
 			isSiteConnected: isSiteConnected( state ),
 			isReconnectingSite: isReconnectingSite( state ),
 			rewindStatus: getRewindStatus( state ),
@@ -739,11 +933,14 @@ export default connect(
 			pluginBaseUrl: getPluginBaseUrl( state ),
 			connectUrl: getConnectUrl( state ),
 			connectingUserFeatureLabel: getConnectingUserFeatureLabel( state ),
-			isWoaSite: isWoASite( state ),
+			connectingUserFrom: getConnectingUserFrom( state ),
+			showMyJetpack: showMyJetpack( state ),
 			isWooCommerceActive: isWooCommerceActive( state ),
 			hasSeenWCConnectionModal: getHasSeenWCConnectionModal( state ),
 			partnerCoupon: getPartnerCoupon( state ),
 			currentRecommendationsStep: getInitialRecommendationsStep( state ),
+			isSubscriber: userIsSubscriber( state ),
+			jetpackManage: getJetpackManageInfo( state ),
 		};
 	},
 	dispatch => ( {
@@ -752,9 +949,6 @@ export default connect(
 		},
 		clearUnsavedSettingsFlag: () => {
 			return dispatch( clearUnsavedSettingsFlag() );
-		},
-		reconnectSite: () => {
-			return dispatch( reconnectSite() );
 		},
 		setHasSeenWCConnectionModal: () => {
 			return dispatch( setHasSeenWCConnectionModal() );
@@ -788,16 +982,74 @@ export default connect(
 				dispatch( CONNECTION_STORE_ID ).setConnectionStatus( connectionStatus );
 			},
 		};
-	} )( withRouter( Main ) )
+	} )( props => <Main { ...props } location={ useLocation() } navigate={ useNavigate() } /> )
 );
+
+// eslint-disable-next-line jsdoc/require-returns-check
+/**
+ * Determines the page order of My Jetpack, Activity Log, Dashboard, and Settings in the left sidebar.
+ * @return {object} Object with keys for each page and values for the order of the page in the sidebar.
+ */
+function jetpackPageOrder() {
+	const jetpackParentMenu = document.querySelector( '#toplevel_page_jetpack' );
+	const pageOrder = {};
+
+	if ( jetpackParentMenu ) {
+		const jetpackSubMenu = jetpackParentMenu.querySelector( '.wp-submenu' );
+
+		if ( jetpackSubMenu ) {
+			const subMenuItems = jetpackSubMenu.querySelectorAll( 'li:not(.wp-submenu-head) a' );
+
+			const urlPatterns = [
+				{
+					key: 'dashboard',
+					pattern: '/wp-admin/admin.php?page=jetpack#/dashboard',
+					matchType: 'end',
+				},
+				{
+					key: 'activityLog',
+					pattern: 'https://jetpack.com/redirect/?source=cloud-activity-log-wp-menu',
+					matchType: 'start',
+				},
+				{
+					key: 'settings',
+					pattern: '/wp-admin/admin.php?page=jetpack#/settings',
+					matchType: 'end',
+				},
+			];
+
+			const findIndex = ( urlPattern, matchType ) => {
+				let foundIndex = -1;
+				subMenuItems.forEach( ( item, index ) => {
+					const href = item.href;
+					if (
+						( matchType === 'end' && href.endsWith( urlPattern ) ) ||
+						( matchType === 'start' && href.startsWith( urlPattern ) )
+					) {
+						foundIndex = index + 1;
+					}
+				} );
+				return foundIndex;
+			};
+
+			urlPatterns.forEach( ( { key, pattern, matchType } ) => {
+				const index = findIndex( pattern, matchType );
+				pageOrder[ key ] = index;
+			} );
+			return pageOrder;
+		}
+	}
+}
 
 /**
  * Manages changing the visuals of the sub-nav items on the left sidebar when the React app changes routes
  *
- * @param pageOrder
  */
-window.wpNavMenuClassChange = function ( pageOrder = { dashboard: 1, settings: 2 } ) {
+window.wpNavMenuClassChange = function () {
+	const pageOrder = jetpackPageOrder();
+
 	let hash = window.location.hash;
+	let page = new URLSearchParams( window.location.search );
 
 	// Clear currently highlighted sub-nav item
 	jQuery( '.current' ).each( function ( i, obj ) {
@@ -814,14 +1066,18 @@ window.wpNavMenuClassChange = function ( pageOrder = { dashboard: 1, settings: 2
 
 	// Set the current sub-nav item according to the current hash route
 	hash = hash.split( '?' )[ 0 ].replace( /#/, '' );
-	if (
+	page = page.get( 'page' );
+
+	if ( myJetpackRoutes.includes( page ) ) {
+		getJetpackSubNavItem( pageOrder.myJetpack )?.classList.add( 'current' );
+	} else if (
 		dashboardRoutes.includes( hash ) ||
 		recommendationsRoutes.includes( hash ) ||
 		productDescriptionRoutes.includes( hash )
 	) {
-		getJetpackSubNavItem( pageOrder.dashboard ).classList.add( 'current' );
+		getJetpackSubNavItem( pageOrder.dashboard )?.classList.add( 'current' );
 	} else if ( settingsRoutes.includes( hash ) ) {
-		getJetpackSubNavItem( pageOrder.settings ).classList.add( 'current' );
+		getJetpackSubNavItem( pageOrder.settings )?.classList.add( 'current' );
 	}
 
 	const $body = jQuery( 'body' );

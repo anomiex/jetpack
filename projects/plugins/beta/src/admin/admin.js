@@ -95,7 +95,7 @@
 		const header_text = /^ *[0-9]+ *$/.test( search_for ) ? `${ found.key }` : found.header;
 		const class_selector = '.branch-card-header';
 
-		const found_position = header_text.indexOf( search_for );
+		const found_position = header_text.toLowerCase().indexOf( search_for.toLowerCase() );
 		if ( -1 === found_position ) {
 			hide( element );
 			return;
@@ -201,8 +201,8 @@
 	/**
 	 * Massage search input to match pr/release 'header'.
 	 *
-	 * @param   {string} search - The raw search input text.
-	 * @returns {string} The massaged search string.
+	 * @param {string} search - The raw search input text.
+	 * @return {string} The massaged search string.
 	 */
 	function pr_to_header( search ) {
 		return search
@@ -218,11 +218,17 @@
 	 *
 	 * @param {string} word   - The search input term.
 	 * @param {string} phrase - The full pr/release header text.
-	 * @returns {string} Search result with span wrapping matching word (search input) for styling.
+	 * @return {string} Search result with span wrapping matching word (search input) for styling.
 	 */
 	function highlight_word( word, phrase ) {
-		const replace = '<span class="highlight">' + word + '</span>';
-		return phrase.replace( word, replace );
+		// Escape special regex characters in the search word
+		const escapedWord = word.replace( /[.*+?^${}()|[\]\\]/g, '\\$&' );
+		// Create a case-insensitive regex to find all occurrences in the phrase
+		const regex = new RegExp( escapedWord, 'gi' );
+		// Replace with the matched text (preserving original case) wrapped in a span
+		return phrase.replace( regex, function ( match ) {
+			return '<span class="highlight">' + match + '</span>';
+		} );
 	}
 
 	/**

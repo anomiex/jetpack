@@ -1,8 +1,5 @@
-import {
-	getSiteFragment,
-	isAtomicSite,
-	isSimpleSite,
-} from '@automattic/jetpack-shared-extension-utils';
+import { isWpcomPlatformSite, isSimpleSite } from '@automattic/jetpack-script-data';
+import { getSiteFragment } from '@automattic/jetpack-shared-extension-utils';
 import apiFetch from '@wordpress/api-fetch';
 import { dispatch } from '@wordpress/data';
 import { __, sprintf } from '@wordpress/i18n';
@@ -17,8 +14,8 @@ import '@wordpress/notices';
 function getPlanUrl() {
 	const siteFragment = getSiteFragment();
 
-	if ( undefined !== typeof window && window.location && siteFragment ) {
-		if ( isSimpleSite() || isAtomicSite() ) {
+	if ( window?.location && siteFragment ) {
+		if ( isWpcomPlatformSite() ) {
 			return `https://wordpress.com/plans/my-plan/${ siteFragment }`;
 		}
 
@@ -38,22 +35,27 @@ function getPlanUrl() {
  * after redirection from WPCOM.
  */
 ( async () => {
-	if ( undefined !== typeof window && window.location ) {
+	if ( window?.location ) {
 		const queryParams = new URLSearchParams( window.location.search );
 
 		if ( queryParams.get( 'plan_upgraded' ) ) {
 			let planName = null;
 
-			getPlanNameFromApi: try {
-				// not updating if simple site
+			try {
 				if ( isSimpleSite() ) {
-					break getPlanNameFromApi;
+					const siteObj = await apiFetch( {
+						path: `/sites/${ parseInt( window?.Jetpack_Editor_Initial_State?.wpcomBlogId ) || 0 }`,
+						apiNamespace: 'rest/v1.1',
+					} );
+					if ( siteObj?.plan ) {
+						planName = siteObj.plan.product_name_short;
+					}
+				} else {
+					const jetpackSiteInfo = await apiFetch( { path: '/jetpack/v4/site' } );
+					const data = JSON.parse( jetpackSiteInfo.data );
+
+					planName = data.plan.product_name;
 				}
-
-				const jetpackSiteInfo = await apiFetch( { path: '/jetpack/v4/site' } );
-				const data = JSON.parse( jetpackSiteInfo.data );
-
-				planName = data.plan.product_name;
 			} finally {
 				const planUrl = getPlanUrl();
 

@@ -1,9 +1,14 @@
 import { RichText } from '@wordpress/block-editor';
 import { useSelect } from '@wordpress/data';
-import { useEffect, useState, useMemo } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
-import { minimumTransactionAmountForCurrency } from '../../shared/currencies';
+import {
+	getDefaultDonationAmountsForCurrency,
+	minimumTransactionAmountForCurrency,
+} from '../../shared/currencies';
 import Amount from './amount';
+import { getDefaultTexts } from './utils';
+
+const DEFAULT_TEXTS = getDefaultTexts();
 
 const Tab = ( { activeTab, attributes, setAttributes } ) => {
 	const {
@@ -12,8 +17,11 @@ const Tab = ( { activeTab, attributes, setAttributes } ) => {
 		monthlyDonation,
 		annualDonation,
 		showCustomAmount,
-		chooseAmountText,
-		customAmountText,
+		customAmountPlaceholder,
+		// Destructure defaults are only applied when the property is `undefined`.
+		// User-cleared empty strings are left as-is, so they render empty.
+		chooseAmountText = DEFAULT_TEXTS.chooseAmountText,
+		customAmountText = DEFAULT_TEXTS.customAmountText,
 	} = attributes;
 
 	const donationAttributes = {
@@ -22,10 +30,9 @@ const Tab = ( { activeTab, attributes, setAttributes } ) => {
 		'1 year': 'annualDonation',
 	};
 
-	const getDonationValue = key => attributes[ donationAttributes[ activeTab ] ][ key ];
-
+	const donationAttribute = donationAttributes[ activeTab ];
+	const getDonationValue = key => attributes[ donationAttribute ][ key ];
 	const setDonationValue = ( key, value ) => {
-		const donationAttribute = donationAttributes[ activeTab ];
 		const donation = attributes[ donationAttribute ];
 		setAttributes( {
 			[ donationAttribute ]: {
@@ -36,37 +43,7 @@ const Tab = ( { activeTab, attributes, setAttributes } ) => {
 	};
 
 	// Updates the amounts whenever there are new defaults due to a currency change.
-	const [ previousCurrency, setPreviousCurrency ] = useState( currency );
-	const minAmount = minimumTransactionAmountForCurrency( currency );
-	const defaultAmounts = useMemo(
-		() => [
-			minAmount * 10, // 1st tier (USD 5)
-			minAmount * 30, // 2nd tier (USD 15)
-			minAmount * 200, // 3rd tier (USD 100)
-		],
-		[ minAmount ]
-	);
-	useEffect( () => {
-		if ( previousCurrency === currency ) {
-			return;
-		}
-		setPreviousCurrency( currency );
-
-		setAttributes( {
-			oneTimeDonation: { ...oneTimeDonation, amounts: defaultAmounts },
-			monthlyDonation: { ...monthlyDonation, amounts: defaultAmounts },
-			annualDonation: { ...annualDonation, amounts: defaultAmounts },
-		} );
-	}, [
-		currency,
-		previousCurrency,
-		defaultAmounts,
-		oneTimeDonation,
-		monthlyDonation,
-		annualDonation,
-		setAttributes,
-	] );
-
+	const defaultAmounts = getDefaultDonationAmountsForCurrency( currency );
 	const amounts = getDonationValue( 'amounts' );
 
 	const setAmount = ( amount, tier ) => {
@@ -94,7 +71,7 @@ const Tab = ( { activeTab, attributes, setAttributes } ) => {
 			<RichText
 				tagName="h4"
 				placeholder={ __( 'Write a message…', 'jetpack' ) }
-				value={ getDonationValue( 'heading' ) }
+				value={ getDonationValue( 'heading' ) ?? DEFAULT_TEXTS[ donationAttribute ]?.heading }
 				onChange={ value => setDonationValue( 'heading', value ) }
 			/>
 			<RichText
@@ -130,7 +107,9 @@ const Tab = ( { activeTab, attributes, setAttributes } ) => {
 					<Amount
 						currency={ currency }
 						label={ __( 'Custom amount', 'jetpack' ) }
-						defaultValue={ minimumTransactionAmountForCurrency( currency ) * 100 }
+						defaultValue={
+							customAmountPlaceholder ?? minimumTransactionAmountForCurrency( currency ) * 100
+						}
 						className="donations__custom-amount"
 						disabled={ true }
 					/>
@@ -140,14 +119,16 @@ const Tab = ( { activeTab, attributes, setAttributes } ) => {
 			<RichText
 				tagName="p"
 				placeholder={ __( 'Write a message…', 'jetpack' ) }
-				value={ getDonationValue( 'extraText' ) }
+				value={ getDonationValue( 'extraText' ) ?? DEFAULT_TEXTS.extraText }
 				onChange={ value => setDonationValue( 'extraText', value ) }
 			/>
 			<div className="wp-block-button donations__donate-button-wrapper">
 				<RichText
-					className="wp-block-button__link donations__donate-button"
+					className="wp-block-button__link wp-element-button donations__donate-button"
 					placeholder={ __( 'Write a message…', 'jetpack' ) }
-					value={ getDonationValue( 'buttonText' ) }
+					value={
+						getDonationValue( 'buttonText' ) ?? DEFAULT_TEXTS[ donationAttribute ]?.buttonText
+					}
 					onChange={ value => setButtonText( value ) }
 					allowedFormats={ allowedFormatsForButton }
 				/>

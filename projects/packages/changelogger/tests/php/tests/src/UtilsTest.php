@@ -9,7 +9,10 @@ namespace Automattic\Jetpack\Changelogger\Tests;
 
 use Automattic\Jetpack\Changelog\ChangeEntry;
 use Automattic\Jetpack\Changelogger\FormatterPlugin;
+use Automattic\Jetpack\Changelogger\LoadChangeFileException;
 use Automattic\Jetpack\Changelogger\Utils;
+use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Symfony\Component\Console\Helper\DebugFormatterHelper;
 use Symfony\Component\Console\Output\BufferedOutput;
 use Symfony\Component\Console\Output\ConsoleOutput;
@@ -17,30 +20,16 @@ use Symfony\Component\Console\Output\NullOutput;
 use Symfony\Component\Process\Exception\ProcessTimedOutException;
 use Symfony\Component\Process\ExecutableFinder;
 use Symfony\Component\Process\Process;
-use function Wikimedia\quietCall;
 
 /**
  * Tests for the changelogger utils.
  *
  * @covers \Automattic\Jetpack\Changelogger\Utils
  */
+#[CoversClass( Utils::class )]
 class UtilsTest extends TestCase {
-	use \Yoast\PHPUnitPolyfills\Polyfills\AssertIsType;
+	use \Yoast\PHPUnitPolyfills\Polyfills\AssertObjectProperty;
 	use \Yoast\PHPUnitPolyfills\Polyfills\AssertionRenames;
-	use \Yoast\PHPUnitPolyfills\Polyfills\ExpectException;
-
-	/**
-	 * Test error_clear_last.
-	 */
-	public function test_error_clear_last() {
-		quietCall( 'trigger_error', 'Test', E_USER_NOTICE );
-		$err = error_get_last();
-		$this->assertSame( 'Test', $err['message'] );
-
-		Utils::error_clear_last();
-		$err = error_get_last();
-		$this->assertTrue( empty( $err['message'] ) ); // phpcs:ignore MediaWiki.PHPUnit.SpecificAssertions.assertEmpty -- We need the potential error suppression, behavior varies by PHP version.
-	}
 
 	/**
 	 * Test runCommand.
@@ -54,10 +43,11 @@ class UtilsTest extends TestCase {
 	 * @param string $expectOutput Expected output to the console.
 	 * @param int    $verbosity Output buffer verbosity.
 	 */
+	#[DataProvider( 'provideRunCommand' )]
 	public function testRunCommand( $cmd, $options, $expectExitCode, $expectStdout, $expectStderr, $expectOutput, $verbosity = BufferedOutput::VERBOSITY_DEBUG ) {
 		$sh = ( new ExecutableFinder() )->find( 'sh' );
 		if ( ! $sh ) {
-			$this->markTestSkipped( 'This test requires a Posix shell' );
+			$this->markTestSkipped( 'This test requires a POSIX shell' );
 		}
 
 		$expectOutput = strtr( $expectOutput, array( '{SHELL}' => $sh ) );
@@ -76,8 +66,8 @@ class UtilsTest extends TestCase {
 	/**
 	 * Data provider for testRunCommand.
 	 */
-	public function provideRunCommand() {
-		$tmp = sys_get_temp_dir();
+	public static function provideRunCommand() {
+		$tmp = realpath( sys_get_temp_dir() );
 
 		return array(
 			'true'                      => array(
@@ -159,10 +149,11 @@ class UtilsTest extends TestCase {
 	 * Test loadChangeFile.
 	 *
 	 * @dataProvider provideLoadChangeFile
-	 * @param string                  $contents File contents.
-	 * @param array|\RuntimeException $expect Expected output.
-	 * @param array                   $expectDiagnostics Expected diagnostics.
+	 * @param string                        $contents File contents.
+	 * @param array|LoadChangeFileException $expect Expected output.
+	 * @param array                         $expectDiagnostics Expected diagnostics.
 	 */
+	#[DataProvider( 'provideLoadChangeFile' )]
 	public function testLoadChangeFile( $contents, $expect, $expectDiagnostics = array() ) {
 		$temp = tempnam( sys_get_temp_dir(), 'phpunit-testLoadChangeFile-' );
 		try {
@@ -175,10 +166,10 @@ class UtilsTest extends TestCase {
 				try {
 					Utils::loadChangeFile( $temp );
 					$this->fail( 'Expcected exception not thrown' );
-				} catch ( \RuntimeException $ex ) {
+				} catch ( LoadChangeFileException $ex ) {
 					$this->assertInstanceOf( get_class( $expect ), $ex );
 					$this->assertMatchesRegularExpression( $expect->getMessage(), $ex->getMessage() );
-					$this->assertObjectHasAttribute( 'fileLine', $ex );
+					$this->assertObjectHasProperty( 'fileLine', $ex );
 					$this->assertSame( $expect->fileLine, $ex->fileLine );
 				}
 			}
@@ -190,9 +181,9 @@ class UtilsTest extends TestCase {
 	/**
 	 * Data provider for testLoadChangeFile.
 	 */
-	public function provideLoadChangeFile() {
+	public static function provideLoadChangeFile() {
 		$ex = function ( $msg, $line ) {
-			$ret           = new \RuntimeException( $msg );
+			$ret           = new LoadChangeFileException( $msg );
 			$ret->fileLine = $line;
 			return $ret;
 		};
@@ -317,14 +308,14 @@ class UtilsTest extends TestCase {
 		try {
 			Utils::loadChangeFile( 'doesnotexist/reallydoesnotexist.txt' );
 			$this->fail( 'Expected exception not thrown' );
-		} catch ( \RuntimeException $ex ) {
+		} catch ( LoadChangeFileException $ex ) {
 			$this->assertSame( 'File does not exist.', $ex->getMessage() );
 			$this->assertNull( $ex->fileLine );
 		}
 		try {
 			Utils::loadChangeFile( '.' );
 			$this->fail( 'Expected exception not thrown' );
-		} catch ( \RuntimeException $ex ) {
+		} catch ( LoadChangeFileException $ex ) {
 			$this->assertSame( 'Expected a file, got dir.', $ex->getMessage() );
 			$this->assertNull( $ex->fileLine );
 		}
@@ -337,7 +328,7 @@ class UtilsTest extends TestCase {
 				try {
 					Utils::loadChangeFile( $temp );
 					$this->fail( 'Expected exception not thrown' );
-				} catch ( \RuntimeException $ex ) {
+				} catch ( LoadChangeFileException $ex ) {
 					$this->assertSame( 'File is not readable.', $ex->getMessage() );
 					$this->assertNull( $ex->fileLine );
 				}
@@ -348,7 +339,7 @@ class UtilsTest extends TestCase {
 	}
 
 	/**
-	 * Test getRepoData
+	 * Test getRepoData with squash and merge commits.
 	 */
 	public function testGetRepoData() {
 		$this->useTempDir();
@@ -379,6 +370,7 @@ class UtilsTest extends TestCase {
 			array(
 				'mustRun' => true,
 				'env'     => array(
+					'GIT_CONFIG_GLOBAL'   => '/dev/null',
 					'GIT_AUTHOR_NAME'     => 'Dummy',
 					'GIT_AUTHOR_EMAIL'    => 'dummy@example.com',
 					'GIT_AUTHOR_DATE'     => '2021-01-01T11:11:11Z',
@@ -388,16 +380,33 @@ class UtilsTest extends TestCase {
 				),
 			),
 		);
-		Utils::runCommand( array( 'git', 'init', '.' ), ...$args );
+		Utils::runCommand( array( 'git', 'init', '-b', 'main', '.' ), ...$args );
 		Utils::runCommand( array( 'git', 'add', 'in-git.txt' ), ...$args );
 		Utils::runCommand( array( 'git', 'commit', '-m', 'Commit (#123)' ), ...$args );
 
+		// Let's create another branch, add a commit and merge to trunk.
+		Utils::runCommand( array( 'git', 'checkout', '-b', 'temp' ), ...$args );
+		file_put_contents( 'in-git2.txt', '' );
+		Utils::runCommand( array( 'git', 'add', 'in-git2.txt' ), ...$args );
+		Utils::runCommand( array( 'git', 'commit', '-m', 'Dummy commit message.' ), ...$args );
+		Utils::runCommand( array( 'git', 'checkout', 'main' ), ...$args );
+		Utils::runCommand( array( 'git', 'merge', 'temp', '--no-ff', '-m', 'Merge pull request #124 from temp.' ), ...$args );
+
 		$this->assertSame(
 			array(
-				'timestamp' => '2021-02-02T22:22:22+00:00',
+				'timestamp' => '2021-02-02T22:22:22Z',
 				'pr-num'    => '123',
 			),
 			Utils::getRepoData( 'in-git.txt', $output, $helper )
+		);
+
+		// Test the second commit.
+		$this->assertSame(
+			array(
+				'timestamp' => '2021-02-02T22:22:22Z',
+				'pr-num'    => '124',
+			),
+			Utils::getRepoData( 'in-git2.txt', $output, $helper )
 		);
 
 		// Test our non-git file again.
@@ -423,9 +432,7 @@ class UtilsTest extends TestCase {
 	 * Test loadAllChanges.
 	 */
 	public function testLoadAllChanges() {
-		$formatter = $this->getMockBuilder( FormatterPlugin::class )
-			->setMethodsExcept( array() )
-			->getMock();
+		$formatter = $this->getMockBuilder( FormatterPlugin::class )->getMock();
 		$formatter->expects( $this->never() )->method( $this->logicalNot( $this->matches( 'newChangeEntry' ) ) );
 		$formatter->method( 'newChangeEntry' )->willReturnCallback(
 			function ( $data ) {
@@ -453,7 +460,7 @@ class UtilsTest extends TestCase {
 
 		$this->assertSame(
 			'{"a":{"__class__":"Automattic\\\\Jetpack\\\\Changelog\\\\ChangeEntry","significance":"minor","timestamp":"2021-02-22T00:00:00+0000","subheading":"Added!","author":"","content":"AAAAA"},"b":{"__class__":"Automattic\\\\Jetpack\\\\Changelog\\\\ChangeEntry","significance":"minor","timestamp":"2021-02-24T00:00:00+0000","subheading":"Unknown","author":"","content":"BBBBB"}}',
-			json_encode( $ret )
+			json_encode( $ret, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE )
 		);
 		$this->assertSame(
 			array(
@@ -470,5 +477,4 @@ class UtilsTest extends TestCase {
 			$out->fetch()
 		);
 	}
-
 }

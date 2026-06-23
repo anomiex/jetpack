@@ -1,25 +1,25 @@
 {
-	"name": "required-review",
-	"version": "3.0.1-alpha",
+	"private": true,
 	"description": "Check that a Pull Request has reviews from required teams.",
-	"main": "index.js",
-	"author": "Automattic",
 	"license": "GPL-2.0-or-later",
+	"author": "Automattic",
+	"type": "module",
+	"main": "index.js",
+	"scripts": {
+		"build": "tsdown",
+		"test": "NODE_OPTIONS=--experimental-vm-modules jest --config=tests/jest.config.js --verbose",
+		"test-coverage": "pnpm run test --coverage"
+	},
 	"dependencies": {
-		"@actions/core": "1.6.0",
-		"@actions/github": "5.0.1",
+		"@actions/core": "3.0.1",
+		"@actions/github": "9.1.1",
 		"error": "10.4.0",
-		"js-yaml": "4.1.0",
-		"picomatch": "2.2.3"
+		"js-yaml": "4.2.0",
+		"picomatch": "4.0.4"
 	},
 	"devDependencies": {
-		"@vercel/ncc": "0.28.5"
-	},
-	"scripts": {
-		"build": "ncc build src/main.js -o dist --source-map --license licenses.txt"
-	},
-	"engines": {
-		"node": "^16.13.2",
-		"yarn": "use pnpm instead - see docs/yarn-upgrade.md"
+		"jest": "30.4.2",
+		"rollup-plugin-license": "3.7.1",
+		"tsdown": "0.22.2"
 	}
 }

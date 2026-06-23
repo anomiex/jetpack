@@ -1,6 +1,5 @@
 import {
 	Button,
-	ExternalLink,
 	Notice,
 	PanelBody,
 	PanelRow,
@@ -8,6 +7,7 @@ import {
 	ToggleControl,
 } from '@wordpress/components';
 import { __, sprintf, _n } from '@wordpress/i18n';
+import { Link } from '@wordpress/ui';
 import { MAX_IMAGE_COUNT } from './constants';
 
 export default function InstagramGalleryInspectorControls( {
@@ -23,7 +23,7 @@ export default function InstagramGalleryInspectorControls( {
 	const renderSidebarNotice = () => {
 		const noticeContent = accountImageTotal
 			? sprintf(
-					/* translators: placeholder is a number. */
+					/* translators: %s: the number of posts. */
 					_n(
 						'There is currently only %s post in your Instagram account.',
 						'There are currently only %s posts in your Instagram account.',
@@ -47,9 +47,9 @@ export default function InstagramGalleryInspectorControls( {
 			<PanelBody title={ __( 'Account Settings', 'jetpack' ) }>
 				<PanelRow>
 					<span>{ __( 'Account', 'jetpack' ) }</span>
-					<ExternalLink href={ `https://www.instagram.com/${ instagramUser }/` }>
+					<Link openInNewTab href={ `https://www.instagram.com/${ instagramUser }/` }>
 						@{ instagramUser }
-					</ExternalLink>
+					</Link>
 				</PanelRow>
 				{ currentUserConnected && (
 					<PanelRow>
@@ -66,6 +66,8 @@ export default function InstagramGalleryInspectorControls( {
 			<PanelBody title={ __( 'Display Settings', 'jetpack' ) }>
 				{ shouldRenderSidebarNotice ? renderSidebarNotice() : null }
 				<RangeControl
+					__nextHasNoMarginBottom={ true }
+					__next40pxDefaultSize
 					label={ __( 'Number of Posts', 'jetpack' ) }
 					value={ count }
 					onChange={ value => setAttributes( { count: value } ) }
@@ -73,6 +75,8 @@ export default function InstagramGalleryInspectorControls( {
 					max={ MAX_IMAGE_COUNT }
 				/>
 				<RangeControl
+					__nextHasNoMarginBottom={ true }
+					__next40pxDefaultSize
 					label={ __( 'Number of Columns', 'jetpack' ) }
 					value={ columns }
 					onChange={ value => setAttributes( { columns: value } ) }
@@ -80,6 +84,8 @@ export default function InstagramGalleryInspectorControls( {
 					max={ 6 }
 				/>
 				<RangeControl
+					__nextHasNoMarginBottom={ true }
+					__next40pxDefaultSize
 					label={ __( 'Image Spacing (px)', 'jetpack' ) }
 					value={ spacing }
 					onChange={ value => setAttributes( { spacing: value } ) }
@@ -87,6 +93,7 @@ export default function InstagramGalleryInspectorControls( {
 					max={ 50 }
 				/>
 				<ToggleControl
+					__nextHasNoMarginBottom={ true }
 					label={ __( 'Stack on mobile', 'jetpack' ) }
 					checked={ isStackedOnMobile }
 					onChange={ () =>

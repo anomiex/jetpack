@@ -9,6 +9,11 @@
 namespace Automattic\Jetpack\Extensions\Premium_Content\Subscription_Service;
 
 use function site_url;
+
+if ( ! defined( 'ABSPATH' ) ) {
+	exit( 0 );
+}
+
 // phpcs:disable
 
 /**
@@ -39,9 +44,20 @@ class Unconfigured_Subscription_Service implements Subscription_Service {
 	/**
 	 * No subscription service available, no users can see this content.
 	 *
-	 * @param array $valid_plan_ids .
+	 * @param array  $valid_plan_ids .
+	 * @param string $access_level   .
 	 */
-	public function visitor_can_view_content( $valid_plan_ids ) {
+	public function visitor_can_view_content( $valid_plan_ids, $access_level ) {
+		return false;
+	}
+
+	/**
+	 * is the current user a pending subscriber for the current site?
+	 *
+	 * @return bool
+	 */
+	public function is_current_user_pending_subscriber(): bool
+	{
 		return false;
 	}
 

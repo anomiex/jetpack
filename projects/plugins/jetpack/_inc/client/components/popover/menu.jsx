@@ -1,9 +1,8 @@
-import Popover from 'components/popover';
 import PropTypes from 'prop-types';
-import React from 'react';
-import ReactDom from 'react-dom';
+import { createRef, Children, cloneElement, Component } from 'react';
+import Popover from 'components/popover';
 
-class PopoverMenu extends React.Component {
+class PopoverMenu extends Component {
 	static propTypes = {
 		isVisible: PropTypes.bool.isRequired,
 		onClose: PropTypes.func.isRequired,
@@ -15,13 +14,15 @@ class PopoverMenu extends React.Component {
 		position: 'top',
 	};
 
+	menuRef = createRef();
+
 	componentWillUnmount() {
 		// Make sure we don't hold on to reference to the DOM reference
 		this._previouslyFocusedElement = null;
 	}
 
 	render() {
-		const children = React.Children.map( this.props.children, this._setPropsOnChild, this );
+		const children = Children.map( this.props.children, this._setPropsOnChild, this );
 
 		return (
 			<Popover
@@ -33,7 +34,7 @@ class PopoverMenu extends React.Component {
 				className={ this.props.className }
 			>
 				<div
-					ref="menu"
+					ref={ this.menuRef }
 					role="menu"
 					className="dops-popover__menu"
 					onKeyDown={ this._onKeyDown }
@@ -57,17 +58,16 @@ class PopoverMenu extends React.Component {
 			onClick = child.props.onClick.bind( null, boundOnClose );
 		}
 
-		return React.cloneElement( child, {
+		return cloneElement( child, {
 			onClick: onClick,
 		} );
 	};
 
 	_onShow = () => {
-		const elementToFocus = ReactDom.findDOMNode( this.refs.menu );
-
-		this._previouslyFocusedElement = document.activeElement;
+		const elementToFocus = this.menuRef.current;
 
 		if ( elementToFocus ) {
+			this._previouslyFocusedElement = elementToFocus.ownerDocument.activeElement;
 			elementToFocus.focus();
 		}
 	};
@@ -83,7 +83,7 @@ class PopoverMenu extends React.Component {
 	 * bottom.
 	 */
 	_getClosestSibling = ( target, isDownwardMotion = true ) => {
-		const menu = ReactDom.findDOMNode( this.refs.menu );
+		const menu = this.menuRef.current;
 
 		let first = menu.firstChild,
 			last = menu.lastChild;

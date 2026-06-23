@@ -1,5 +1,9 @@
 <?php // phpcs:ignore WordPress.Files.FileName.InvalidClassFileName
 
+if ( ! defined( 'ABSPATH' ) ) {
+	exit( 0 );
+}
+
 new WPCOM_JSON_API_Get_Taxonomies_Endpoint(
 	array(
 		'description'                          => "Get a list of a site's categories.",
@@ -72,6 +76,8 @@ new WPCOM_JSON_API_Get_Taxonomies_Endpoint(
 
 /**
  * GET taxonomies endpoint class.
+ *
+ * @phan-constructor-used-for-side-effects
  */
 class WPCOM_JSON_API_Get_Taxonomies_Endpoint extends WPCOM_JSON_API_Endpoint {
 	/**
@@ -91,6 +97,9 @@ class WPCOM_JSON_API_Get_Taxonomies_Endpoint extends WPCOM_JSON_API_Endpoint {
 
 		$args = $this->query_args();
 		$args = $this->process_args( $args );
+		if ( is_wp_error( $args ) ) {
+			return $args;
+		}
 
 		if ( preg_match( '#/tags#i', $path ) ) {
 			return $this->tags( $args );
@@ -141,7 +150,8 @@ class WPCOM_JSON_API_Get_Taxonomies_Endpoint extends WPCOM_JSON_API_Endpoint {
 
 		$cats = get_categories( $args );
 		unset( $args['offset'] );
-		$found = wp_count_terms( 'category', $args );
+		$args['taxonomy'] = 'category';
+		$found            = wp_count_terms( $args );
 
 		$cats_obj = array();
 		foreach ( $cats as $cat ) {
@@ -164,7 +174,8 @@ class WPCOM_JSON_API_Get_Taxonomies_Endpoint extends WPCOM_JSON_API_Endpoint {
 
 		$tags = (array) get_tags( $args );
 		unset( $args['offset'] );
-		$found = wp_count_terms( 'post_tag', $args );
+		$args['taxonomy'] = 'post_tag';
+		$found            = wp_count_terms( $args );
 
 		$tags_obj = array();
 		foreach ( $tags as $tag ) {

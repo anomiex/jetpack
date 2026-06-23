@@ -1,19 +1,22 @@
-import { isAtomicSite, isSimpleSite } from '@automattic/jetpack-shared-extension-utils';
-import { InspectorControls } from '@wordpress/block-editor';
+import { isWpcomPlatformSite } from '@automattic/jetpack-script-data';
+import { getBlockIconComponent } from '@automattic/jetpack-shared-extension-utils';
+import { InspectorControls, useBlockProps } from '@wordpress/block-editor';
 import { getBlockDefaultClassName } from '@wordpress/blocks';
-import { Placeholder, SandBox, Button, ExternalLink, withNotices } from '@wordpress/components';
+import { Placeholder, SandBox, Button, withNotices } from '@wordpress/components';
 import { compose } from '@wordpress/compose';
 import { useEffect, useState } from '@wordpress/element';
 import { __, _x } from '@wordpress/i18n';
+import { Link } from '@wordpress/ui';
 import { withViewportMatch } from '@wordpress/viewport';
+import metadata from './block.json';
 import GoogleCalendarInspectorControls from './controls';
-import icon from './icon';
 import { URL_REGEX, parseEmbed } from './utils';
+
+const icon = getBlockIconComponent( metadata );
 
 export function GoogleCalendarEdit( props ) {
 	const {
 		attributes: { url, height },
-		className,
 		isMobile,
 		isSelected,
 		name,
@@ -21,6 +24,8 @@ export function GoogleCalendarEdit( props ) {
 		noticeUI,
 		setAttributes,
 	} = props;
+
+	const blockProps = useBlockProps();
 
 	const [ editedEmbed, setEditedEmbed ] = useState( url || '' );
 	const [ editingUrl, setEditingUrl ] = useState( false );
@@ -93,9 +98,9 @@ export function GoogleCalendarEdit( props ) {
 	const html = `<iframe src="${ url }" style="border:0" scrolling="no" frameborder="0" height="${ iframeHeight }"></iframe>`;
 
 	const permissionsLink = (
-		<ExternalLink href="https://en.support.wordpress.com/google-calendar/">
+		<Link openInNewTab href="https://en.support.wordpress.com/google-calendar/">
 			{ __( 'Enable Permissions for the calendar you want to share', 'jetpack' ) }
-		</ExternalLink>
+		</Link>
 	);
 
 	const controls = (
@@ -109,56 +114,55 @@ export function GoogleCalendarEdit( props ) {
 		</InspectorControls>
 	);
 
-	if ( editingUrl || ! url ) {
-		const supportLink =
-			isSimpleSite() || isAtomicSite()
-				? 'https://en.support.wordpress.com/wordpress-editor/blocks/google-calendar/'
-				: 'https://jetpack.com/support/jetpack-blocks/google-calendar/';
+	let content;
 
-		return (
-			<div className={ className }>
+	if ( editingUrl || ! url ) {
+		const supportLink = isWpcomPlatformSite()
+			? 'https://en.support.wordpress.com/wordpress-editor/blocks/google-calendar/'
+			: 'https://jetpack.com/support/jetpack-blocks/google-calendar/';
+
+		content = (
+			<>
 				{ controls }
 				<Placeholder
-					className={ className }
 					label={ __( 'Google Calendar', 'jetpack' ) }
 					icon={ icon }
-					instructions={
-						<ol className={ `${ defaultClassName }-placeholder-instructions` }>
-							<li>{ permissionsLink }</li>
-							<li>
-								{ __(
-									'Paste the embed code you copied from your Google Calendar below',
-									'jetpack'
-								) }
-							</li>
-						</ol>
-					}
 					notices={ noticeUI }
 				>
+					<ol className={ `${ defaultClassName }-placeholder-instructions` }>
+						<li>{ permissionsLink }</li>
+						<li>
+							{ __( 'Paste the embed code you copied from your Google Calendar below', 'jetpack' ) }
+						</li>
+					</ol>
 					{ getEditForm( `${ defaultClassName }-embed-form-editor` ) }
 					<div className={ `${ defaultClassName }-placeholder-links` }>
-						<ExternalLink href={ supportLink }>{ __( 'Learn more', 'jetpack' ) }</ExternalLink>
+						<Link openInNewTab href={ supportLink }>
+							{ __( 'Learn more', 'jetpack' ) }
+						</Link>
 					</div>
 				</Placeholder>
-			</div>
+			</>
+		);
+	} else {
+		// Disabled because the overlay div doesn't actually have a role or functionality
+		// as far as the user is concerned. We're just catching the first click so that
+		// the block can be selected without interacting with the embed preview that the overlay covers.
+		/* eslint-disable jsx-a11y/no-static-element-interactions */
+		content = (
+			<>
+				{ controls }
+				<div>
+					<SandBox html={ html } onFocus={ hideOverlay } />
+					{ ! interactive && (
+						<div className="block-library-embed__interactive-overlay" onMouseUp={ hideOverlay } />
+					) }
+				</div>
+			</>
 		);
 	}
 
-	// Disabled because the overlay div doesn't actually have a role or functionality
-	// as far as the user is concerned. We're just catching the first click so that
-	// the block can be selected without interacting with the embed preview that the overlay covers.
-	/* eslint-disable jsx-a11y/no-static-element-interactions */
-	return (
-		<div className={ className }>
-			{ controls }
-			<div>
-				<SandBox html={ html } onFocus={ hideOverlay } />
-				{ ! interactive && (
-					<div className="block-library-embed__interactive-overlay" onMouseUp={ hideOverlay } />
-				) }
-			</div>
-		</div>
-	);
+	return <div { ...blockProps }>{ content }</div>;
 }
 
 export default compose(

@@ -1,4 +1,4 @@
-<?php
+<?php // phpcs:ignore WordPress.Files.FileName.NotHyphenatedLowercase
 /**
  * This file is meant to be the home for any generic & reusable functions
  * that can be accessed anywhere within Jetpack.
@@ -11,17 +11,17 @@
  */
 
 use Automattic\Jetpack\Connection\Client;
-use Automattic\Jetpack\Device_Detection;
 use Automattic\Jetpack\Redirect;
 use Automattic\Jetpack\Status\Host;
+use Automattic\Jetpack\Status\Request;
 use Automattic\Jetpack\Sync\Functions;
 
-/**
- * Disable direct access.
- */
+// Disable direct access.
 if ( ! defined( 'ABSPATH' ) ) {
-	exit;
+	exit( 0 );
 }
+
+require_once __DIR__ . '/functions.is-mobile.php';
 
 /**
  * Hook into Core's _deprecated_function
@@ -33,9 +33,9 @@ if ( ! defined( 'ABSPATH' ) ) {
  * @param string $replacement Optional. The function that should have been called. Default null.
  * @param string $version     The version of Jetpack that deprecated the function.
  */
-function jetpack_deprecated_function( $function, $replacement, $version ) { // phpcs:ignore VariableAnalysis.CodeAnalysis.VariableAnalysis.UnusedVariable
+function jetpack_deprecated_function( $function, $replacement, $version ) {
 	// Bail early for non-Jetpack deprecations.
-	if ( 0 !== strpos( $version, 'jetpack-' ) ) {
+	if ( ! str_starts_with( $version, 'jetpack-' ) ) {
 		return;
 	}
 
@@ -51,8 +51,10 @@ function jetpack_deprecated_function( $function, $replacement, $version ) { // p
 	) {
 		error_log( // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			sprintf(
-				/* Translators: 1. Function name. 2. Jetpack version number. */
-				__( 'The %1$s function will be removed from the Jetpack plugin in version %2$s.', 'jetpack' ),
+				doing_action( 'after_setup_theme' ) || did_action( 'after_setup_theme' ) ?
+					/* Translators: 1. Function name. 2. Jetpack version number. */
+					__( 'The %1$s function will be removed from the Jetpack plugin in version %2$s.', 'jetpack' )
+					: 'The %1$s function will be removed from the Jetpack plugin in version %2$s.',
 				$function,
 				$removed_version
 			)
@@ -75,7 +77,7 @@ add_action( 'deprecated_function_run', 'jetpack_deprecated_function', 10, 3 );
  */
 function jetpack_deprecated_file( $file, $replacement, $version, $message ) { // phpcs:ignore VariableAnalysis.CodeAnalysis.VariableAnalysis.UnusedVariable
 	// Bail early for non-Jetpack deprecations.
-	if ( 0 !== strpos( $version, 'jetpack-' ) ) {
+	if ( ! str_starts_with( $version, 'jetpack-' ) ) {
 		return;
 	}
 
@@ -119,7 +121,7 @@ function jetpack_get_future_removed_version( $version ) {
 	 */
 	preg_match( '#(([0-9]+\.([0-9]+))(?:\.[0-9]+)*)#', $version, $matches );
 
-	if ( isset( $matches[2], $matches[3] ) ) {
+	if ( isset( $matches[2] ) && isset( $matches[3] ) ) {
 		$deprecated_version = (float) $matches[2];
 		$deprecated_minor   = (float) $matches[3];
 
@@ -137,7 +139,7 @@ function jetpack_get_future_removed_version( $version ) {
 		// We'll remove the function from the code 6 months later, thus 6 major versions later.
 		$removed_version = $deprecated_version + 0.6;
 
-		return (float) $removed_version;
+		return $removed_version;
 	}
 
 	return false;
@@ -176,6 +178,37 @@ function jetpack_register_migration_post_type() {
 }
 
 /**
+ * Checks whether the Post DB threat currently exists on the site.
+ *
+ * @since 12.0
+ *
+ * @param string $option_name  Option name.
+ *
+ * @return WP_Post|bool
+ */
+function jetpack_migration_post_exists( $option_name ) {
+	$query = new WP_Query(
+		array(
+			'post_type'              => 'jetpack_migration',
+			'title'                  => $option_name,
+			'post_status'            => 'all',
+			'posts_per_page'         => 1,
+			'no_found_rows'          => true,
+			'ignore_sticky_posts'    => true,
+			'update_post_term_cache' => false,
+			'update_post_meta_cache' => false,
+			'orderby'                => 'post_date ID',
+			'order'                  => 'ASC',
+		)
+	);
+	if ( ! empty( $query->post ) ) {
+		return $query->post;
+	}
+
+	return false;
+}
+
+/**
  * Stores migration data in the database.
  *
  * @since 5.2
@@ -195,10 +228,9 @@ function jetpack_store_migration_data( $option_name, $option_value ) {
 		'post_date'             => gmdate( 'Y-m-d H:i:s', time() ),
 	);
 
-	$post = get_page_by_title( $option_name, 'OBJECT', 'jetpack_migration' );
-
-	if ( null !== $post ) {
-		$insert['ID'] = $post->ID;
+	$migration_post = jetpack_migration_post_exists( $option_name );
+	if ( $migration_post ) {
+		$insert['ID'] = $migration_post->ID;
 	}
 
 	return wp_insert_post( $insert, true );
@@ -214,15 +246,13 @@ function jetpack_store_migration_data( $option_name, $option_value ) {
  * @return mixed|null
  */
 function jetpack_get_migration_data( $option_name ) {
-	$post = get_page_by_title( $option_name, 'OBJECT', 'jetpack_migration' );
+	$post = jetpack_migration_post_exists( $option_name );
 
 	return null !== $post ? maybe_unserialize( $post->post_content_filtered ) : null;
 }
 
 /**
  * Prints a TOS blurb used throughout the connection prompts.
- *
- * Note: custom ToS messages are also defined in Jetpack_Pre_Connection_JITMs->get_raw_messages()
  *
  * @since 5.3
  *
@@ -232,7 +262,7 @@ function jetpack_render_tos_blurb() {
 	printf(
 		wp_kses(
 			/* Translators: placeholders are links. */
-			__( 'By clicking the <strong>Set up Jetpack</strong> button, you agree to our <a href="%1$s" target="_blank" rel="noopener noreferrer">Terms of Service</a> and to <a href="%2$s" target="_blank" rel="noopener noreferrer">share details</a> with WordPress.com.', 'jetpack' ),
+			__( 'By clicking <strong>Set up Jetpack</strong>, you agree to our <a href="%1$s" target="_blank" rel="noopener noreferrer">Terms of Service</a> and to <a href="%2$s" target="_blank" rel="noopener noreferrer">sync your site‘s data</a> with us.', 'jetpack' ),
 			array(
 				'a'      => array(
 					'href'   => array(),
@@ -308,8 +338,8 @@ add_filter( 'upgrader_pre_download', 'jetpack_upgrader_pre_download' );
 
  * @deprecated Automattic\Jetpack\Sync\Functions::json_wrap
  *
- * @param array|obj $any        Source data to be cleaned up.
- * @param array     $seen_nodes Built array of nodes.
+ * @param mixed $any        Source data to be cleaned up.
+ * @param array $seen_nodes Built array of nodes.
  *
  * @return array
  */
@@ -397,91 +427,133 @@ function jetpack_is_file_supported_for_sideloading( $file ) {
 }
 
 /**
- * Determine if the current User Agent matches the passed $kind
+ * Go through headers and get a list of Vary headers to add,
+ * including a Vary Accept header if necessary.
  *
- * @param string $kind Category of mobile device to check for.
- *                         Either: any, dumb, smart.
- * @param bool   $return_matched_agent Boolean indicating if the UA should be returned.
+ * @since 12.2
+ * @deprecated 14.8
  *
- * @return bool|string Boolean indicating if current UA matches $kind. If
- *                              $return_matched_agent is true, returns the UA string
+ * @param array $headers The headers to be sent.
+ *
+ * @return array $vary_header_parts Vary Headers to be sent.
  */
-function jetpack_is_mobile( $kind = 'any', $return_matched_agent = false ) {
+function jetpack_get_vary_headers( $headers = array() ) {
+	_deprecated_function( __FUNCTION__, '14.8', 'Automattic\Jetpack\Status\Request::get_vary_headers' );
 
-	/**
-	 * Filter the value of jetpack_is_mobile before it is calculated.
-	 *
-	 * Passing a truthy value to the filter will short-circuit determining the
-	 * mobile type, returning the passed value instead.
-	 *
-	 * @since  4.2.0
-	 *
-	 * @param bool|string $matches Boolean if current UA matches $kind or not. If
-	 *                             $return_matched_agent is true, should return the UA string
-	 * @param string      $kind Category of mobile device being checked
-	 * @param bool        $return_matched_agent Boolean indicating if the UA should be returned
-	 */
-	$pre = apply_filters( 'pre_jetpack_is_mobile', null, $kind, $return_matched_agent );
-	if ( $pre ) {
-		return $pre;
-	}
-
-	$return      = false;
-	$device_info = Device_Detection::get_info();
-
-	if ( 'any' === $kind ) {
-		$return = $device_info['is_phone'];
-	} elseif ( 'smart' === $kind ) {
-		$return = $device_info['is_smartphone'];
-	} elseif ( 'dumb' === $kind ) {
-		$return = $device_info['is_phone'] && ! $device_info['is_smartphone'];
-	}
-
-	if ( $return_matched_agent && true === $return ) {
-		$return = $device_info['is_phone_matched_ua'];
-	}
-
-	/**
-	 * Filter the value of jetpack_is_mobile
-	 *
-	 * @since  4.2.0
-	 *
-	 * @param bool|string $matches Boolean if current UA matches $kind or not. If
-	 *                             $return_matched_agent is true, should return the UA string
-	 * @param string      $kind Category of mobile device being checked
-	 * @param bool        $return_matched_agent Boolean indicating if the UA should be returned
-	 */
-	return apply_filters( 'jetpack_is_mobile', $return, $kind, $return_matched_agent );
+	return ( new Request() )->get_vary_headers( $headers );
 }
 
 /**
  * Determine whether the current request is for accessing the frontend.
+ * Also update Vary headers to indicate that the response may vary by Accept header.
+ *
+ * @deprecated 14.8
  *
  * @return bool True if it's a frontend request, false otherwise.
  */
 function jetpack_is_frontend() {
-	$is_frontend = true;
+	_deprecated_function( __FUNCTION__, '14.8', 'Automattic\Jetpack\Status\Request::is_frontend' );
 
-	if (
-		is_admin() ||
-		wp_doing_ajax() ||
-		wp_is_json_request() ||
-		wp_is_jsonp_request() ||
-		wp_is_xml_request() ||
-		is_feed() ||
-		( defined( 'REST_REQUEST' ) && REST_REQUEST ) ||
-		( defined( 'REST_API_REQUEST' ) && REST_API_REQUEST ) ||
-		( defined( 'WP_CLI' ) && WP_CLI )
-	) {
-		$is_frontend = false;
-	}
+	return Request::is_frontend();
+}
 
+if ( ! function_exists( 'jetpack_mastodon_get_instance_list' ) ) {
 	/**
-	 * Filter whether the current request is for accessing the frontend.
+	 * Build a list of Mastodon instance hosts.
+	 * That list can be extended via a filter.
 	 *
-	 * @since  9.0.0
+	 * @todo This function is now replicated in the Classic Theme Helper package and can be
+	 * removed here once Social Links are moved out of Jetpack.
 	 *
-	 * @param bool $is_frontend Whether the current request is for accessing the frontend.
+	 * @since 11.8
+	 *
+	 * @return array
 	 */
-	return (bool) apply_filters( 'jetpack_is_frontend', $is_frontend );
+	function jetpack_mastodon_get_instance_list() {
+		$mastodon_instance_list = array(
+			// Regex pattern to match any .tld for the mastodon host name.
+			'#https?:\/\/(www\.)?mastodon\.(\w+)(\.\w+)?#',
+			// Regex pattern to match any .tld for the mstdn host name.
+			'#https?:\/\/(www\.)?mstdn\.(\w+)(\.\w+)?#',
+			'counter.social',
+			'fosstodon.org',
+			'gc2.jp',
+			'hachyderm.io',
+			'infosec.exchange',
+			'mas.to',
+			'pawoo.net',
+		);
+
+		/**
+		 * Filter the list of Mastodon instances.
+		 *
+		 * @since 11.8
+		 *
+		 * @module widgets, theme-tools
+		 *
+		 * @param array $mastodon_instance_list Array of Mastodon instances.
+		 */
+		return (array) apply_filters( 'jetpack_mastodon_instance_list', $mastodon_instance_list );
+	}
+}
+
+if ( ! function_exists( 'jetpack_is_internal_testing_environment' ) ) {
+	/**
+	 * Check if the site is an A8C-internal testing environment.
+	 *
+	 * Returns true for localhost, Jurassic Ninja/Tube sandboxes, A8C proxied
+	 * requests, and known Atomic client IDs used for internal testing. Useful
+	 * for tagging analytics events as test traffic so they can be filtered out
+	 * of production reporting.
+	 *
+	 * Not to be confused with Jetpack's legacy "Development Mode", which is now
+	 * Status::is_offline_mode() and controls whether Jetpack connects to
+	 * WordPress.com.
+	 *
+	 * Note: This intentionally duplicates the logic from
+	 * Agents_Manager::is_dev_mode() in jetpack-agents-manager rather than calling
+	 * it directly, because that package is only available on WordPress.com
+	 * hosted sites, while Jetpack also runs on self-hosted sites.
+	 *
+	 * @since 15.8
+	 *
+	 * @return bool
+	 */
+	function jetpack_is_internal_testing_environment() {
+		// Known local environments.
+		$domain = (string) wp_parse_url( get_site_url(), PHP_URL_HOST );
+		if (
+			$domain === 'localhost' ||
+			'.jurassic.tube' === stristr( $domain, '.jurassic.tube' ) ||
+			'.jurassic.ninja' === stristr( $domain, '.jurassic.ninja' )
+		) {
+			return true;
+		}
+
+		// Proxied A8C request via function.
+		if ( function_exists( 'wpcom_is_proxied_request' ) && wpcom_is_proxied_request() ) {
+			return true;
+		}
+
+		// Proxied A8C request via server variable or constant.
+		if (
+			( isset( $_SERVER['A8C_PROXIED_REQUEST'] ) && (bool) sanitize_text_field( wp_unslash( $_SERVER['A8C_PROXIED_REQUEST'] ) ) ) ||
+			( defined( 'A8C_PROXIED_REQUEST' ) && A8C_PROXIED_REQUEST )
+		) {
+			return true;
+		}
+
+		if ( defined( 'AT_PROXIED_REQUEST' ) && AT_PROXIED_REQUEST && defined( 'ATOMIC_CLIENT_ID' ) ) {
+			switch ( ATOMIC_CLIENT_ID ) {
+				case 1:
+				case 2:
+				case 3:
+				case 32:
+				case 118:
+					return true;
+			}
+		}
+
+		return false;
+	}
 }

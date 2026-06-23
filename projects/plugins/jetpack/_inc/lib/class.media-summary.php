@@ -5,6 +5,8 @@
  * @package automattic/jetpack
  */
 
+use Automattic\Jetpack\Image_CDN\Image_CDN_Core;
+
 /**
  * Class Jetpack_Media_Summary
  *
@@ -22,24 +24,26 @@ class Jetpack_Media_Summary {
 	/**
 	 * Get media summary for a post.
 	 *
-	 * @param int   $post_id Post ID.
+	 * @param ?int  $post_id Post ID.
 	 * @param int   $blog_id Blog ID, if applicable.
 	 * @param array $args {
 	 *      Optional. An array of arguments.
 	 *      @type int $max_words Maximum number of words.
 	 *      @type int $max_chars Maximum number of characters.
+	 *      @type bool $include_excerpt Whether to compute the excerpt and return it. Default true.
+	 *      @type bool $include_counts  Whether to compute word/link counts. Default true.
 	 * }
 	 *
 	 * @return array|mixed|void
 	 */
-	public static function get( $post_id, $blog_id = 0, $args = array() ) {
-		// @todo: Use type hinting in the line above when at PHP 7.0+.
+	public static function get( ?int $post_id, int $blog_id = 0, array $args = array() ) {
 		$post_id = (int) $post_id;
-		$blog_id = (int) $blog_id;
 
 		$defaults = array(
-			'max_words' => 16,
-			'max_chars' => 256,
+			'max_words'       => 16,
+			'max_chars'       => 256,
+			'include_excerpt' => true,
+			'include_counts'  => true,
 		);
 		$args     = wp_parse_args( $args, $defaults );
 
@@ -51,7 +55,8 @@ class Jetpack_Media_Summary {
 			$blog_id = get_current_blog_id();
 		}
 
-		$cache_key = "{$blog_id}_{$post_id}_{$args['max_words']}_{$args['max_chars']}";
+		$cache_key = "{$blog_id}_{$post_id}_{$args['max_words']}_{$args['max_chars']}_"
+			. (int) $args['include_excerpt'] . '_' . (int) $args['include_counts'];
 		if ( isset( self::$cache[ $cache_key ] ) ) {
 			if ( $switched ) {
 				restore_current_blog();
@@ -60,11 +65,7 @@ class Jetpack_Media_Summary {
 		}
 
 		if ( ! class_exists( 'Jetpack_Media_Meta_Extractor' ) ) {
-			if ( defined( 'IS_WPCOM' ) && IS_WPCOM ) {
-				jetpack_require_lib( 'class.wpcom-media-meta-extractor' );
-			} else {
-				jetpack_require_lib( 'class.media-extractor' );
-			}
+			require_once JETPACK__PLUGIN_DIR . '_inc/lib/class.media-extractor.php';
 		}
 
 		$post      = get_post( $post_id );
@@ -80,18 +81,26 @@ class Jetpack_Media_Summary {
 				'image' => '',
 			),
 			'count'      => array(
-				'image' => 0,
-				'video' => 0,
-				'word'  => 0,
-				'link'  => 0,
+				'image'          => 0,
+				'video'          => 0,
+				'word'           => 0,
+				'word_remaining' => 0,
+				'link'           => 0,
 			),
 		);
 
 		if ( $post instanceof WP_Post && empty( $post->post_password ) ) {
-			$return['excerpt']                 = self::get_excerpt( $post->post_content, $post->post_excerpt, $args['max_words'], $args['max_chars'], $post );
-			$return['count']['word']           = self::get_word_count( $post->post_content );
-			$return['count']['word_remaining'] = self::get_word_remaining_count( $post->post_content, $return['excerpt'] );
-			$return['count']['link']           = self::get_link_count( $post->post_content );
+			if ( $args['include_excerpt'] ) {
+				$return['excerpt'] = self::get_excerpt( $post->post_content, $post->post_excerpt, $args['max_words'], $args['max_chars'], $post );
+			}
+			if ( $args['include_counts'] ) {
+				$return['count']['word'] = self::get_word_count( $post->post_content );
+				$return['count']['link'] = self::get_link_count( $post->post_content );
+				// Only compute word_remaining if we have an excerpt. If not, leave the default of 0.
+				if ( $args['include_excerpt'] && '' !== $return['excerpt'] ) {
+					$return['count']['word_remaining'] = self::get_word_remaining_count( $post->post_content, $return['excerpt'] );
+				}
+			}
 		}
 
 		$extract = Jetpack_Media_Meta_Extractor::extract( $blog_id, $post_id, Jetpack_Media_Meta_Extractor::ALL );
@@ -100,6 +109,7 @@ class Jetpack_Media_Summary {
 			if ( $switched ) {
 				restore_current_blog();
 			}
+			self::$cache[ $cache_key ] = $return;
 			return $return;
 		}
 
@@ -143,20 +153,26 @@ class Jetpack_Media_Summary {
 								$return['secure']['video'] = $return['video'];
 							}
 						}
-						$return['count']['video']++;
+						++$return['count']['video'];
 						break;
 					case 'youtube':
 						if ( 0 === $return['count']['video'] ) {
+							if ( ! isset( $extract['shortcode']['youtube']['id'][0] ) ) {
+								break;
+							}
 							$return['type']            = 'video';
 							$return['video']           = esc_url_raw( 'http://www.youtube.com/watch?feature=player_embedded&v=' . $extract['shortcode']['youtube']['id'][0] );
 							$return['image']           = self::get_video_poster( 'youtube', $extract['shortcode']['youtube']['id'][0] );
 							$return['secure']['video'] = self::https( $return['video'] );
 							$return['secure']['image'] = self::https( $return['image'] );
 						}
-						$return['count']['video']++;
+						++$return['count']['video'];
 						break;
 					case 'vimeo':
 						if ( 0 === $return['count']['video'] ) {
+							if ( ! isset( $extract['shortcode']['vimeo']['id'][0] ) ) {
+								break;
+							}
 							$return['type']            = 'video';
 							$return['video']           = esc_url_raw( 'http://vimeo.com/' . $extract['shortcode']['vimeo']['id'][0] );
 							$return['secure']['video'] = self::https( $return['video'] );
@@ -168,7 +184,7 @@ class Jetpack_Media_Summary {
 								$return['secure']['image'] = 'https://secure-a.vimeocdn.com' . $poster_url_parts['path'];
 							}
 						}
-						$return['count']['video']++;
+						++$return['count']['video'];
 						break;
 				}
 			}
@@ -181,29 +197,29 @@ class Jetpack_Media_Summary {
 						$return['type']            = 'video';
 						$return['video']           = 'http://' . $embed;
 						$return['secure']['video'] = self::https( $return['video'] );
-						if ( false !== strpos( $embed, 'youtube' ) ) {
+						if ( str_contains( $embed, 'youtube' ) ) {
 							$return['image']           = self::get_video_poster( 'youtube', jetpack_get_youtube_id( $return['video'] ) );
 							$return['secure']['image'] = self::https( $return['image'] );
-						} elseif ( false !== strpos( $embed, 'youtu.be' ) ) {
+						} elseif ( str_contains( $embed, 'youtu.be' ) ) {
 							$youtube_id                = jetpack_get_youtube_id( $return['video'] );
 							$return['video']           = 'http://youtube.com/watch?v=' . $youtube_id . '&feature=youtu.be';
 							$return['secure']['video'] = self::https( $return['video'] );
 							$return['image']           = self::get_video_poster( 'youtube', jetpack_get_youtube_id( $return['video'] ) );
 							$return['secure']['image'] = self::https( $return['image'] );
-						} elseif ( false !== strpos( $embed, 'vimeo' ) ) {
+						} elseif ( str_contains( $embed, 'vimeo' ) ) {
 							$poster_image = get_post_meta( $post_id, 'vimeo_poster_image', true );
 							if ( ! empty( $poster_image ) ) {
 								$return['image']           = $poster_image;
 								$poster_url_parts          = wp_parse_url( $poster_image );
 								$return['secure']['image'] = 'https://secure-a.vimeocdn.com' . $poster_url_parts['path'];
 							}
-						} elseif ( false !== strpos( $embed, 'dailymotion' ) ) {
+						} elseif ( str_contains( $embed, 'dailymotion' ) ) {
 							$return['image']           = str_replace( 'dailymotion.com/video/', 'dailymotion.com/thumbnail/video/', $embed );
 							$return['image']           = wp_parse_url( $return['image'], PHP_URL_SCHEME ) === null ? 'http://' . $return['image'] : $return['image'];
 							$return['secure']['image'] = self::https( $return['image'] );
 						}
 					}
-					$return['count']['video']++;
+					++$return['count']['video'];
 				}
 			}
 		}
@@ -220,10 +236,10 @@ class Jetpack_Media_Summary {
 					unset( $paragraphs[ $i ] );
 					continue;
 				}
-				$number_of_paragraphs++;
+				++$number_of_paragraphs;
 			}
 
-			$number_of_paragraphs = $number_of_paragraphs - $return['count']['video']; // subtract amount for videos.
+			$number_of_paragraphs -= $return['count']['video']; // subtract amount for videos.
 
 			// More than 2 paragraph? The video is not the primary focus so we can do some more analysis.
 			if ( $number_of_paragraphs > 2 ) {
@@ -239,7 +255,7 @@ class Jetpack_Media_Summary {
 				$return['images'] = $extract['image'];
 				foreach ( $return['images'] as $image ) {
 					$return['secure']['images'][] = array( 'url' => self::ssl_img( $image['url'] ) );
-					$return['count']['image']++;
+					++$return['count']['image'];
 				}
 			} elseif ( ! empty( $extract['has']['image'] ) ) {
 				// ... Or we try and select a single image that would make sense.
@@ -249,7 +265,7 @@ class Jetpack_Media_Summary {
 
 				foreach ( $paragraphs as $i => $paragraph ) {
 					// Don't include 'actual' captions as a paragraph.
-					if ( false !== strpos( $paragraph, '[caption' ) ) {
+					if ( str_contains( $paragraph, '[caption' ) ) {
 						unset( $paragraphs[ $i ] );
 						continue;
 					}
@@ -258,14 +274,17 @@ class Jetpack_Media_Summary {
 						unset( $paragraphs[ $i ] );
 						continue;
 					}
-					$number_of_paragraphs++;
+					++$number_of_paragraphs;
 				}
 
-				$return['image']           = $extract['image'][0]['url'];
-				$return['secure']['image'] = self::ssl_img( $return['image'] );
-				$return['count']['image']++;
+				// @phan-suppress-next-line PhanTypeMismatchDimFetch -- Phan is understandably confused, as $extract has many forms, including this one.
+				if ( ! empty( $extract['image'][0]['url'] ) ) {
+					$return['image']           = $extract['image'][0]['url'];
+					$return['secure']['image'] = self::ssl_img( $return['image'] );
+					++$return['count']['image'];
+				}
 
-				if ( $number_of_paragraphs <= 2 && 1 === count( $extract['image'] ) ) {
+				if ( $number_of_paragraphs <= 2 && is_countable( $extract['image'] ) && 1 === count( $extract['image'] ) ) {
 					// If we have lots of text or images, let's not treat it as an image post, but return its first image.
 					$return['type'] = 'image';
 				}
@@ -310,10 +329,10 @@ class Jetpack_Media_Summary {
 	 * @return string URL.
 	 */
 	public static function ssl_img( $url ) {
-		if ( false !== strpos( $url, 'files.wordpress.com' ) ) {
+		if ( str_contains( $url, 'files.wordpress.com' ) ) {
 			return self::https( $url );
 		} else {
-			return self::https( jetpack_photon_url( $url ) );
+			return self::https( Image_CDN_Core::cdn_url( $url ) );
 		}
 	}
 
@@ -342,25 +361,18 @@ class Jetpack_Media_Summary {
 	 * Clean text of shortcodes and tags.
 	 *
 	 * @param string $text Dirty text.
+	 * @param bool   $preserve_urls When true, keep http(s) URLs in the text instead of stripping them. Default false.
 	 *
 	 * @return string Clean text.
 	 */
-	public static function clean_text( $text ) {
-		return trim(
-			preg_replace(
-				'/[\s]+/',
-				' ',
-				preg_replace(
-					'@https?://[\S]+@',
-					'',
-					strip_shortcodes(
-						wp_strip_all_tags(
-							$text
-						)
-					)
-				)
-			)
-		);
+	public static function clean_text( $text, $preserve_urls = false ) {
+		$text = strip_shortcodes( wp_strip_all_tags( $text ) );
+
+		if ( ! $preserve_urls ) {
+			$text = preg_replace( '@https?://[\S]+@', '', $text );
+		}
+
+		return trim( preg_replace( '/[\s]+/', ' ', $text ) );
 	}
 
 	/**
@@ -376,9 +388,10 @@ class Jetpack_Media_Summary {
 	 * @param  int     $max_words Maximum number of words for the excerpt. Used on wp.com. Default 16.
 	 * @param  int     $max_chars Maximum characters in the excerpt. Used on wp.com. Default 256.
 	 * @param  WP_Post $requested_post The post object.
+	 * @param  bool    $preserve_urls When true, keep http(s) URLs in the excerpt instead of stripping them. Default false.
 	 * @return string Post excerpt.
 	 **/
-	public static function get_excerpt( $post_content, $post_excerpt, $max_words = 16, $max_chars = 256, $requested_post = null ) {
+	public static function get_excerpt( $post_content, $post_excerpt, $max_words = 16, $max_chars = 256, $requested_post = null, $preserve_urls = false ) {
 		global $post;
 		$original_post = $post; // Saving the global for later use.
 		if ( empty( $post_excerpt ) && function_exists( 'wpcom_enhanced_excerpt_extract_excerpt' ) ) {
@@ -392,7 +405,8 @@ class Jetpack_Media_Summary {
 						'max_chars'           => $max_chars,
 						'read_more_threshold' => 25,
 					)
-				)
+				),
+				$preserve_urls
 			);
 		} elseif ( $requested_post instanceof WP_Post ) {
 			// @todo Refactor to not need to override the global.
@@ -404,7 +418,7 @@ class Jetpack_Media_Summary {
 			// phpcs:ignore: WordPress.WP.GlobalVariablesOverride.Prohibited
 			$post = $original_post; // wp_reset_postdata uses the $post global.
 			wp_reset_postdata();
-			return self::clean_text( $post_excerpt );
+			return self::clean_text( $post_excerpt, $preserve_urls );
 		}
 		return '';
 	}
@@ -431,7 +445,7 @@ class Jetpack_Media_Summary {
 	 * @return int Word count.
 	 */
 	public static function get_word_count( $post_content ) {
-		return (int) count( self::split_content_in_words( self::clean_text( $post_content ) ) );
+		return count( self::split_content_in_words( self::clean_text( $post_content ) ) );
 	}
 
 	/**
@@ -446,7 +460,7 @@ class Jetpack_Media_Summary {
 		$content_word_count = count( self::split_content_in_words( self::clean_text( $post_content ) ) );
 		$excerpt_word_count = count( self::split_content_in_words( self::clean_text( $excerpt_content ) ) );
 
-		return (int) $content_word_count - $excerpt_word_count;
+		return $content_word_count - $excerpt_word_count;
 	}
 
 	/**

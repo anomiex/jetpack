@@ -1,7 +1,6 @@
 import { jest } from '@jest/globals';
 import userEvent from '@testing-library/user-event';
 import analytics from 'lib/analytics';
-import * as React from 'react';
 import * as recommendationsActions from 'state/recommendations/actions';
 import { render, screen } from 'test/test-utils';
 import * as featureUtils from '../../../feature-utils';
@@ -10,9 +9,9 @@ import { FeaturePrompt } from '../index';
 /**
  * Build initial state.
  *
- * @param {object} _ - Dummy positional parameter.
+ * @param {object} _                     - Dummy positional parameter.
  * @param {string} _.recommendationsStep - Value for jetpack.recommendations.step.
- * @returns {object} - State.
+ * @return {object} - State.
  */
 function buildInitialState( { recommendationsStep } = {} ) {
 	return {
@@ -113,10 +112,20 @@ describe( 'Recommendations – Feature Prompt', () => {
 			const addSelectedRecommendationStub = jest
 				.spyOn( recommendationsActions, 'addSelectedRecommendation' )
 				.mockReturnValue( DUMMY_ACTION );
-			const activateFeatureStub = jest.fn().mockReturnValue( DUMMY_ACTION );
+			const startInstallingStub = jest
+				.spyOn( recommendationsActions, 'startFeatureInstall' )
+				.mockReturnValue( DUMMY_ACTION );
+			// Fake a promise-ish return since we call the "finally" method after the feature is activated.
+			const activateFeatureStub = jest.fn().mockImplementation( () => {
+				return {
+					finally: () => {},
+				};
+			} );
 			const mapDispatchToPropsStub = jest
 				.spyOn( featureUtils, 'mapDispatchToProps' )
-				.mockReturnValue( { activateFeature: activateFeatureStub } );
+				.mockReturnValue( {
+					activateFeature: activateFeatureStub,
+				} );
 
 			render( <FeaturePrompt stepSlug={ stepSlug } />, {
 				initialState: buildInitialState( { recommendationsStep: stepSlug } ),
@@ -144,6 +153,8 @@ describe( 'Recommendations – Feature Prompt', () => {
 
 			// Make sure activateFeature action is called
 			expect( activateFeatureStub ).toHaveBeenCalledTimes( 1 );
+
+			expect( startInstallingStub ).toHaveBeenCalledTimes( 1 );
 
 			// Restore stubs
 			recordEventStub.mockRestore();

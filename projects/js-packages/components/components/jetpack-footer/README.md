@@ -1,20 +1,33 @@
 # Jetpack Admin Footer
 
 Component that renders Jetpack Admin Footer.
-It takes moduleName and URL to show in the footer.
 
-#### How to use:
+## How to use
+
+Note that most of the time you would just use `admin-page` component, which includes the footer. If you must use footer independently, basic usage is:
 
 ```js
-<JetpackFooter
-	moduleName="Jetpack Search"
-	a8cLogoHref="https://www.jetpack.com"
-	className="jp-dashboard-footer"
-/>
+<JetpackFooter />
 ```
 
-#### Props
+In special occasions you might want to use custom className or additional menu links:
 
-- `className`: String - (default: `jp-dashboard-footer`) the additional class name set on the element.
-- `a8cLogoHref`: String - (default: `https://www.jetpack.com`) link to be added on 'An Automattic Airline'.
-- `moduleName`: String - (default: `Jetpack`) set the name of the Module, e.g. `Jetpack Search`.
+```js
+const menu = [
+  {
+    label: "Support",
+    href="https://wordpress.com/support/",
+  },
+  {
+    label: "Chat",
+    onClick: () => {},
+  }
+];
+
+<JetpackFooter menu={ menu } className="my-footer" />
+```
+
+## Props
+
+- `className`: String - (default: `jetpack-footer`) the additional class name set on the element.
+- `menu`: JetpackFooterMenuItem[] - (default: `undefined`) set additional menu items to be rendered in the footer.

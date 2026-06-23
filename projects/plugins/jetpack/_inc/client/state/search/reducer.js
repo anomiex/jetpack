@@ -1,4 +1,3 @@
-import { find, get } from 'lodash';
 import { combineReducers } from 'redux';
 import { JETPACK_SEARCH_TERM } from 'state/action-types';
 
@@ -19,7 +18,7 @@ export const reducer = combineReducers( {
 /**
  * Returns the Search Term
  *
- * @param  {Object} state  Global state tree
+ * @param {object} state - Global state tree
  * @return {string}        The current term being searched
  */
 export function getSearchTerm( state ) {
@@ -29,18 +28,20 @@ export function getSearchTerm( state ) {
 /**
  * Returns the module found status
  *
- * @param  {Object} state  Global state tree
- * @param  {String} module The module slug
- * @return {Boolean}       Whether the module should be in the search results
+ * @param {object} state  - Global state tree
+ * @param {string} module - The module slug
+ * @return {boolean}       Whether the module should be in the search results
  */
 export function isModuleFound( state, module ) {
-	const result = find( get( state.jetpack, [ 'modules', 'items' ], {} ), [ 'module', module ] );
+	const result = Object.values( state.jetpack?.modules?.items ?? {} ).find(
+		v => v?.module === module
+	);
 
 	if ( 'undefined' === typeof result ) {
 		return false;
 	}
 
-	const currentSearchTerm = get( state.jetpack, [ 'search', 'searchTerm' ], false );
+	const currentSearchTerm = state.jetpack?.search?.searchTerm ?? false;
 
 	if ( ! currentSearchTerm ) {
 		return true;
@@ -62,4 +63,19 @@ export function isModuleFound( state, module ) {
 			.toLowerCase()
 			.indexOf( currentSearchTerm.toLowerCase() ) > -1
 	);
+}
+
+/**
+ * Returns whether any module matches the current search term.
+ *
+ * @param {object} state - Global state tree
+ * @return {boolean}      True only when there is an active search term and at least one module matches it.
+ */
+export function hasAnyMatchingModule( state ) {
+	if ( ! getSearchTerm( state ) ) {
+		return false;
+	}
+
+	const items = state.jetpack?.modules?.items ?? {};
+	return Object.values( items ).some( item => item?.module && isModuleFound( state, item.module ) );
 }

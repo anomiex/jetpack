@@ -1,13 +1,12 @@
+import { FacebookIcon } from '@automattic/jetpack-shared-extension-utils/icons';
 import { addFilter } from '@wordpress/hooks';
 import { __, _x } from '@wordpress/i18n';
-import { getIconColor } from '../../shared/block-icons';
 
 const facebookVariation = {
 	name: 'facebook',
-	title: 'Facebook',
+	title: __( 'Facebook Embed', 'jetpack' ),
 	icon: {
-		src: 'facebook',
-		foreground: getIconColor(),
+		src: FacebookIcon,
 	},
 	keywords: [ _x( 'social', 'block search term', 'jetpack' ) ],
 	description: __( 'Embed a Facebook post.', 'jetpack' ),
@@ -35,8 +34,8 @@ const facebookVariation = {
  * [0] https://github.com/WordPress/gutenberg/pull/24472.
  *
  * @param {object} settings - Block settings object.
- * @param {string} name - The block name
- * @returns {object} The settings for the given block with the patched variations.
+ * @param {string} name     - The block name
+ * @return {object} The settings for the given block with the patched variations.
  */
 function reactivateFacebookEmbedBlockVariation( settings, name ) {
 	if ( name !== 'core/embed' || ! settings.variations ) {

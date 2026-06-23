@@ -1,16 +1,14 @@
-import { ExternalLink } from '@wordpress/components';
-import { __ } from '@wordpress/i18n';
+import { Link } from '@wordpress/ui';
+import { useCallback } from 'react';
+import { connect } from 'react-redux';
 import Button from 'components/button';
 import analytics from 'lib/analytics';
-import React, { useCallback } from 'react';
-import { connect } from 'react-redux';
 import { stepToRoute } from 'state/recommendations';
-import { mapStateToSummaryResourceProps } from '../feature-utils';
+import { getSummaryResourceProps } from '../feature-utils';
 import './style.scss';
 
 const ResourceSummaryComponent = props => {
-	const { displayName, ctaLabel, ctaLink, resourceSlug, isNew, stepRoute } = props;
-
+	const { displayName, ctaLabel, ctaLink, resourceSlug, stepRoute } = props;
 	const onLearnMoreClick = useCallback( () => {
 		analytics.tracks.recordEvent( 'jetpack_recommendations_summary_learn_more_click', {
 			feature: resourceSlug,
@@ -34,21 +32,18 @@ const ResourceSummaryComponent = props => {
 				<span className="jp-recommendations-feature-summary__display-name-text">
 					{ displayName }
 				</span>
-				{ isNew && (
-					/* translators: 'New' is shown as a badge to indicate that this content has not been viewed before. */
-					<span className="jp-recommendations__new-badge">{ __( 'New', 'jetpack' ) }</span>
-				) }
 			</Button>
 			<div className="jp-recommendations-feature-summary__actions">
 				<div className="jp-recommendations-feature-summary__cta">
-					<ExternalLink
+					<Link
+						openInNewTab
 						type="button"
 						className="dops-button is-rna"
 						href={ ctaLink }
 						onClick={ onLearnMoreClick }
 					>
 						{ ctaLabel }
-					</ExternalLink>
+					</Link>
 				</div>
 			</div>
 		</div>
@@ -56,7 +51,7 @@ const ResourceSummaryComponent = props => {
 };
 
 const ResourceSummary = connect( ( state, ownProps ) => ( {
-	...mapStateToSummaryResourceProps( state, ownProps.resourceSlug ),
+	...getSummaryResourceProps( state, ownProps.resourceSlug ),
 	stepRoute: stepToRoute[ ownProps.resourceSlug ],
 } ) )( ResourceSummaryComponent );
 

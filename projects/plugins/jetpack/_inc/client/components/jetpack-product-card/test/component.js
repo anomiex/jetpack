@@ -1,8 +1,7 @@
-import { getCurrencyObject } from '@automattic/format-currency';
+import { getCurrencyObject } from '@automattic/number-formatters';
 import { jest } from '@jest/globals';
 import userEvent from '@testing-library/user-event';
 import analytics from 'lib/analytics';
-import * as React from 'react';
 import { render, screen } from 'test/test-utils';
 import JetpackProductCard from '../index';
 
@@ -25,9 +24,9 @@ describe( 'Jetpack Product Card', () => {
 		expect( screen.getByRole( 'heading', { name: mockAttributes.title } ) ).toBeInTheDocument();
 		expect( screen.getByText( mockAttributes.description ) ).toBeInTheDocument();
 
-		mockAttributes.features.map( feature => {
+		for ( const feature of mockAttributes.features ) {
 			expect( screen.getByText( feature ) ).toBeInTheDocument();
-		} );
+		}
 	} );
 
 	it( 'price is shown', () => {

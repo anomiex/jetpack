@@ -1,4 +1,5 @@
-import React from 'react';
+import { cleanForSlug } from '@wordpress/url';
+import * as React from 'react';
 import PathBreadcrumbs from './path-breadcrumbs';
 import PhotonImage from './photon-image';
 import { fixDateFormat } from './search-filter';
@@ -9,19 +10,87 @@ import './search-result-expanded.scss';
  * Functional component for expanded search results.
  *
  * @param {object} props - Component properties.
- * @returns {Element} - Expanded search result component.
+ * @return {Element} - Expanded search result component.
  */
 export default function SearchResultExpanded( props ) {
-	const { isMultiSite, locale = 'en-US' } = props;
+	const {
+		isMultiSite,
+		locale = 'en-US',
+		showPostDate,
+		enableFallbackImage,
+		fallbackImageUrl,
+	} = props;
 	const { result_type, fields, highlight } = props.result;
 
 	if ( result_type !== 'post' ) {
 		return null;
 	}
 
-	const firstImage = Array.isArray( fields[ 'image.url.raw' ] )
+	const getCategories = () => {
+		let cats = fields[ 'category.name.default' ];
+
+		if ( ! cats ) {
+			return [];
+		}
+
+		if ( ! Array.isArray( cats ) ) {
+			cats = [ cats ];
+		}
+
+		return cats;
+	};
+
+	// Get the original image URL
+	let firstImage = Array.isArray( fields[ 'image.url.raw' ] )
 		? fields[ 'image.url.raw' ][ 0 ]
 		: fields[ 'image.url.raw' ];
+
+	// Apply filters to the image URL
+	if ( window.wp && window.wp.hooks ) {
+		firstImage = window.wp.hooks.applyFilters(
+			'jetpack.instantSearch.searchResultImageUrl',
+			firstImage,
+			{
+				fields,
+				postType: fields.post_type,
+				postId: fields.post_id,
+				enableFallbackImage,
+				fallbackImageUrl,
+			}
+		);
+	}
+
+	// If no image and fallback is enabled, get fallback image
+	if ( ! firstImage && enableFallbackImage && fallbackImageUrl ) {
+		// Strip protocol to match format of image.url.raw from Elasticsearch (rendered as protocol-relative via `//${url}`)
+		let fallbackImage = fallbackImageUrl.replace( /^https?:\/\//, '' );
+
+		// Apply filters to the fallback image URL
+		if ( window.wp && window.wp.hooks ) {
+			fallbackImage = window.wp.hooks.applyFilters(
+				'jetpack.instantSearch.searchResultFallbackImage',
+				fallbackImage,
+				{
+					fields,
+					postType: fields.post_type,
+					postId: fields.post_id,
+					enableFallbackImage,
+					fallbackImageUrl,
+				}
+			);
+		}
+
+		firstImage = fallbackImage;
+	}
+
+	if ( Array.isArray( fields.author ) ) {
+		if ( fields.author.length > 3 ) {
+			fields.author = fields.author.slice( 0, 3 ).join( ', ' ) + '...';
+		} else {
+			fields.author = fields.author.join( ', ' );
+		}
+	}
+
 	return (
 		<li
 			className={ [
@@ -30,6 +99,9 @@ export default function SearchResultExpanded( props ) {
 				`jetpack-instant-search__search-result-expanded--${ fields.post_type }`,
 				! firstImage ? 'jetpack-instant-search__search-result-expanded--no-image' : '',
 				isMultiSite ? 'is-multisite' : '',
+				getCategories()
+					.map( cat => 'jetpack-instant-search__search-result-category--' + cleanForSlug( cat ) )
+					.join( ' ' ),
 			].join( ' ' ) }
 		>
 			<div className="jetpack-instant-search__search-result-expanded__content-container">
@@ -39,9 +111,15 @@ export default function SearchResultExpanded( props ) {
 							className="jetpack-instant-search__search-result-title-link jetpack-instant-search__search-result-expanded__title-link"
 							href={ `//${ fields[ 'permalink.url.raw' ] }` }
 							onClick={ props.onClick }
-							//eslint-disable-next-line react/no-danger
-							dangerouslySetInnerHTML={ { __html: highlight.title } }
-						/>
+						>
+							<span
+								//eslint-disable-next-line react/no-danger
+								dangerouslySetInnerHTML={ { __html: highlight.title } }
+							/>
+							{ fields[ 'forum.topic_resolved' ] === 'yes' && (
+								<span className="jetpack-instant-search__search-result-title-checkmark" />
+							) }
+						</a>
 					</h3>
 
 					{ ! isMultiSite && (
@@ -56,7 +134,16 @@ export default function SearchResultExpanded( props ) {
 						className="jetpack-instant-search__search-result-expanded__content"
 						//eslint-disable-next-line react/no-danger
 						dangerouslySetInnerHTML={ {
-							__html: highlight.content.join( ' ... ' ),
+							__html:
+								highlight && typeof highlight === 'object'
+									? Object.entries( highlight )
+											.filter(
+												( [ key, value ] ) =>
+													key !== 'comments' && key !== 'title' && Array.isArray( value )
+											)
+											.map( ( [ , array ] ) => array.join( ' ... ' ) )
+											.join( ' ... ' )
+									: '',
 						} }
 					/>
 
@@ -66,6 +153,8 @@ export default function SearchResultExpanded( props ) {
 					className="jetpack-instant-search__search-result-expanded__image-link"
 					href={ `//${ fields[ 'permalink.url.raw' ] }` }
 					onClick={ props.onClick }
+					tabIndex="-1"
+					aria-hidden="true"
 				>
 					<div className="jetpack-instant-search__search-result-expanded__image-container">
 						{ firstImage ? (
@@ -79,36 +168,42 @@ export default function SearchResultExpanded( props ) {
 					</div>
 				</a>
 			</div>
-			{ isMultiSite && (
+			{ ( isMultiSite || showPostDate ) && (
 				<ul className="jetpack-instant-search__search-result-expanded__footer">
-					<li>
-						<PhotonImage
-							alt={ fields.blog_name }
-							className="jetpack-instant-search__search-result-expanded__footer-blog-image"
-							isPhotonEnabled={ false }
-							height={ 24 }
-							width={ 24 }
-							src={ fields.blog_icon_url }
-							lazyLoad={ false }
-						/>
-						<span className="jetpack-instant-search__search-result-expanded__footer-blog">
-							{ fields.blog_name }
-						</span>
-					</li>
-					<li>
-						<span className="jetpack-instant-search__search-result-expanded__footer-author">
-							{ fields.author }
-						</span>
-					</li>
-					<li>
-						<span className="jetpack-instant-search__search-result-expanded__footer-date">
-							{ new Date( fixDateFormat( fields.date ) ).toLocaleDateString( locale, {
-								year: 'numeric',
-								month: 'short',
-								day: 'numeric',
-							} ) }
-						</span>
-					</li>
+					{ isMultiSite && (
+						<>
+							<li>
+								<PhotonImage
+									alt={ fields.blog_name }
+									className="jetpack-instant-search__search-result-expanded__footer-blog-image"
+									isPhotonEnabled={ false }
+									height={ 24 }
+									width={ 24 }
+									src={ fields.blog_icon_url }
+									lazyLoad={ false }
+								/>
+								<span className="jetpack-instant-search__search-result-expanded__footer-blog">
+									{ fields.blog_name }
+								</span>
+							</li>
+							<li>
+								<span className="jetpack-instant-search__search-result-expanded__footer-author">
+									{ fields.author }
+								</span>
+							</li>
+						</>
+					) }
+					{ showPostDate && (
+						<li>
+							<span className="jetpack-instant-search__search-result-expanded__footer-date">
+								{ new Date( fixDateFormat( fields.date ) ).toLocaleDateString( locale, {
+									year: 'numeric',
+									month: 'short',
+									day: 'numeric',
+								} ) }
+							</span>
+						</li>
+					) }
 				</ul>
 			) }
 		</li>

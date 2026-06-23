@@ -1,39 +1,45 @@
 // Common styles for both views (editor and frontend).
-@import '@automattic/jetpack-base-styles/gutenberg-base-styles';
+// Surfaces (backgrounds, text colors, typography) defer to the active theme
+// by inheriting from the surrounding context. Per-state colors (active tab,
+// selected amount) are rendered via a per-instance scoped <style> element
+// because the postcss build inlines var() fallbacks at compile time.
+@use "@automattic/jetpack-base-styles/gutenberg-base-styles" as gb;
 
 .wp-block-jetpack-donations {
-	.donations__container {
-		border: 1px solid $gray-400;
-	}
+	// Default border. User-set border (via the Border style support) renders as
+	// an inline style on this element, which wins on specificity.
+	border: 1px solid gb.$gray-400;
+	// Clip children to any user-set border-radius; without this, tab corners
+	// extend past the rounded outer corners.
+	overflow: hidden;
 
 	.donations__nav {
 		display: flex;
-		border-bottom: 1px solid $gray-400;
+		border-bottom: 1px solid gb.$gray-400;
 	}
 
 	.donations__nav-item {
-		font-weight: bold;
+		font-weight: 700;
 		display: inline-block;
 		flex: 1;
 		text-align: center;
-		font-size: 16px;
 		padding: 12px;
-		border-left: 1px solid $gray-400;
-		background: $white;
-		color: $gray-900;
+		border-inline-start: 1px solid gb.$gray-400;
+		background: transparent;
+		color: inherit;
 		cursor: pointer;
 
-		@include break-small() {
+		@include gb.break-small() {
 			padding: 16px 24px;
 		}
 
 		&:first-child {
-			border-left: none;
+			border-inline-start: none;
 		}
 
 		&.is-active {
-			background: var( --wp-admin-theme-color );
-			color: $white;
+			background: gb.$gray-900;
+			color: gb.$white;
 			cursor: default;
 		}
 	}
@@ -41,7 +47,7 @@
 	.donations__content {
 		padding: 16px;
 
-		@include break-small() {
+		@include gb.break-small() {
 			padding: 32px;
 		}
 
@@ -49,7 +55,7 @@
 		p {
 			margin: 0 0 16px;
 
-			@include break-small() {
+			@include gb.break-small() {
 				margin: 0 0 24px;
 			}
 		}
@@ -60,7 +66,7 @@
 		display: flex;
 		flex-wrap: wrap;
 
-		@include break-small() {
+		@include gb.break-small() {
 			margin: 0 0 24px;
 		}
 	}
@@ -68,17 +74,16 @@
 	.donations__amount {
 		display: inline-block;
 		padding: 16px 24px;
-		background-color: $white;
-		color: $gray-900;
-		border: 1px solid $gray-400;
-		margin-right: 8px;
+		background-color: transparent;
+		color: inherit;
+		border: 1px solid gb.$gray-400;
+		margin-inline-end: 8px;
 		margin-bottom: 8px;
 		font-weight: 600;
-		font-size: 16px;
 		white-space: nowrap;
 
 		&.has-error {
-			box-shadow: 0 0 0 1px $white, 0 0 0 3px $alert-red;
+			box-shadow: 0 0 0 1px gb.$white, 0 0 0 3px gb.$alert-red;
 			outline: 2px solid transparent;
 			outline-offset: -2px;
 		}
@@ -86,7 +91,7 @@
 
 	.donations__custom-amount .donations__amount-value {
 		display: inline-block;
-		margin-left: 4px;
+		margin-inline-start: 4px;
 		min-width: 60px;
 	}
 
@@ -94,7 +99,7 @@
 		margin-bottom: 16px;
 		margin-top: 16px;
 
-		@include break-small() {
+		@include gb.break-small() {
 			margin-bottom: 32px;
 			margin-top: 32px;
 		}
@@ -103,5 +108,41 @@
 	.donations__donate-button-wrapper,
 	.donations__donate-button {
 		margin: 0;
+	}
+
+	// Pop-up display mode: suppress the default border — the block wrapper is
+	// larger than just the trigger button, so a border here looks wrong.
+	// User-set borders in In-page mode are handled via the per-instance <style>.
+	&.is-display-modal {
+		border: none;
+	}
+
+	// "Buttons" style variation: render the frequency selectors as a row of
+	// pill-shaped buttons instead of edge-to-edge tabs. Per-state colors and
+	// tab dimensions set in the inspector still apply on top of these rules.
+	&.is-style-buttons {
+
+		.donations__nav {
+			border-bottom: none;
+			gap: 8px;
+			padding: 16px 16px 0;
+
+			@include gb.break-small() {
+				gap: 12px;
+				padding: 24px 24px 0;
+			}
+		}
+
+		.donations__nav-item {
+			border: 1px solid gb.$gray-400;
+			border-radius: 9999px;
+		}
+
+		// Restore the inline-start border that the default style strips off
+		// the first item — every pill needs a full border.
+		.donations__nav-item:first-child {
+			border-inline-start: 1px solid gb.$gray-400;
+		}
+
 	}
 }

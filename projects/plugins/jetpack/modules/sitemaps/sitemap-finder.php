@@ -8,6 +8,10 @@
  * @author Automattic
  */
 
+if ( ! defined( 'ABSPATH' ) ) {
+	exit( 0 );
+}
+
 /**
  * The Jetpack_Sitemap_Finder object deals with constructing
  * sitemap URIs.
@@ -112,5 +116,4 @@ class Jetpack_Sitemap_Finder {
 			'sitemap_name' => $filename,
 		);
 	}
-
 }

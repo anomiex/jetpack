@@ -1,4 +1,8 @@
-import classNames from 'classnames';
+import { Icon } from '@wordpress/icons';
+import clsx from 'clsx';
+import PropTypes from 'prop-types';
+import { Component } from 'react';
+import { connect as reduxConnect } from 'react-redux';
 import Button from 'components/button';
 import Card from 'components/card';
 import Gridicon from 'components/gridicon';
@@ -10,14 +14,11 @@ import {
 	isJetpackBundle,
 	isJetpackLegacyPlan,
 } from 'lib/plans/constants';
-import { noop, size } from 'lodash';
-import PropTypes from 'prop-types';
-import React, { Component } from 'react';
-import { connect as reduxConnect } from 'react-redux';
 import { isCurrentUserLinked, isConnectionOwner } from 'state/connection';
 import { getCurrentVersion } from 'state/initial-state';
-
 import './style.scss';
+
+const noop = () => {};
 
 export class Banner extends Component {
 	static propTypes = {
@@ -32,6 +33,8 @@ export class Banner extends Component {
 		icon: PropTypes.string,
 		iconAlt: PropTypes.string,
 		iconSrc: PropTypes.string,
+		iconRaw: PropTypes.string,
+		iconWp: PropTypes.any,
 		list: PropTypes.arrayOf( PropTypes.string ),
 		onClick: PropTypes.func,
 		path: PropTypes.string,
@@ -40,11 +43,15 @@ export class Banner extends Component {
 		title: PropTypes.node.isRequired,
 		isCurrentUserLinked: PropTypes.bool,
 		isConnectionOwner: PropTypes.bool,
+		noIcon: PropTypes.bool,
+		rna: PropTypes.bool,
 	};
 
 	static defaultProps = {
 		onClick: noop,
 		eventProps: {},
+		rna: false,
+		noIcon: false,
 	};
 
 	getHref() {
@@ -83,12 +90,28 @@ export class Banner extends Component {
 	};
 
 	getIcon() {
-		const { icon, iconAlt, iconSrc, plan } = this.props;
+		const { icon, iconAlt, iconSrc, iconRaw, iconWp, plan } = this.props;
+
+		if ( iconRaw ) {
+			return (
+				<div className="dops-banner__icon-plan">
+					<img src={ iconRaw } alt={ iconAlt } />
+				</div>
+			);
+		}
 
 		if ( plan && ( ! icon || ! iconSrc ) ) {
 			return (
 				<div className="dops-banner__icon-plan">
 					<PlanIcon plan={ plan } />
+				</div>
+			);
+		}
+
+		if ( iconWp ) {
+			return (
+				<div className="dops-banner__icon-wp">
+					<Icon icon={ iconWp } />
 				</div>
 			);
 		}
@@ -112,14 +135,14 @@ export class Banner extends Component {
 	}
 
 	getContent() {
-		const { callToAction, description, list, title } = this.props;
+		const { callToAction, description, list, title, rna } = this.props;
 
 		return (
 			<div className="dops-banner__content">
 				<div className="dops-banner__info">
 					<div className="dops-banner__title">{ title }</div>
 					{ description && <div className="dops-banner__description">{ description }</div> }
-					{ size( list ) > 0 && (
+					{ list?.length > 0 && (
 						<ul className="dops-banner__list">
 							{ list.map( ( item, key ) => (
 								<li key={ key }>
@@ -132,11 +155,15 @@ export class Banner extends Component {
 				</div>
 				{ callToAction && (
 					<div className="dops-banner__action">
-						{ callToAction && (
-							<Button compact href={ this.getHref() } onClick={ this.handleClick } primary>
-								{ callToAction }
-							</Button>
-						) }
+						<Button
+							rna={ rna }
+							compact
+							href={ this.getHref() }
+							onClick={ this.handleClick }
+							primary
+						>
+							{ callToAction }
+						</Button>
 					</div>
 				) }
 			</div>
@@ -144,12 +171,12 @@ export class Banner extends Component {
 	}
 
 	render() {
-		const { callToAction, className, plan } = this.props;
+		const { callToAction, className, plan, noIcon } = this.props;
 		const planClass = getPlanClass( plan );
 		const isLegacy = isJetpackLegacyPlan( plan );
 		const isProduct = isJetpackProduct( plan );
 
-		const classes = classNames(
+		const classes = clsx(
 			'dops-banner',
 			className,
 			{ 'has-call-to-action': callToAction },
@@ -165,9 +192,10 @@ export class Banner extends Component {
 			<Card
 				className={ classes }
 				href={ callToAction ? null : this.getHref() }
+				target={ callToAction || ! this.getHref() ? null : '_blank' }
 				onClick={ callToAction ? noop : this.handleClick }
 			>
-				{ this.getIcon() }
+				{ ! noIcon && this.getIcon() }
 				{ this.getContent() }
 			</Card>
 		);
@@ -178,7 +206,7 @@ export class Banner extends Component {
  * Redux-connect a Banner or subclass.
  *
  * @param {Banner} BannerComponent - Component to connect.
- * @returns {Component} Wrapped component.
+ * @return {Component} Wrapped component.
  */
 export function connect( BannerComponent ) {
 	return reduxConnect( state => ( {

@@ -1,3 +1,4 @@
+import { useModuleStatus } from '@automattic/jetpack-shared-extension-utils';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { SubscriptionEdit } from '../edit';
@@ -7,9 +8,11 @@ const setAttributes = jest.fn();
 const defaultAttributes = {
 	borderRadius: 0,
 	borderWeight: 0,
+	includeSocialFollowers: true,
 	padding: 0,
 	spacing: 0,
 	submitButtonText: 'Submit',
+	subscriptionPlaceholderText: 'Activate Subscriptions',
 	subscribePlaceholder: 'Do it',
 	showSubscribersTotal: false,
 	buttonOnNewLine: false,
@@ -17,7 +20,6 @@ const defaultAttributes = {
 
 const defaultProps = {
 	attributes: defaultAttributes,
-	className: 'noodles',
 	setAttributes,
 	emailFieldBackgroundColor: '',
 	buttonBackgroundColor: '',
@@ -30,10 +32,14 @@ const defaultProps = {
 	fontSize: 12,
 };
 
-jest.mock( '../api', () => ( {
+jest.mock( '@automattic/jetpack-shared-extension-utils', () => ( {
 	__esModule: true,
-	getSubscriberCount: jest.fn( successCallback => {
-		successCallback( 100 );
+	...jest.requireActual( '@automattic/jetpack-shared-extension-utils' ),
+	useModuleStatus: jest.fn().mockReturnValue( {
+		isModuleActive: true,
+		isLoadingModules: false,
+		isChangingStatus: false,
+		changeStatus: jest.fn(),
 	} ),
 } ) );
 
@@ -50,14 +56,23 @@ jest.mock( '@wordpress/block-editor', () => ( {
 	} ),
 } ) );
 
-describe( 'SubscriptionEdit', () => {
-	test( 'adds correct classes to container', async () => {
-		const { container } = render( <SubscriptionEdit { ...defaultProps } /> );
-
-		// eslint-disable-next-line testing-library/no-container, testing-library/no-node-access
-		expect( container.querySelector( `.${ defaultProps.className }` ) ).toBeInTheDocument();
+beforeEach( () => {
+	useModuleStatus.mockReturnValue( {
+		isModuleActive: true,
+		changeStatus: jest.fn(),
 	} );
+} );
+jest.mock( '@wordpress/element', () => ( {
+	...jest.requireActual( '@wordpress/element' ),
+	useSelect: () => ( {
+		subscriberCounts: 100,
+		subscriberCountString: 'Join 100 other subscribers',
+	} ),
+} ) );
 
+jest.mock( '@wordpress/notices', () => {}, { virtual: true } );
+
+describe( 'SubscriptionEdit', () => {
 	test( 'adds correct classes when button on new line', async () => {
 		const { container, rerender } = render( <SubscriptionEdit { ...defaultProps } /> );
 
@@ -102,9 +117,11 @@ describe( 'SubscriptionEdit', () => {
 	} );
 
 	test( 'displays subscriber total', async () => {
+		setAttributes.mockClear();
 		const user = userEvent.setup();
 		render( <SubscriptionEdit { ...defaultProps } /> );
-		await user.type( screen.getByText( defaultAttributes.submitButtonText ), '-right-now!' );
+		// Apparently we need to use the End key to get the text in the right place now.
+		await user.type( screen.getByText( defaultAttributes.submitButtonText ), '{End}-right-now!' );
 
 		expect( setAttributes ).toHaveBeenCalledWith( {
 			submitButtonText: `${ defaultAttributes.submitButtonText }-right-now!`,
@@ -113,8 +130,10 @@ describe( 'SubscriptionEdit', () => {
 
 	test( 'displays subscriber total after update', async () => {
 		const { container, rerender } = render( <SubscriptionEdit { ...defaultProps } /> );
-		// eslint-disable-next-line testing-library/no-container, testing-library/no-node-access
-		expect( container.querySelector( 'p' ) ).not.toBeInTheDocument();
+		expect(
+			// eslint-disable-next-line testing-library/no-container, testing-library/no-node-access
+			container.querySelector( '.wp-block-jetpack-subscriptions__subscount' )
+		).not.toBeInTheDocument();
 		expect(
 			// eslint-disable-next-line testing-library/no-container, testing-library/no-node-access
 			container.querySelector( '.wp-block-jetpack-subscriptions__show-subs' )
@@ -133,7 +152,9 @@ describe( 'SubscriptionEdit', () => {
 			// eslint-disable-next-line testing-library/no-container, testing-library/no-node-access
 			container.querySelector( '.wp-block-jetpack-subscriptions__show-subs' )
 		).toBeInTheDocument();
-		// eslint-disable-next-line testing-library/no-container, testing-library/no-node-access
-		expect( container.querySelector( 'p' ) ).toBeInTheDocument();
+		expect(
+			// eslint-disable-next-line testing-library/no-container, testing-library/no-node-access
+			container.querySelector( '.wp-block-jetpack-subscriptions__subscount' )
+		).toBeInTheDocument();
 	} );
 } );

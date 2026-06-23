@@ -323,7 +323,7 @@ class Password_Checker {
 	}
 
 	/**
-	 * Returns the widely known user data that can not be used in the password to avoid
+	 * Returns the widely known user data that cannot be used in the password to avoid
 	 * predictable strings.
 	 *
 	 * @return array user data.
@@ -508,7 +508,7 @@ class Password_Checker {
 
 		// Spaces.
 		if ( strpos( $password, ' ' ) ) {
-			$size ++;
+			++$size;
 		}
 
 		return $size;
@@ -556,7 +556,7 @@ class Password_Checker {
 		$aidx   = $this->get_char_index( $password[0] );
 		$length = strlen( $password );
 
-		for ( $b = 1; $b < $length; $b ++ ) {
+		for ( $b = 1; $b < $length; $b++ ) {
 			$bidx = $this->get_char_index( $password[ $b ] );
 
 			// 27 = number of chars in the index (a-z,' ').

@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 
-cd "$( dirname "${BASH_SOURCE[0]}" )/.."
+cd "$( dirname "${BASH_SOURCE[0]}" )/.." || exit
 . tools/includes/chalk-lite.sh
+. tools/includes/version-compare.sh
 . .github/versions.sh
 
 EXIT=0
@@ -61,70 +62,6 @@ function warning {
 	fi
 	if [[ -n "$LINK" ]]; then
 		doclink "$LINK"
-	fi
-}
-
-# Compare two version numbers, semver style.
-#
-# Normally we'd just `pnpm semver`, but when testing if pnpm is even available
-# we can't rely on that.
-#
-# @param $1 First version.
-# @param $2 Second version.
-# @param $3 Pass "1" to test `>` rather than `>=`.
-# @return true if $1 >= $2, false otherwise.
-function version_compare {
-	local -i EQ=${3:0}
-	if [[ "$1" == "$2" ]]; then
-		return $EQ
-	fi
-
-	local A=() B=()
-	IFS='.-' read -r -a A <<<"$1"
-	IFS='.-' read -r -a B <<<"$2"
-
-	while [[ ${#A[@]} -lt 3 ]]; do
-		A+=( '0' )
-	done
-	while [[ ${#B[@]} -lt 3 ]]; do
-		B+=( '0' )
-	done
-
-	local i=0
-	while [[ $i -lt ${#A[@]} && $i -lt ${#B[@]} ]]; do
-		local AA=${A[$i]}
-		local BB=${B[$i]}
-		i=$((i + 1))
-		if [[ "$AA" =~ ^[0-9]+$ ]]; then
-			if ! [[ "$BB" =~ ^[0-9]+$ ]]; then
-				# numeric A < non-numeric B
-				return 1
-			elif [[ $AA -gt $BB ]]; then
-				return 0
-			elif [[ $AA -lt $BB ]]; then
-				return 1
-			fi
-		elif [[ "$BB" =~ ^[0-9]+$ ]]; then
-			# non-numeric A > numeric B
-			return 0
-		elif [[ "$AA" > "$BB" ]]; then
-			return 0
-		elif [[ "$AA" < "$BB" ]]; then
-			return 1
-		fi
-	done
-
-	if [[ ${#A[@]} -eq ${#B[@]} ]]; then
-		return $EQ
-	elif [[ ${#A[@]} -eq 3 ]]; then
-		# Something with no pre-release components > something with
-		return 0
-	elif [[ ${#B[@]} -eq 3 ]]; then
-		# Something with pre-release components < something without
-		return 1
-	else
-		# The thing with more pre-release components is greater.
-		[[ ${#A[@]} -gt ${#B[@]} ]]
 	fi
 }
 
@@ -200,10 +137,10 @@ echo "==========="
 echo ""
 
 checking 'Usable version of bash'
-if [[ -n "${BASH_VERSINFO}" && -n "${BASH_VERSINFO[0]}" && ${BASH_VERSINFO[0]} -ge 4 ]]; then
+if [[ -n "${BASH_VERSINFO[0]}" && ( ${BASH_VERSINFO[0]} -gt 4 || ${BASH_VERSINFO[0]} -eq 4 && ${BASH_VERSINFO[1]} -ge 3 ) ]]; then
 	success "ok (version $BASH_VERSION)"
 else
-	failure "too old" '' "Bash at $BASH is $BASH_VERSION. Version 4 or later is required." "If you're on Mac OS, you can install an updated version of bash with ${CS}brew install bash${CE}"
+	failure "too old" '' "Bash at $BASH is $BASH_VERSION. Version 4.3 or later is required." "If you're on Mac OS, you can install an updated version of bash with ${CS}brew install bash${CE}"
 fi
 
 checking "Standard tools are available"
@@ -240,6 +177,10 @@ else
 	elif version_compare "$VER" "1.6"; then
 		success "ok (version $VER)"
 		JQOK=true
+	elif version_compare "$VER" "1.6-159-apple-gcff5336-dirty"; then
+		# As of macOS 10.15, Apple bundles a random version that should be good enough.
+		success "ok (version $VER)"
+		JQOK=true
 	else
 		failure "too old" '' "jq at $BIN is version $VER. Version 1.6 or later is required."
 	fi
@@ -266,7 +207,7 @@ else
 	elif php -r "exit( version_compare( PHP_VERSION, '$PHP_VERSION', '>=' ) ? 0 : 1 );"; then
 		success "ok (version $VER)"
 	elif php -r "exit( version_compare( PHP_VERSION, '$MIN_PHP_VERSION', '>=' ) ? 0 : 1 );"; then
-		warning "ok (version $VER)" 'php' "Version $PHP_VERSION or later is recommended."
+		warning "ok (version $VER)" 'php' "Version $PHP_VERSION or later is recommended. Tooling may raise errors with earlier versions."
 	else
 		failure 'too old' 'php' "PHP at $BIN is version $VER. Version $MIN_PHP_VERSION or later is required; $PHP_VERSION or later is recommended."
 	fi
@@ -288,7 +229,7 @@ BIN="$(command -v php)"
 if [[ -z "$BIN" ]]; then
 	failure "no php found, skipping check" 'php'
 else
-	for extension in mbstring xml libxml; do
+	for extension in mbstring xml libxml zip; do
 		if php -r "exit( in_array( '$extension', get_loaded_extensions() ) ? 1 : 0 );"; then
 			MISSING_EXTENSIONS+=( "$extension" )
 		fi
@@ -333,6 +274,7 @@ fi
 
 checking '[optional] nvm is available'
 # NVM is weird.
+# shellcheck disable=SC1090
 BIN="$([[ -f ~/.nvm/nvm.sh ]] && source ~/.nvm/nvm.sh && command -v nvm)"
 if [[ -z "$BIN" ]]; then
 	warning "no" 'nodejs'
@@ -382,6 +324,14 @@ else
 	fi
 fi
 
+checking '[optional] ShellCheck is available'
+BIN="$(command -v shellcheck)"
+if [[ -z "$BIN" ]]; then
+	warning "no" '' "ShellCheck is used to lint shell scripts. See https://github.com/koalaman/shellcheck#installing for installation instructions."
+else
+	success "yes"
+fi
+
 echo ""
 echo "Installation"
 echo "============"
@@ -421,19 +371,23 @@ if [[ -z "$BIN" ]]; then
 else
 	success "yes"
 
-	checking '[optional] Docker-compose is available'
-	BIN="$(command -v docker-compose)"
-	if [[ -z "$BIN" ]]; then
+	checking '[optional] Docker compose is available'
+	AS=
+	if docker compose version &>/dev/null; then
+		VER="$(docker compose version 2>/dev/null | sed -n -E 's/^(docker-compose|Docker Compose) version v?([0-9]+\.[0-9]+\.[0-9a-zA-Z.-]+)(, .*|\+.*)?$/\2/p')"
+		AS='docker compose'
+	elif BIN="$(command -v docker-compose)"; then
+		VER="$(docker-compose --version 2>/dev/null | sed -n -E 's/^(docker-compose|Docker Compose) version v?([0-9]+\.[0-9]+\.[0-9a-zA-Z.-]+)(, .*|\+.*)?$/\2/p')"
+		AS='docker-compose'
+	fi
+	if [[ -z "$AS" ]]; then
 		warning "no" 'docker-supported-recommended'
+	elif [[ -z "$VER" ]]; then
+		warning "yes (as '$AS', version unknown)"
+	elif version_compare "$VER" "1.28"; then
+		success "yes (as '$AS', version $VER)"
 	else
-		VER="$(docker-compose --version 2>/dev/null | sed -n -E 's/^docker-compose version ([0-9]+\.[0-9]+\.[0-9a-zA-Z.-]+), .*/\1/p')"
-		if [[ -z "$VER" ]]; then
-			warning "yes (version unknown)"
-		elif version_compare "$VER" "1.28"; then
-			success "yes (version $VER)"
-		else
-			warning "yes (version $VER)" '' "Docker-compose at $BIN is version $VER. Version 1.28 or later is recommended."
-		fi
+		warning "yes (as '$AS', version $VER)" '' "Docker compose at $BIN is version $VER. Version 1.28 or later is recommended."
 	fi
 
 	checking '[optional] Docker is running'

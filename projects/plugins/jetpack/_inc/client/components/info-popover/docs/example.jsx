@@ -1,8 +1,8 @@
 /* eslint jsx-a11y/no-onchange: 0 */
+import { PureComponent } from 'react';
 import InfoPopover from 'components/info-popover';
-import React from 'react';
 
-class InfoPopoverExample extends React.PureComponent {
+class InfoPopoverExample extends PureComponent {
 	static displayName = 'InfoPopover';
 
 	state = {

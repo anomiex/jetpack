@@ -1,5 +1,4 @@
-<?php // phpcs:ignore WordPress.Files.FileName
-
+<?php
 /**
  * Plugins handler test suite.
  *
@@ -9,6 +8,9 @@
 // We live in the namespace of the test autoloader to avoid many use statements.
 namespace Automattic\Jetpack\Autoloader\jpCurrent;
 
+use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
+use PHPUnit\Framework\Attributes\PreserveGlobalState;
+use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -17,8 +19,10 @@ use PHPUnit\Framework\TestCase;
  * @runTestsInSeparateProcesses Ensure that each test has no previously autoloaded files.
  * @preserveGlobalState disabled
  */
+#[AllowMockObjectsWithoutExpectations /* Mocks created in setUp, some tests add expectations and others don't. */ ]
+#[RunTestsInSeparateProcesses]
+#[PreserveGlobalState( false )]
 class PluginsHandlerTest extends TestCase {
-	use \Yoast\PHPUnitPolyfills\Polyfills\AssertIsType;
 
 	/**
 	 * A dependency mock for the handler.
@@ -43,25 +47,19 @@ class PluginsHandlerTest extends TestCase {
 
 	/**
 	 * Setup runs before each test.
-	 *
-	 * @before
 	 */
-	public function set_up() {
-		$this->plugin_locator  = $this->getMockBuilder( Plugin_Locator::class )
-			->disableOriginalConstructor()
-			->getMock();
-		$this->path_processor  = $this->getMockBuilder( Path_Processor::class )
-			->disableOriginalConstructor()
-			->getMock();
+	public function setUp(): void {
+		parent::setUp();
+		$this->plugin_locator  = $this->createMock( Plugin_Locator::class );
+		$this->path_processor  = $this->createMock( Path_Processor::class );
 		$this->plugins_handler = new Plugins_Handler( $this->plugin_locator, $this->path_processor );
 	}
 
 	/**
 	 * Teardown runs after each test.
-	 *
-	 * @after
 	 */
-	public function tear_down() {
+	public function tearDown(): void {
+		parent::tearDown();
 		cleanup_test_wordpress_data();
 	}
 
@@ -106,9 +104,11 @@ class PluginsHandlerTest extends TestCase {
 		$jetpack_autoloader_activating_plugins_paths = array( WP_PLUGIN_DIR . '/plugin_activating' );
 		$this->plugin_locator->expects( $this->exactly( 2 ) )
 			->method( 'find_using_option' )
-			->withConsecutive(
-				array( 'active_plugins', false ),
-				array( 'active_sitewide_plugins', true )
+			->with(
+				...with_consecutive(
+					array( 'active_plugins', false ),
+					array( 'active_sitewide_plugins', true )
+				)
 			)
 			->willReturnOnConsecutiveCalls(
 				array( WP_PLUGIN_DIR . '/dummy_current' ),
@@ -231,9 +231,11 @@ class PluginsHandlerTest extends TestCase {
 			->willReturn( array( WP_PLUGIN_DIR . '/dummy_newer' ) );
 		$this->plugin_locator->expects( $this->exactly( 2 ) )
 			->method( 'find_using_request_action' )
-			->withConsecutive(
-				array( array( 'activate', 'activate-selected', 'deactivate', 'deactivate-selected' ) ),
-				array( array( 'deactivate', 'deactivate-selected' ) )
+			->with(
+				...with_consecutive(
+					array( array( 'activate', 'activate-selected', 'deactivate', 'deactivate-selected' ) ),
+					array( array( 'deactivate', 'deactivate-selected' ) )
+				)
 			)
 			->willReturnOnConsecutiveCalls(
 				array( WP_PLUGIN_DIR . '/dummy_dev' ),

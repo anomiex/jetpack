@@ -7,7 +7,7 @@ Unified environment for developing Jetpack using Docker containers providing fol
 * All monorepo plugins will be available as plugins within the Docker WP instance.
 * Xdebug setup.
 * WP-CLI installed.
-* MailDev to catch all the emails leaving WordPress so that you can observe them from browser.
+* Mailpit to catch all the emails leaving WordPress so that you can observe them from browser
 * phpMyAdmin to aid in viewing the database.
 * Handy shorthand commands like `jetpack docker up` and `jetpack docker phpunit` to simplify the usage.
 
@@ -29,7 +29,7 @@ cp tools/docker/default.env tools/docker/.env
 
 Anything you put in `.env` overrides values in `default.env`. You should modify all the password fields for security, for example.
 
-**Note**: in older versions of docker-compose (earlier than 1.28), you'll need to place that file at the root of the monorepo.
+**Note**: in older versions of Docker compose (earlier than 1.28), you'll need to place that file at the root of the monorepo.
 
 ## Quick start
 
@@ -59,7 +59,7 @@ WordPress’ `WP_SITEURL` and `WP_HOME` constants are configured to be dynamic i
 ## Custom mounts, environment Variables, `.env` Files, and Ports
 
 You can control some of the behavior of Jetpack's Docker configuration with environment variables. Note, though, that there are two types of environments:
-1. The host environment in which the `jetpack docker *` (`docker-compose`) commands run when creating/managing the containers.
+1. The host environment in which the `jetpack docker *` (Docker compose) commands run when creating/managing the containers.
 2. The containers' environments.
 
 ### Host Environment
@@ -67,8 +67,9 @@ You can control some of the behavior of Jetpack's Docker configuration with envi
 You can set the following variables on a per-command basis (`PORT_WORDPRESS=8000 jetpack docker up`) or, preferably, in the `tools/docker/.env` file you set up earlier.
 
 * `PORT_WORDPRESS`: (default=`80`) The port on your host machine connected to the WordPress container's HTTP server.
-* `PORT_MAILDEV`: (default=`1080`) The port on your host machine connected to the MailDev container's MailDev HTTP server.
-* `PORT_SMTP`: (default=`25`) The port on your host machine connected to the MailDev container's SMTP server.
+* `PORT_INBOX`: (default=`1080`) The port on your host machine connected to the Mailpit container's web interface.
+* `PORT_SMTP`: (default=`25`) The port on your host machine connected to the Mailpit container's SMTP server.
+* `PORT_PHPMY`: (default=`8181`) The port on your host machine connected to the phpMyAdmin container's web interface.
 * `PORT_SFTP`: (default=`1022`) The port on your host machine connected to the SFTP container's SFTP server.
 
 ### Container Environments
@@ -90,7 +91,7 @@ Users can extended these configurations further via override config file `tools/
 The default config file `tools/docker/jetpack-docker-config-default.yml` includes inline comments explaining the structure of config, but here's quick overview. The configuration is grouped per environment type: `default`, `dev`, `e2e`. Each type may define `volumeMappings` and `extras`:
 
 * `volumeMappings` - list of key value pairs which defines local directory mappings with following structure: local_path: wordpress_container_path
-* `extras` - basically any other configuration that is supported by `docker-compose`
+* `extras` - basically any other configuration that is supported by Docker compose.
 
 ## Working with containers
 
@@ -102,7 +103,7 @@ You can just quickly install WordPress and activate Jetpack via command line. En
 jetpack docker install
 ```
 
-This will give you a single site with user/pass `wordpress` (unless you changed these from `./tools/docker/.env` file). You will still have to connect Jetpack to WordPress.com manually.
+This will give you a single site with user `jp_docker_acct` and password `jp_docker_pass` (unless you changed these in `tools/docker/.env`). You will still have to connect Jetpack to WordPress.com manually.
 
 To convert installed single site into a multisite, run:
 
@@ -122,7 +123,7 @@ jetpack docker uninstall
 jetpack docker up
 ```
 
-Start the containers (WordPress, MySQL and MailDev) defined in `docker-compose.yml`.
+Start the containers (WordPress, MySQL and Mailpit) defined in `docker-compose.yml`.
 
 This command will rebuild the WordPress container if you made any changes to `docker-compose.yml`.
 
@@ -144,14 +145,140 @@ Stops all containers.
 jetpack docker down
 ```
 
-Will stop all of the containers created by this docker-compose configuration and remove them, too. It won’t remove the images. Just the containers that have just been stopped.
+Will stop all of the containers created by this Docker compose configuration and remove them, too. It won’t remove the images. Just the containers that have just been stopped.
+
+### Parallel development environments
+
+You can run a second (or third, …) Jetpack Docker instance alongside your main one so that parallel work on different branches doesn't require tearing down your primary environment. The typical setup is: one checkout running `jetpack_dev`, plus one or more [git worktrees](https://git-scm.com/docs/git-worktree) each running their own named instance on non-default ports.
+
+#### Spinning up a parallel instance
+
+From your second checkout/worktree, pass `--name` and a free set of ports:
+
+```sh
+jetpack docker up -d \
+  --name feature \
+  --port 8080 \
+  --port-phpmy 8281 \
+  --port-inbox 1180 \
+  --port-smtp 2525 \
+  --port-sftp 1122
+```
+
+This gives you `jetpack_feature-*` containers running in parallel with `jetpack_dev-*`. Each instance gets its own database, its own volumes, and its own MailPit inbox.
+
+#### Flags
+
+| Flag | Applies to | Default | Description |
+|------|-----------|---------|-------------|
+| `--name <name>` | `dev`, `e2e` | `dev` (or `e2e`) | Compose project name suffix, used for isolation. Containers become `jetpack_<name>-*`. |
+| `--port <n>` | `dev`, `e2e` | `80` (`8889` for `e2e`) | Host port mapped to the WordPress container. |
+| `--port-phpmy <n>` | all | `8181` | Host port for phpMyAdmin. |
+| `--port-inbox <n>` | all | `1080` | Host port for the MailPit web UI. |
+| `--port-smtp <n>` | all | `25` | Host port for the MailPit SMTP server. |
+| `--port-sftp <n>` | all | `1022` | Host port for the SFTP container. |
+| `--clone-from <name>` | `dev` + `up` | — | Clone the DB from an existing running instance (e.g. `--clone-from feature`). The target site ends up with an installed WordPress populated from the source. |
+| `--no-clone` | `dev` + `up` | (auto-clone on) | Opt out of auto-cloning and get the default fresh-install flow instead. |
+| `--update-env` | `dev` + `up` | `false` | When a flag value conflicts with `tools/docker/.env`, rewrite the conflicting key in `.env` to match the flag. Without this, the flag wins for the current run only and a warning is printed; `.env` is left untouched. |
+
+#### Auto-clone behavior
+
+When you spin up a parallel instance with `--name <foo>`, by default the CLI will automatically clone the database from `jetpack_dev` if it's running. The goal is that `jetpack docker up -d --name feature --port 8080` gives you a fully working site at `http://localhost:8080/` with the same content, users, and Jetpack connection as your main instance — no separate `jetpack docker install` or reconnection needed.
+
+The auto-clone is only triggered when all of the following are true:
+
+* `--name` is set (i.e. you're creating a parallel instance — never on the primary `jetpack docker up`).
+* `jetpack_dev` has at least one running container.
+* `--no-clone` was not passed.
+* The target doesn't already have an installed WordPress (re-running `up` on an existing instance is a safe no-op).
+* The target instance is actually running by the time the clone step fires, which in practice means `-d` / `--detached` was passed. If you run `up` in the foreground (no `-d`), compose blocks until you exit it, the parallel target stops, and the auto-clone is silently skipped (there's nowhere to write into). For any persistent parallel instance — including the `/work-on` flow — always pass `-d`.
+
+The clone runs `wp db export | wp db import` between the source and target containers, then `wp search-replace` on the target to rewrite the siteurl to `http://localhost:<target-port>`. `guid` columns are skipped as WP-CLI recommends.
+
+For explicit control:
+
+```sh
+# Clone from a specific source (not just jetpack_dev)
+jetpack docker up -d --name staging --port 8082 --clone-from feature
+
+# Opt out of cloning; get a fresh, uninstalled WordPress and run install yourself
+jetpack docker up -d --name clean --port 8090 --no-clone
+jetpack docker install --name clean --port 8090
+```
+
+#### How `.env` is used
+
+The CLI treats the worktree's `tools/docker/.env` as a per-instance config file, in addition to (not instead of) the CLI flags. This means a worktree configured once can be brought back up with bare `jetpack docker up` afterwards — the flag set above is only needed on the first invocation.
+
+**Read precedence on `up`** (last wins):
+
+`tools/docker/default.env` → worktree's `tools/docker/.env` → CLI flags → `process.env`
+
+**What the CLI writes:**
+
+* On `up --name <slug>`, after the instance is up, the CLI **appends** any of the following keys to `tools/docker/.env` that aren't already present: `COMPOSE_PROJECT_NAME`, `PORT_WORDPRESS`, `PORT_PHPMY`, `PORT_INBOX`, `PORT_SMTP`, `PORT_SFTP`. Existing lines are never modified or reordered.
+* The primary `jetpack_dev` flow (no `--name`) **never** writes to `.env`. Your main checkout's `.env` stays as you've set it.
+
+**Conflicts between flags and `.env`:**
+
+If you pass a flag (e.g. `--port 8090`) whose value differs from the corresponding `.env` entry (e.g. `PORT_WORDPRESS=8080`), the CLI:
+
+* uses the flag for the current run, and
+* prints a one-line warning naming the key, both values, and how to make it stick.
+
+`.env` is left untouched. To make the new value persistent, pass `--update-env` and the conflicting keys are rewritten in place — every other line preserved verbatim.
+
+```sh
+# First time — flags only, .env empty
+jetpack docker up -d --name feature --port 8080 --port-phpmy 8281 \
+  --port-inbox 1180 --port-smtp 2525 --port-sftp 1122
+# → CLI appends the 6 keys to tools/docker/.env
+
+# Subsequent runs — bare command works
+jetpack docker up -d
+# → reads .env, brings up jetpack_feature on port 8080
+
+# Override for one run; .env stays at 8080
+jetpack docker up -d --port 8090
+# → ⚠ warning, runs on 8090
+
+# Persist the override
+jetpack docker up -d --port 8090 --update-env
+# → tools/docker/.env's PORT_WORDPRESS is rewritten to 8090
+```
+
+`.env` is `git`-ignored, so per-worktree state stays local. Removing the worktree removes the file.
+
+#### Cleaning up a parallel instance
+
+```sh
+# Stop the instance (containers remain, can be resumed with `up -d` later)
+jetpack docker stop --name feature
+
+# Stop and remove containers
+jetpack docker down --name feature
+
+# Nuke everything for that instance: containers, volumes, MySQL data, logs
+jetpack docker clean --name feature
+
+# If you used a git worktree for this instance, remove it when you're done
+git worktree remove ../jetpack-feature
+```
+
+Each of the above needs the same `--name` you used when bringing the instance up. The primary `jetpack_dev` instance is untouched.
+
+#### Notes & gotchas
+
+* The `mailpit` container is no longer globally named — each instance gets its own `jetpack_<name>-mailpit-1`. Internal SMTP routing still uses the compose service name `mailpit`, so PHP mail from within any container routes to that instance's MailPit.
+* WordPress's `WP_SITEURL` / `WP_HOME` are dynamic via `HTTP_HOST`, so the same DB will happily serve requests on both the source and target ports after cloning. In practice this means your Jetpack connection works across instances on different localhost ports without reconnecting.
+* `e2e` keeps its defaults (`jetpack_e2e`, port `8889`) when no flags are passed — parallel-mode flags don't affect the e2e workflow.
 
 ### Running unit tests
 
 These commands require the WordPress container to be running.
 
 ```sh
-jetpack docker phpunit
+jetpack docker phpunit jetpack
 ```
 
 This will run unit tests for Jetpack. You can pass arguments to `phpunit` like so:
@@ -162,10 +289,14 @@ jetpack docker phpunit -- --filter=Protect
 
 This command runs the tests as a multi site install
 ```sh
-jetpack docker phpunit-multisite -- --filter=Protect
+jetpack docker phpunit jp-multisite -- --filter=Protect
 ```
 
-To run tests for specific packages, you can run the tests locally, from within the package's directory:
+To run tests for specific packages, you can run the tests locally. The most straightforward way is to use `jetpack test`, for example
+```sh
+jetpack test -v php packages/assets
+```
+or you can usually run them manually like
 ```sh
 cd projects/packages/assets
 composer phpunit
@@ -234,6 +365,16 @@ You can access WordPress and Jetpack files via SFTP server container.
 - Pass: `wordpress`
 - WordPress path: `/var/www/html`
 
+Note that the SSH host key changes each time the container is started, so you might consider one of these variants to avoid strict host key checking:
+
+```sh
+sftp -o NoHostAuthenticationForLocalhost=yes -P 1022 wordpress@localhost
+```
+
+```sh
+sftp -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -P 1022 wordpress@localhost
+```
+
 You can tunnel to this container using [Ngrok](https://ngrok.com) or [other similar service](https://alternativeto.net/software/ngrok/). If you intend to do so, change the password in the `SFTP_USERS` variable in `./tools/docker/.env`!
 
 Tunnelling makes testing [Jetpack Backup & Scan](https://jetpack.com/support/backup/) possible. Read more from ["Using Ngrok with Jetpack"](#using-ngrok-with-jetpack) section below.
@@ -254,31 +395,41 @@ define( 'JETPACK__SANDBOX_DOMAIN', '{your sandbox}.wordpress.com' );
 
 ## Jurassic Tube Tunneling Service
 
-This is for Automatticians only. More information: PCYsg-snO-p2.
+This is for Automatticians only. More information: PCYsg-GJ2-p2.
 
-If you have persistent trouble with the `jetpack docker jt-*` commands complaining that "Tunneling scripts are not installed", it could be because Docker wasn't running properly when you ran the installer.
+Jurassic Tube is a tunneling service that allows you to expose your local Docker environment to the internet, enabling you to connect Jetpack to WordPress.com for testing.
 
-To solve this problem, run these commands from the repo root:
+### Setup
 
+To set up Jurassic Tube and establish a tunnel to your local machine, follow the instructions here: PCYsg-GJ2-p2
+
+### Recommended Proxy Configuration
+
+When using Jurassic Tube with Docker, you may need to configure proxy settings to ensure proper connectivity with WordPress.com. If you experience connection issues (such as cURL SSL errors), use one of these methods:
+
+**Method 1: Configure Docker Desktop Proxy Settings**
+
+1. Open Docker Desktop
+2. Click the gear icon in the top right
+3. Navigate to **Resources** → **Proxy**
+4. Enable "Manual proxy configuration"
+
+**Method 2: Configure Proxy in wp-config.php**
+
+Add the following lines to `tools/docker/wordpress/wp-config.php`:
+
+```php
+define( 'WP_PROXY_HOST', 'socks://host.docker.internal' );
+define( 'WP_PROXY_PORT', '8080' );
 ```
+
+**Note:** If you're not using Autoproxxy or working with Jetpack Boost alongside a Boost Cloud dev environment, these proxy settings may cause issues. Only apply them if needed.
+
+After applying either method, restart your Docker container:
+
+```bash
+jetpack docker down
 jetpack docker up -d
-chmod +x tools/docker/bin/jt/installer.sh && tools/docker/bin/jt/installer.sh
-```
-
-Once you have successfull installed Jurassic Tube, you can use these commands during development:
-
-* Start the tunnel: `jetpack docker jt-up your-username your-subdomain`
-* Break the connection: `jetpack docker jt-down`
-
-You can also set default values:
-
-```shell script
-jetpack docker jt-config username your-username
-jetpack docker jt-config subdomain your-subdomain
-```
-That will let you omit those parameters while initiating the connection:
-```shell script
-jetpack docker jt-up
 ```
 
 ## Using Ngrok with Jetpack
@@ -348,6 +499,46 @@ You should now be able to configure [Jetpack Backup & Scan](https://jetpack.com/
 - Server password: `wordpress`
 - WordPress installation path: `/var/www/html`
 
+### Improved performance when tunneling
+
+Loading tunnelled local sites like Jurassic Tube or Ngrok can sometimes be slow due to all traffic having to go to the server and back. Depending on where you live, there can be a considerable delay for most browser requests.
+
+**Solution**: Make the site reachable from the outside world, but _when working locally, load everything locally_, without tunneling, using a reverse proxy.
+
+#### Setup
+1. Install [Caddy](https://formulae.brew.sh/formula/caddy)
+
+    Why Caddy? The developer environment only listens for HTTP traffic, not HTTPS traffic. Caddy accepts the HTTPS connection and proxies the request to the developer environment.
+
+    ```sh
+    brew install caddy
+    ```
+
+2. Edit the hosts file (`/etc/hosts` on macOS/Linux) as an administrator (requires `sudo` privileges)
+
+    For example, you can run:
+
+    ```sh
+    sudo nano /etc/hosts
+    ```
+    Add this line:
+
+    ```
+    127.0.0.1 localhost your-test-site.example.com
+    ```
+
+3. Start Jurassic Tube tunnel or Ngrok
+
+4. Run Caddy
+
+    ```sh
+    caddy reverse-proxy --from your-test-site.example.com --to localhost:80 --internal-certs --disable-redirects
+    ```
+
+    `--internal-certs` and `--disable-redirects` are needed for HTTPS. [Read more](https://caddyserver.com/docs/command-line#caddy-reverse-proxy).
+
+That’s it!
+
 ## Custom plugins & themes in the container
 
 Jetpack Docker environment can be wonderful for developing your own plugins and themes, too.
@@ -374,7 +565,21 @@ Since everything under `mu-plugins` and `wordpress/wp-content` is git-ignored, y
 Note that any folder within the `projects/plugins` directory will be automatically linked.
 If you're starting a new monorepo plugin, you may need to `jetpack docker stop` and `jetpack docker up` to re-run the initial linking step so it can be added.
 
+Deleting and updating plugins that are symlinked is disabled. You can block this for additional plugins using the `jetpack_docker_avoided_plugins` filter, adding something like this to a new file at `tools/docker/mu-plugins`:
+
+```php
+function jetpack_docker_disable_gutenberg_deletion( $plugins ) {
+	array_push( $plugins, 'gutenberg/gutenberg.php' );
+	return $plugins;
+}
+add_filter( 'jetpack_docker_avoided_plugins', 'jetpack_docker_disable_gutenberg_deletion' );
+```
+
 ## Debugging
+
+### Debug helper functions
+
+Helpful function `l()` for logging, some timer functions, etc are available in your Docker setup. [See the file more more](https://github.com/Automattic/jetpack/blob/trunk/tools/docker/mu-plugins/debug.php).
 
 ### Accessing logs
 
@@ -398,7 +603,7 @@ We recommend to regularly review the log to make sure performance issues don't g
 
 ### Debugging emails
 
-Emails don’t leave your WordPress and are caught by [MailDev](http://danfarrelly.nyc/MailDev/) SMTP server container instead.
+Emails don’t leave your WordPress and are caught by the [Mailpit](https://mailpit.axllent.org/) SMTP server container instead.
 
 To debug emails via web-interface, open [http://localhost:1080](http://localhost:1080)
 
@@ -476,8 +681,8 @@ You will need to supply a pathMappings value to the `launch.json` configuration.
             "request": "launch",
             "port": 9003,
             "pathMappings": {
-                "/usr/local/src/jetpack-monorepo": "${workspaceRoot}",
-                "/var/www/html": "${workspaceRoot}/tools/docker/wordpress",
+                "/usr/local/src/jetpack-monorepo": "${workspaceFolder}",
+                "/var/www/html": "${workspaceFolder}/tools/docker/wordpress",
             }
         },
         {
@@ -491,6 +696,10 @@ You will need to supply a pathMappings value to the `launch.json` configuration.
     ]
 }
 ```
+
+In older versions of VSCode `workspaceFolder` was named `workspaceRoot`,
+so make sure to update your configuration to reflect that change if you use an
+older version.
 
 In your browser's Xdebug Helper preferences, look for the IDE Key setting:
 

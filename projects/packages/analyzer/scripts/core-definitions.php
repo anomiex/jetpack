@@ -8,6 +8,7 @@
 namespace Automattic\Jetpack\Analyzer;
 
 use Composer\Script\Event;
+use Exception;
 
 /**
  * This class holds the callback for the WordPress API function definition finder.
@@ -22,7 +23,7 @@ class CoreDefinitions {
 	 */
 	public static function callback( Event $event ) {
 		$arguments = $event->getArguments();
-		$scan_path = isset( $arguments[0] ) ? $arguments[0] : null;
+		$scan_path = $arguments[0] ?? null;
 		$io        = $event->getIO();
 
 		if ( is_null( $scan_path ) ) {
@@ -82,7 +83,7 @@ class CoreDefinitions {
 	 * @return \Automattic\Jetpack\Analyzer\Declarations $declarations object.
 	 * @throws \Exception $exception on an unhandled declaration found.
 	 */
-	public static function get_declarations( string $scan_path ) { // phpcs:ignore PHPCompatibility
+	public static function get_declarations( string $scan_path ) {
 		$core_declarations = new Declarations();
 		$core_declarations->scan( $scan_path );
 		$filtered_declarations = new Declarations();

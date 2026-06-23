@@ -1,6 +1,11 @@
 import { getRedirectUrl } from '@automattic/jetpack-components';
-import { __, sprintf } from '@wordpress/i18n';
-import classNames from 'classnames';
+import { isWoASite } from '@automattic/jetpack-script-data';
+import { useDispatch } from '@wordpress/data';
+import { __, _x, sprintf } from '@wordpress/i18n';
+import clsx from 'clsx';
+import PropTypes from 'prop-types';
+import { Component } from 'react';
+import { connect } from 'react-redux';
 import Button from 'components/button';
 import Card from 'components/card';
 import JetpackBanner from 'components/jetpack-banner';
@@ -9,9 +14,6 @@ import {
 	getJetpackProductUpsellByFeature,
 	FEATURE_PRIORITY_SUPPORT_JETPACK,
 } from 'lib/plans/constants';
-import PropTypes from 'prop-types';
-import React from 'react';
-import { connect } from 'react-redux';
 import {
 	getSiteConnectionStatus,
 	hasConnectedOwner,
@@ -19,10 +21,38 @@ import {
 	isConnectionOwner,
 	connectUser,
 } from 'state/connection';
-import { isAtomicSite, isDevVersion as _isDevVersion, getUpgradeUrl } from 'state/initial-state';
-import { siteHasFeature, isFetchingSiteData } from 'state/site';
+import { isDevVersion as _isDevVersion, getUpgradeUrl } from 'state/initial-state';
+import { siteHasFeature, hasActiveProductPurchase, isFetchingSiteData } from 'state/site';
 
-class SupportCard extends React.Component {
+const HelpCenterButton = ( { onClick } ) => {
+	const helpCenterDispatch = useDispatch( 'automattic/help-center' );
+	const setShowHelpCenter = helpCenterDispatch?.setShowHelpCenter;
+
+	const text = __( 'Search our support site', 'jetpack' );
+
+	return setShowHelpCenter ? (
+		<Button
+			// eslint-disable-next-line react/jsx-no-bind
+			onClick={ () => {
+				onClick?.();
+
+				helpCenterDispatch?.setShowHelpCenter( true );
+			} }
+		>
+			{ text }
+		</Button>
+	) : (
+		<Button
+			onClick={ onClick }
+			href={ isWoASite() ? getRedirectUrl( 'calypso-help' ) : getRedirectUrl( 'jetpack-support' ) }
+			isExternalLink={ true }
+		>
+			{ text }
+		</Button>
+	);
+};
+
+class SupportCard extends Component {
 	static displayName = 'SupportCard';
 
 	static defaultProps = {
@@ -70,19 +100,19 @@ class SupportCard extends React.Component {
 			return <div />;
 		}
 
-		const classes = classNames( this.props.className, 'jp-support-card' );
+		const classes = clsx( this.props.className, 'jp-support-card' );
 
 		return (
 			<div className={ classes }>
 				<Card className="jp-support-card__happiness">
 					<div className="jp-support-card__happiness-contact">
-						<h3 className="jp-support-card__header">{ __( "We're here to help", 'jetpack' ) }</h3>
+						<h3 className="jp-support-card__header">{ __( 'We’re here to help', 'jetpack' ) }</h3>
 						<p className="jp-support-card__description">
 							{ hasSupport
 								? sprintf(
-										/* translators: placeholder is either Jetpack or WordPress.com */
+										/* translators: %s: either Jetpack or WordPress.com */
 										__( 'Your paid plan gives you access to prioritized %s support.', 'jetpack' ),
-										this.props.isAtomicSite ? 'WordPress.com' : 'Jetpack'
+										isWoASite() ? 'WordPress.com' : 'Jetpack'
 								  )
 								: __(
 										'Jetpack offers support via community forums for any site without a paid product.',
@@ -90,26 +120,16 @@ class SupportCard extends React.Component {
 								  ) }
 						</p>
 						<p className="jp-support-card__description">
-							<Button
-								onClick={ this.trackGettingStartedClick }
-								href={
-									this.props.isAtomicSite
-										? getRedirectUrl( 'calypso-help' )
-										: getRedirectUrl( 'jetpack-support-getting-started' )
-								}
-							>
-								{ __( 'Getting started with Jetpack', 'jetpack' ) }
-							</Button>
-							<Button
-								onClick={ this.trackSearchClick }
-								href={
-									this.props.isAtomicSite
-										? getRedirectUrl( 'calypso-help' )
-										: getRedirectUrl( 'jetpack-support' )
-								}
-							>
-								{ __( 'Search our support site', 'jetpack' ) }
-							</Button>
+							{ isWoASite() || (
+								<Button
+									onClick={ this.trackGettingStartedClick }
+									href={ getRedirectUrl( 'jetpack-support-getting-started' ) }
+									isExternalLink={ true }
+								>
+									{ __( 'Getting started with Jetpack', 'jetpack' ) }
+								</Button>
+							) }
+							<HelpCenterButton onClick={ this.trackSearchClick } />
 						</p>
 					</div>
 				</Card>
@@ -117,7 +137,7 @@ class SupportCard extends React.Component {
 					<JetpackBanner
 						title={ __( 'Get a faster resolution to your support questions.', 'jetpack' ) }
 						plan={ getJetpackProductUpsellByFeature( FEATURE_PRIORITY_SUPPORT_JETPACK ) }
-						callToAction={ __( 'Upgrade', 'jetpack' ) }
+						callToAction={ _x( 'Upgrade', 'Call to action to buy a new plan', 'jetpack' ) }
 						onClick={ this.trackBannerClick }
 						href={ this.props.supportUpgradeUrl }
 					/>
@@ -150,13 +170,12 @@ export default connect(
 		return {
 			siteConnectionStatus: getSiteConnectionStatus( state ),
 			isFetchingSiteData: isFetchingSiteData( state ),
-			isAtomicSite: isAtomicSite( state ),
 			isDevVersion: _isDevVersion( state ),
 			supportUpgradeUrl: getUpgradeUrl( state, 'support' ),
 			isCurrentUserLinked: isCurrentUserLinked( state ),
 			isConnectionOwner: isConnectionOwner( state ),
 			hasConnectedOwner: hasConnectedOwner( state ),
-			hasSupport: siteHasFeature( state, 'support' ),
+			hasSupport: siteHasFeature( state, 'support' ) || hasActiveProductPurchase( state ),
 		};
 	},
 	dispatch => ( {

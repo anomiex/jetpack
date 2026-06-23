@@ -1,21 +1,18 @@
 /** @ssr-ready **/
 
-import classNames from 'classnames';
+import clsx from 'clsx';
+import PropTypes from 'prop-types';
+import { Component, Children, cloneElement, createRef } from 'react';
 import Count from 'components/count';
 import DropdownItem from 'components/select-dropdown/item';
 import DropdownLabel from 'components/select-dropdown/label';
 import DropdownSeparator from 'components/select-dropdown/separator';
-import { filter, find, findIndex, map, result } from 'lodash';
-import PropTypes from 'prop-types';
-import React from 'react';
-import ReactDom from 'react-dom';
 
 import './style.scss';
 
 /**
  * Module variables
  */
-const { Component } = React;
 const noop = () => {};
 
 /**
@@ -23,6 +20,9 @@ const noop = () => {};
  */
 
 class SelectDropdown extends Component {
+	itemRefs = {};
+	dropdownContainerRef = createRef();
+
 	constructor( props ) {
 		super( props );
 
@@ -91,7 +91,7 @@ class SelectDropdown extends Component {
 			return;
 		}
 
-		const selectedItem = find( props.options, value => ! value.isLabel );
+		const selectedItem = props.options.find( value => ! value.isLabel );
 		return selectedItem && selectedItem.value;
 	}
 
@@ -101,18 +101,20 @@ class SelectDropdown extends Component {
 
 		if ( this.props.children ) {
 			// add keys and refs to children
-			return React.Children.map(
+			return Children.map(
 				this.props.children,
 				function ( child, index ) {
 					if ( ! child ) {
 						return null;
 					}
 
-					const newChild = React.cloneElement( child, {
-						ref: child.type === DropdownItem ? 'item-' + refIndex : null,
+					self.itemRefs[ 'item-' + refIndex ] =
+						child.type === DropdownItem ? createRef() : undefined;
+					const newChild = cloneElement( child, {
+						ref: self.itemRefs[ 'item-' + refIndex ],
 						key: 'item-' + index,
 						onClick: function ( event ) {
-							self.refs.dropdownContainer.focus();
+							self.dropdownContainerRef.current.focus();
 							if ( typeof child.props.onClick === 'function' ) {
 								child.props.onClick( event );
 							}
@@ -144,10 +146,11 @@ class SelectDropdown extends Component {
 				);
 			}
 
+			self.itemRefs[ 'item-' + refIndex ] = createRef();
 			const dropdownItem = (
 				<DropdownItem
 					key={ 'dropdown-item-' + this.state.instanceId + '-' + item.value }
-					ref={ 'item-' + refIndex }
+					ref={ self.itemRefs[ 'item-' + refIndex ] }
 					selected={ this.state.selected === item.value }
 					onClick={ this.onSelectItem( item ) }
 					path={ item.path }
@@ -168,6 +171,7 @@ class SelectDropdown extends Component {
 			'is-compact': this.props.compact,
 			'is-open': this.state.isOpen,
 			'is-disabled': this.props.disabled,
+			'is-rna': this.props.rna,
 		};
 
 		if ( this.props.className ) {
@@ -176,15 +180,15 @@ class SelectDropdown extends Component {
 			} );
 		}
 
-		const dropdownClassName = classNames( dropdownClasses );
+		const dropdownClassName = clsx( dropdownClasses );
 		const selectedText = this.props.selectedText
 			? this.props.selectedText
-			: result( find( this.props.options, { value: this.state.selected } ), 'label' );
+			: this.props.options.find( v => v.value === this.state.selected )?.label;
 
 		return (
 			<div style={ this.props.style } className={ dropdownClassName }>
 				<div
-					ref="dropdownContainer"
+					ref={ this.dropdownContainerRef }
 					className="dops-select-dropdown__container"
 					tabIndex={ this.props.tabIndex || 0 }
 					role="listbox"
@@ -262,7 +266,7 @@ class SelectDropdown extends Component {
 			selected: option.value,
 		} );
 
-		this.refs.dropdownContainer.focus();
+		this.dropdownContainerRef.current.focus();
 	}
 
 	navigateItem( event ) {
@@ -288,7 +292,7 @@ class SelectDropdown extends Component {
 			case 27: // escape
 				event.preventDefault();
 				this.closeDropdown();
-				this.refs.dropdownContainer.focus();
+				this.dropdownContainerRef.current.focus();
 				break;
 		}
 	}
@@ -306,7 +310,7 @@ class SelectDropdown extends Component {
 		if ( ! this.state.isOpen ) {
 			return this.openDropdown();
 		}
-		document.activeElement.click();
+		this.dropdownContainerRef.current.ownerDocument.activeElement.click();
 	}
 
 	focusSibling( direction ) {
@@ -318,26 +322,17 @@ class SelectDropdown extends Component {
 		}
 
 		if ( this.props.options.length ) {
-			items = map(
-				filter( this.props.options, item => {
-					return item && ! item.isLabel;
-				} ),
-				'value'
-			);
+			items = this.props.options.filter( item => item && ! item.isLabel ).map( v => v.value );
 
 			focusedIndex =
 				typeof this.focused === 'number' ? this.focused : items.indexOf( this.state.selected );
 		} else {
-			items = filter( this.props.children, function ( item ) {
-				return item.type === DropdownItem;
-			} );
+			items = Children.toArray( this.props.children ).filter( item => item.type === DropdownItem );
 
 			focusedIndex =
 				typeof this.focused === 'number'
 					? this.focused
-					: findIndex( items, function ( item ) {
-							return item.props.selected;
-					  } );
+					: items.findIndex( item => item.props.selected );
 		}
 
 		const increment = direction === 'previous' ? -1 : 1;
@@ -347,12 +342,12 @@ class SelectDropdown extends Component {
 			return;
 		}
 
-		ReactDom.findDOMNode( this.refs[ 'item-' + newIndex ].refs.itemLink ).focus();
+		this.itemRefs[ 'item-' + newIndex ].current.itemLinkRef.current.focus();
 		this.focused = newIndex;
 	}
 
 	handleOutsideClick( event ) {
-		if ( ! ReactDom.findDOMNode( this.refs.dropdownContainer ).contains( event.target ) ) {
+		if ( ! this.dropdownContainerRef.current.contains( event.target ) ) {
 			this.closeDropdown();
 		}
 	}
@@ -364,6 +359,7 @@ SelectDropdown.defaultProps = {
 	onToggle: noop,
 	disabled: false,
 	style: {},
+	rna: false,
 };
 
 SelectDropdown.propTypes = {
@@ -384,6 +380,7 @@ SelectDropdown.propTypes = {
 			path: PropTypes.string,
 		} )
 	),
+	rna: PropTypes.bool,
 };
 
 // statics

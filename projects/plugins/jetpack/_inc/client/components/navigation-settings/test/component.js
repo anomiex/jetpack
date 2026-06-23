@@ -1,5 +1,5 @@
+import { act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import React from 'react';
 import { render, screen } from 'test/test-utils';
 import { NavigationSettings } from '../index';
 
@@ -43,7 +43,6 @@ describe( 'NavigationSettings', () => {
 			monitor: true,
 			vaultpress: true,
 			stats: true,
-			masterbar: true,
 			'google-analytics': true,
 			'seo-tools': true,
 			wordads: true,
@@ -111,9 +110,7 @@ describe( 'NavigationSettings', () => {
 				// eslint-disable-next-line react/jsx-no-bind
 				<NavigationSettings { ...currentTestProps } isModuleActivated={ m => 'publicize' !== m } />
 			);
-			// eslint-disable-next-line jest-dom/prefer-in-document -- No, we really want to assert there's exactly 1.
 			expect( screen.getAllByRole( 'menuitem' ) ).toHaveLength( 1 );
-			// eslint-disable-next-line jest-dom/prefer-in-document -- No, we really want to assert there's exactly 1.
 			expect( screen.getAllByRole( 'option' ) ).toHaveLength( 1 );
 			expect( screen.getByRole( 'menuitem', { name: 'Writing' } ) ).toBeInTheDocument();
 			expect( screen.getByRole( 'option', { name: 'Writing' } ) ).toBeInTheDocument();
@@ -129,9 +126,7 @@ describe( 'NavigationSettings', () => {
 					isModuleActivated={ m => 'post-by-email' !== m }
 				/>
 			);
-			// eslint-disable-next-line jest-dom/prefer-in-document -- No, we really want to assert there's exactly 1.
 			expect( screen.getAllByRole( 'menuitem' ) ).toHaveLength( 1 );
-			// eslint-disable-next-line jest-dom/prefer-in-document -- No, we really want to assert there's exactly 1.
 			expect( screen.getAllByRole( 'option' ) ).toHaveLength( 1 );
 			expect( screen.queryByRole( 'menuitem', { name: 'Writing' } ) ).not.toBeInTheDocument();
 			expect( screen.queryByRole( 'option', { name: 'Writing' } ) ).not.toBeInTheDocument();
@@ -160,12 +155,18 @@ describe( 'NavigationSettings', () => {
 			isSubscriber: false,
 		};
 
-		it( 'renders tabs with Discussion, Security, Performance, Traffic, Writing, Sharing', () => {
+		it( 'renders tabs with Discussion, Reader, Earn, Security, Performance, Traffic, Writing, Sharing', () => {
 			render( <NavigationSettings { ...currentTestProps } /> );
-			expect( screen.getAllByRole( 'menuitem' ) ).toHaveLength( 6 );
-			expect( screen.getAllByRole( 'option' ) ).toHaveLength( 6 );
+			expect( screen.getAllByRole( 'menuitem' ) ).toHaveLength( 8 );
+			expect( screen.getAllByRole( 'option' ) ).toHaveLength( 8 );
 			expect( screen.getByRole( 'menuitem', { name: 'Discussion' } ) ).toBeInTheDocument();
 			expect( screen.getByRole( 'option', { name: 'Discussion' } ) ).toBeInTheDocument();
+			expect( screen.getByRole( 'menuitem', { name: 'Monetize' } ) ).toBeInTheDocument();
+			expect( screen.getByRole( 'option', { name: 'Monetize' } ) ).toBeInTheDocument();
+			expect( screen.queryByRole( 'menuitem', { name: 'Newsletter' } ) ).not.toBeInTheDocument();
+			expect( screen.queryByRole( 'option', { name: 'Newsletter' } ) ).not.toBeInTheDocument();
+			expect( screen.getByRole( 'menuitem', { name: 'Reader' } ) ).toBeInTheDocument();
+			expect( screen.getByRole( 'option', { name: 'Reader' } ) ).toBeInTheDocument();
 			expect( screen.getByRole( 'menuitem', { name: 'Security' } ) ).toBeInTheDocument();
 			expect( screen.getByRole( 'option', { name: 'Security' } ) ).toBeInTheDocument();
 			expect( screen.getByRole( 'menuitem', { name: 'Performance' } ) ).toBeInTheDocument();
@@ -204,7 +205,9 @@ describe( 'NavigationSettings', () => {
 					render( <NavigationSettings { ...currentTestProps } /> );
 					await user.click( screen.getByRole( 'button', { name: 'Open Search' } ) );
 					await user.type( screen.getByRole( 'searchbox' ), 'search-term' );
-					jest.advanceTimersByTime( 510 ); // The <Search> has delayTimeout=500
+					await act( () => {
+						jest.advanceTimersByTime( 510 ); // The <Search> has delayTimeout=500
+					} );
 					expect( window.location.hash ).toBe( '#settings?term=search-term' );
 				} );
 
@@ -214,10 +217,14 @@ describe( 'NavigationSettings', () => {
 						render( <NavigationSettings { ...currentTestProps } /> );
 						await user.click( screen.getByRole( 'button', { name: 'Open Search' } ) );
 						await user.type( screen.getByRole( 'searchbox' ), 'search-term' );
-						jest.advanceTimersByTime( 510 ); // The <Search> has delayTimeout=500
+						await act( () => {
+							jest.advanceTimersByTime( 510 ); // The <Search> has delayTimeout=500
+						} );
 						expect( window.location.hash ).toBe( '#settings?term=search-term' );
 						await user.clear( screen.getByRole( 'searchbox' ) );
-						jest.advanceTimersByTime( 510 ); // The <Search> has delayTimeout=500
+						await act( () => {
+							jest.advanceTimersByTime( 510 ); // The <Search> has delayTimeout=500
+						} );
 						expect( window.location.hash ).toBe( '#settings' );
 					} );
 				} );
@@ -237,6 +244,38 @@ describe( 'NavigationSettings', () => {
 			};
 			render( <NavigationSettings { ...currentTestProps2 } /> );
 			const option = screen.getByRole( 'option', { name: 'Traffic' } );
+			expect( option ).toHaveAttribute( 'aria-selected', 'true' );
+		} );
+
+		// @todo Formerly this test was titled "when clicked", even though it tested setting the location routeName props as shown here.
+		// When I tried using userEvent to actually do a click, it didn't work. The link click changes the hash (after a delay), but
+		// I think the "history" prop isn't noticing.
+		it( 'switches to Earn tab when location is set accordingly', () => {
+			const currentTestProps2 = {
+				...currentTestProps,
+				location: {
+					pathname: '/earn',
+				},
+				routeName: 'Earn',
+			};
+			render( <NavigationSettings { ...currentTestProps2 } /> );
+			const option = screen.getByRole( 'option', { name: 'Monetize' } );
+			expect( option ).toHaveAttribute( 'aria-selected', 'true' );
+		} );
+
+		// @todo Formerly this test was titled "when clicked", even though it tested setting the location routeName props as shown here.
+		// When I tried using userEvent to actually do a click, it didn't work. The link click changes the hash (after a delay), but
+		// I think the "history" prop isn't noticing.
+		it( 'switches to Reader tab when location is set accordingly', () => {
+			const currentTestProps2 = {
+				...currentTestProps,
+				location: {
+					pathname: '/reader',
+				},
+				routeName: 'Reader',
+			};
+			render( <NavigationSettings { ...currentTestProps2 } /> );
+			const option = screen.getByRole( 'option', { name: 'Reader' } );
 			expect( option ).toHaveAttribute( 'aria-selected', 'true' );
 		} );
 	} );

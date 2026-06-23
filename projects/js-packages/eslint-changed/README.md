@@ -8,7 +8,7 @@ Install via your favorite JS package manager. Note the peer dependency on eslint
 
 For example,
 ```
-npm install eslint-changed eslint
+npm install @automattic/eslint-changed eslint
 ```
 
 ## Usage
@@ -37,23 +37,25 @@ The following options are used with manual mode:
 In git mode, `eslint-changed` needs to be able to run `git`. If this is not available by that name in the shell path,
 set environment variable `GIT` as appropriate.
 
-The following options are used with manual mode:
+The following options are used with git mode:
 
 * `--git`: Signify that you're using git mode.
 * `--git-staged`: Compare the staged version to the HEAD version (this is the default).
 * `--git-unstaged`: Compare the working copy version to the staged (or HEAD) version.
 * `--git-base <ref>`: Compare the HEAD version to the HEAD of a different base (e.g. branch).
+* `--eslint-options <name=value...>`: Pass additional options for ESLint. Value is interpreted as JSON if possible, otherwise it's treated as a literal string.
+  See https://eslint.org/docs/latest/integrate/nodejs-api#-new-eslintoptions (or the equivalent for the version of eslint in use) for details on available options.
 
 ## Examples
 
 This will compare the staged changes with HEAD.
 ```bash
-npx eslint-changed --git
+npx @automattic/eslint-changed --git
 ```
 
 This will compare HEAD with origin/trunk.
 ```bash
-npx eslint-changed --git --git-base origin/trunk
+npx @automattic/eslint-changed --git --git-base origin/trunk
 ```
 
 This does much the same as the previous example, but manually. If you're using something other than git, you might do something like this.
@@ -74,9 +76,14 @@ git checkout -
 npx eslint --format=json . > /tmp/eslint.new.json
 
 # Run eslint-changed.
-npx eslint-changed --diff /tmp/diff --eslint-orig /tmp/eslint.orig.json --eslint=new /tmp/eslint.new.json
+npx @automattic/eslint-changed --diff /tmp/diff --eslint-orig /tmp/eslint.orig.json --eslint=new /tmp/eslint.new.json
 ```
 Note that, to be exactly the same as the above, you'd want to extract the list of files from the diff instead of linting everything. But this will work.
+
+This will compare file.js in HEAD with origin/trunk, with the equivalent of passing `--flag v10_config_lookup_from_file` to `eslint`.
+```bash
+npx @automattic/eslint-changed --git --git-base origin/trunk --eslint-options flags='["v10_config_lookup_from_file"]' -- file.js
+```
 
 ## Inspiration
 

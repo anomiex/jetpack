@@ -1,20 +1,19 @@
 /** @ssr-ready **/
 
 import { getWindowInnerWidth } from '@automattic/viewport';
-import classNames from 'classnames';
-import SelectDropdown from 'components/select-dropdown';
-import DropdownItem from 'components/select-dropdown/item';
+import clsx from 'clsx';
 import { debounce } from 'lodash';
 import PropTypes from 'prop-types';
-import React from 'react';
-import ReactDom from 'react-dom';
+import { createRef, Children, cloneElement, Component } from 'react';
+import SelectDropdown from 'components/select-dropdown';
+import DropdownItem from 'components/select-dropdown/item';
 
 /**
  * Internal Variables
  */
-const MOBILE_PANEL_THRESHOLD = 480;
+const MOBILE_PANEL_THRESHOLD = 660;
 
-class NavTabs extends React.Component {
+class NavTabs extends Component {
 	static propTypes = {
 		selectedText: PropTypes.string,
 		selectedCount: PropTypes.number,
@@ -25,6 +24,9 @@ class NavTabs extends React.Component {
 	static defaultProps = {
 		hasSiblingControls: false,
 	};
+
+	navGroupRef = createRef();
+	tabRefs = {};
 
 	state = {
 		isDropdown: false,
@@ -46,11 +48,13 @@ class NavTabs extends React.Component {
 	}
 
 	render() {
-		const tabs = React.Children.map( this.props.children, function ( child, index ) {
-			return child && React.cloneElement( child, { ref: 'tab-' + index } );
+		const self = this;
+		const tabs = Children.map( this.props.children, function ( child, index ) {
+			self.tabRefs[ 'tab-' + index ] = createRef();
+			return child && cloneElement( child, { ref: self.tabRefs[ 'tab-' + index ] } );
 		} );
 
-		const tabsClassName = classNames( {
+		const tabsClassName = clsx( {
 			'dops-section-nav-tabs': true,
 			'is-dropdown': this.state.isDropdown,
 			'is-open': this.state.isDropdownOpen,
@@ -60,7 +64,7 @@ class NavTabs extends React.Component {
 		const innerWidth = getWindowInnerWidth();
 
 		return (
-			<div className="dops-section-nav-group" ref="navGroup">
+			<div className="dops-section-nav-group" ref={ this.navGroupRef }>
 				<div className={ tabsClassName }>
 					{ this.props.label && (
 						<h6 className="dops-section-nav-group__label">{ this.props.label }</h6>
@@ -76,15 +80,16 @@ class NavTabs extends React.Component {
 	}
 
 	getTabWidths = () => {
+		const self = this;
 		let totalWidth = 0;
 
-		React.Children.forEach(
+		Children.forEach(
 			this.props.children,
 			function ( child, index ) {
 				if ( ! child ) {
 					return;
 				}
-				const tabWidth = ReactDom.findDOMNode( this.refs[ 'tab-' + index ] ).offsetWidth;
+				const tabWidth = self.tabRefs[ 'tab-' + index ].current.domNode.offsetWidth;
 				totalWidth += tabWidth;
 			}.bind( this )
 		);
@@ -93,7 +98,7 @@ class NavTabs extends React.Component {
 	};
 
 	getDropdown = () => {
-		const dropdownOptions = React.Children.map( this.props.children, function ( child, index ) {
+		const dropdownOptions = Children.map( this.props.children, function ( child, index ) {
 			if ( ! child ) {
 				return null;
 			}
@@ -119,11 +124,11 @@ class NavTabs extends React.Component {
 		let navGroupWidth;
 
 		if ( window.innerWidth > MOBILE_PANEL_THRESHOLD ) {
-			if ( ! this.refs.navGroup ) {
+			if ( ! this.navGroupRef.current ) {
 				return;
 			}
 
-			navGroupWidth = this.refs.navGroup.offsetWidth;
+			navGroupWidth = this.navGroupRef.current.offsetWidth;
 
 			if ( ! this.tabsWidth ) {
 				this.getTabWidths();
@@ -150,7 +155,7 @@ class NavTabs extends React.Component {
 			case 32: // space
 			case 13: // enter
 				event.preventDefault();
-				document.activeElement.click();
+				event.target.ownerDocument.activeElement.click();
 				break;
 		}
 	};

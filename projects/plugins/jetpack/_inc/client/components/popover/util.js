@@ -7,6 +7,12 @@ import debugFactory from 'debug';
 const debug = debugFactory( 'calypso:popover:util' );
 
 // inspired by https://github.com/jkroso/viewport
+
+/**
+ * Updates and returns the current viewport dimensions.
+ *
+ * @return {object} Viewport object with top, left, width, height, right, and bottom.
+ */
 function updateViewport() {
 	const viewport = {};
 	viewport.top = window.scrollY;
@@ -38,6 +44,9 @@ const adjacent = {
 
 let viewport = updateViewport();
 
+/**
+ * Updates the cached viewport on window resize or scroll.
+ */
 function onViewportChange() {
 	viewport = updateViewport();
 }
@@ -95,6 +104,13 @@ const suggested = ( pos, el, target ) => {
 	return chooseSecondary( primary, pos1, el, target, w, h ) || pos;
 };
 
+/**
+ * Chooses the primary popover position based on available room.
+ *
+ * @param {string} prefered - Preferred position.
+ * @param {object} room     - Available room in each direction.
+ * @return {string|undefined} Best primary position.
+ */
 function choosePrimary( prefered, room ) {
 	// top, bottom, left, right in order of preference
 	const order = [
@@ -117,13 +133,25 @@ function choosePrimary( prefered, room ) {
 
 		// less chopped of than other sides
 		if ( space > best ) {
-			( best = space ), ( bestPos = prefered );
+			best = space;
+			bestPos = prefered;
 		}
 	}
 
 	return bestPos;
 }
 
+/**
+ * Chooses the secondary popover position based on visible area.
+ *
+ * @param {string}      primary  - Primary position.
+ * @param {string|null} prefered - Preferred secondary position.
+ * @param {HTMLElement} el       - Tip element.
+ * @param {HTMLElement} target   - Target element.
+ * @param {number}      w        - Tip width.
+ * @param {number}      h        - Tip height.
+ * @return {string|undefined} Best position string.
+ */
 function chooseSecondary( primary, prefered, el, target, w, h ) {
 	// top, top left, top right in order of preference
 	const order = prefered
@@ -161,13 +189,22 @@ function chooseSecondary( primary, prefered, el, target, w, h ) {
 
 		// shows more of the tip than the other positions
 		if ( area > best ) {
-			( best = area ), ( bestPos = pos );
+			best = area;
+			bestPos = pos;
 		}
 	}
 
 	return bestPos;
 }
 
+/**
+ * Calculates the offset for a popover position.
+ *
+ * @param {string}      pos    - Position string.
+ * @param {HTMLElement} el     - Tip element.
+ * @param {HTMLElement} target - Target element.
+ * @return {object} Offset with top and left properties.
+ */
 function offset( pos, el, target ) {
 	const pad = 15;
 	const tipRect = getBoundingClientRect( el );
@@ -192,7 +229,7 @@ function offset( pos, el, target ) {
 		throw new Error( 'could not determine page offset of `target`' );
 	}
 
-	let _pos = {};
+	let _pos;
 
 	switch ( pos ) {
 		case 'top':
@@ -288,14 +325,13 @@ function offset( pos, el, target ) {
 
 /**
  * Extracted from `timoxley/offset`, but directly using a
- * TextRectangle instead of getting another version.
+ * DOMRect instead of getting another version.
  *
- * @param {TextRectangle} box - result from a `getBoundingClientRect()` call
- * @param {Document} doc - Document instance to use
- * @return {Object} an object with `top` and `left` Number properties
- * @api private
+ * @param {DOMRect}  box - Result from a `getBoundingClientRect()` call.
+ * @param {Document} doc - Document instance to use.
+ * @return {object} An object with `top` and `left` number properties.
+ * @private
  */
-
 function _offset( box, doc ) {
 	const body = doc.body || doc.getElementsByTagName( 'body' )[ 0 ];
 	const docEl = doc.documentElement || body.parentNode;
@@ -312,7 +348,7 @@ function _offset( box, doc ) {
 
 /*
  * Constrain a left to keep the element in the window
- * @param  {Object} pl proposed left
+ * @param  {object} pl proposed left
  * @param  {Number} ew tip element width
  * @return {Number}    the best width
  */
@@ -327,7 +363,7 @@ const isElement = obj => {
 	try {
 		//Using W3 DOM2 (works for FF, Opera and Chrom)
 		return obj instanceof HTMLElement;
-	} catch ( error ) {
+	} catch {
 		return (
 			typeof obj === 'object' &&
 			obj.nodeType === 1 &&

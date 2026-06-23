@@ -74,6 +74,9 @@ class Plugins_Installer {
 			return new WP_Error( 'not_allowed', __( 'You are not allowed to install plugins on this site.', 'jetpack-plugins-installer' ) );
 		}
 
+		// Initialize admin filters to make sure WordPress post-install hooks run. Handles things like language packs.
+		include_once ABSPATH . '/wp-admin/includes/admin-filters.php';
+
 		$skin     = new Automatic_Install_Skin();
 		$upgrader = new Plugin_Upgrader( $skin );
 		$zip_url  = self::generate_wordpress_org_plugin_download_link( $slug );
@@ -93,8 +96,8 @@ class Plugins_Installer {
 		}
 
 		if ( ! $result ) {
-			$error_code = $upgrader->skin->get_main_error_code();
-			$message    = $upgrader->skin->get_main_error_message();
+			$error_code = $skin->get_main_error_code();
+			$message    = $skin->get_main_error_message();
 			$error      = $message ? $message : __( 'An unknown error occurred during installation', 'jetpack-plugins-installer' );
 		}
 
@@ -186,7 +189,7 @@ class Plugins_Installer {
 	/**
 	 * Safely checks if the plugin is active
 	 *
-	 * @since $next-version$
+	 * @since 0.1.0
 	 *
 	 * @param string $plugin_file The plugin file to check.
 	 * @return bool
@@ -199,7 +202,7 @@ class Plugins_Installer {
 	/**
 	 * Safely checks if the plugin is active for network
 	 *
-	 * @since $next-version$
+	 * @since 0.1.0
 	 *
 	 * @param string $plugin_file The plugin file to check.
 	 * @return bool
@@ -234,5 +237,19 @@ class Plugins_Installer {
 		}
 
 		return array();
+	}
+
+	/**
+	 * Determine if the current request is activating a plugin from the plugins page.
+	 *
+	 * @deprecated 0.4.0
+	 * @see Paths::is_current_request_activating_plugin_from_plugins_screen()
+	 *
+	 * @param string $plugin Plugin file path to check.
+	 * @return bool
+	 */
+	public static function is_current_request_activating_plugin_from_plugins_screen( $plugin ) {
+		_deprecated_function( __METHOD__, '0.4.0', 'Automattic\\Jetpack\\Paths::is_current_request_activating_plugin_from_plugins_screen()' );
+		return ( new Paths() )->is_current_request_activating_plugin_from_plugins_screen( $plugin );
 	}
 }

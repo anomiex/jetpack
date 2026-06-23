@@ -2,6 +2,14 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { CalendlyBlockControls, CalendlyInspectorControls } from '../controls';
 
+// Mock @automattic/jetpack-script-data functions to allow isWpcomPlatformSite to be correctly used.
+jest.mock( '@automattic/jetpack-script-data', () => {
+	const isWpcomPlatformSite = jest.fn().mockReturnValue( false );
+	return {
+		isWpcomPlatformSite,
+	};
+} );
+
 describe( 'CalendlyBlockControls', () => {
 	const onEditClick = jest.fn();
 	const defaultProps = { onEditClick };
@@ -144,14 +152,14 @@ describe( 'CalendlyInspectorControls', () => {
 		const user = userEvent.setup();
 		await renderExpandedSettings( user, defaultProps );
 
-		const colorHelpUrl =
-			'https://help.calendly.com/hc/en-us/community/posts/360033166114-Embed-Widget-Color-Customization-Available-Now-';
+		const customizationHelpUrl =
+			'https://jetpack.com/support/jetpack-blocks/calendly-block/#customizing-a-calendly-block';
 		const noticeClass = `${ defaultProps.defaultClassName }-color-notice`;
-		const linkText = 'Follow these instructions to change the colors in this block.';
-		const link = screen.getByText( linkText );
+		const linkText = 'Explore more customization options.(opens in a new tab)';
+		const link = screen.getByRole( 'link', { name: linkText } );
 
 		expect( link ).toBeInTheDocument();
-		expect( link ).toHaveAttribute( 'href', colorHelpUrl );
+		expect( link ).toHaveAttribute( 'href', customizationHelpUrl );
 		// eslint-disable-next-line testing-library/no-node-access
 		expect( link.closest( '.components-notice' ) ).toHaveClass( noticeClass );
 	} );

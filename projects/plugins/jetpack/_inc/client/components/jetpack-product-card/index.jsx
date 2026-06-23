@@ -1,11 +1,12 @@
-import { ProductPrice } from '@automattic/jetpack-components';
+import { ProductPrice, TermsOfService } from '@automattic/jetpack-components';
 import { __, sprintf } from '@wordpress/i18n';
-import classNames from 'classnames';
+import { Link } from '@wordpress/ui';
+import clsx from 'clsx';
+import PropTypes from 'prop-types';
+import { useCallback, useEffect } from 'react';
 import Button from 'components/button';
 import Gridicon from 'components/gridicon';
 import analytics from 'lib/analytics';
-import PropTypes from 'prop-types';
-import React, { useCallback, useEffect } from 'react';
 
 import './style.scss';
 
@@ -14,8 +15,9 @@ const JetpackProductCard = props => {
 		icon,
 		title,
 		productSlug,
-		description,
-		features,
+		description = '',
+		features = [],
+		disclaimer,
 		currencyCode,
 		price,
 		discountedPrice,
@@ -23,7 +25,7 @@ const JetpackProductCard = props => {
 		callToAction,
 		checkoutText,
 		checkoutUrl,
-		priority,
+		priority = 'primary',
 		illustrationPath,
 	} = props;
 
@@ -42,13 +44,19 @@ const JetpackProductCard = props => {
 		} );
 	}, [ productSlug ] );
 
-	const classes = classNames( {
+	const onDisclaimerClick = useCallback( () => {
+		analytics.tracks.recordEvent( 'jetpack_product_card_disclaimer_click', {
+			type: productSlug,
+		} );
+	}, [ productSlug ] );
+
+	const classes = clsx( {
 		'jp-product-card': true,
 		'jp-product-card--has-media': hasMedia,
 		'jp-product-card--has-cta': hasCta,
 	} );
 
-	const buttonClasses = classNames( [
+	const buttonClasses = clsx( [
 		'jp-product-card__checkout',
 		`jp-product-card__checkout--${ priority }`,
 	] );
@@ -60,7 +68,6 @@ const JetpackProductCard = props => {
 					<Gridicon icon="star" /> { callToAction }
 				</div>
 			) }
-
 			<div className="jp-product-card__inner">
 				{ !! icon && <div className="jp-product-card__icon">{ icon }</div> }
 
@@ -84,15 +91,31 @@ const JetpackProductCard = props => {
 						price={ price }
 						offPrice={ discountedPrice }
 						showNotOffPrice={ !! discountedPrice }
-						leyend={ billingDescription }
+						legend={ billingDescription }
 					/>
 				</div>
+
+				<TermsOfService agreeButtonLabel={ checkoutText } />
 
 				<Button className={ buttonClasses } href={ checkoutUrl } onClick={ onClick }>
 					{ checkoutText }
 				</Button>
-			</div>
 
+				{ disclaimer && (
+					<p className="jp-product-card__disclaimer">
+						{ `${ disclaimer.text } ` }
+						<Link
+							openInNewTab
+							onClick={ onDisclaimerClick }
+							href={ disclaimer.url }
+							target="_blank"
+							rel="noopener noreferrer"
+						>
+							{ disclaimer.link_text }
+						</Link>
+					</p>
+				) }
+			</div>
 			{ hasMedia && (
 				<img
 					className="jp-product-card__media"
@@ -119,17 +142,11 @@ JetpackProductCard.propTypes = {
 	productSlug: PropTypes.string.isRequired,
 	description: PropTypes.string,
 	features: PropTypes.array,
+	disclaimer: PropTypes.object,
 	icon: PropTypes.element,
 	callToAction: PropTypes.string,
 	priority: PropTypes.string,
 	illustrationPath: PropTypes.string,
-};
-
-JetpackProductCard.defaultProps = {
-	description: '',
-	features: [],
-	priority: 'primary',
-	showIllustration: '',
 };
 
 export default JetpackProductCard;

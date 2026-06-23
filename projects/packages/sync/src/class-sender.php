@@ -25,6 +25,24 @@ class Sender {
 	const NEXT_SYNC_TIME_OPTION_NAME = 'jetpack_next_sync_time';
 
 	/**
+	 * Name of the transient responsible for temprorarily disabling Sync sending during Pulls.
+	 *
+	 * @access public
+	 *
+	 * @var string
+	 */
+	const TEMP_SYNC_DISABLE_TRANSIENT_NAME = 'jetpack_disable_sync_sending';
+
+	/**
+	 * Expiry of the transient responsible for temprorarily disabling Sync sending during Pulls.
+	 *
+	 * @access public
+	 *
+	 * @var int
+	 */
+	const TEMP_SYNC_DISABLE_TRANSIENT_EXPIRY = MINUTE_IN_SECONDS;
+
+	/**
 	 * Sync timeout after a WPCOM error.
 	 *
 	 * @access public
@@ -110,7 +128,7 @@ class Sender {
 	 *
 	 * @access private
 	 *
-	 * @var Automattic\Jetpack\Sync\Queue
+	 * @var \Automattic\Jetpack\Sync\Queue
 	 */
 	private $sync_queue;
 
@@ -119,7 +137,7 @@ class Sender {
 	 *
 	 * @access private
 	 *
-	 * @var Automattic\Jetpack\Sync\Queue
+	 * @var \Automattic\Jetpack\Sync\Queue
 	 */
 	private $full_sync_queue;
 
@@ -128,7 +146,7 @@ class Sender {
 	 *
 	 * @access private
 	 *
-	 * @var Automattic\Jetpack\Sync\Codec_Interface
+	 * @var \Automattic\Jetpack\Sync\Codec_Interface
 	 */
 	private $codec;
 
@@ -147,7 +165,7 @@ class Sender {
 	 * @access private
 	 * @static
 	 *
-	 * @var Automattic\Jetpack\Sync\Sender
+	 * @var \Automattic\Jetpack\Sync\Sender
 	 */
 	private static $instance;
 
@@ -208,7 +226,7 @@ class Sender {
 			&& $verified_user
 		) {
 			$old_user       = wp_get_current_user();
-			$this->old_user = isset( $old_user->ID ) ? $old_user->ID : 0;
+			$this->old_user = $old_user->ID ?? 0;
 			wp_set_current_user( $verified_user['user_id'] );
 		}
 	}
@@ -227,13 +245,29 @@ class Sender {
 	/**
 	 * Retrieve the next sync time.
 	 *
+	 * Update @since 1.43.2
+	 * Sometimes when we process Sync requests in Jetpack, the server clock can be a
+	 * bit in the future and this can lock Sync to not send stuff for a while.
+	 * We are introducing an extra check, to make sure to limit the next_sync_time
+	 * to be at most one hour in the future from the current time.
+	 *
 	 * @access public
 	 *
 	 * @param string $queue_name Name of the queue.
 	 * @return float Timestamp of the next sync.
 	 */
 	public function get_next_sync_time( $queue_name ) {
-		return (float) get_option( self::NEXT_SYNC_TIME_OPTION_NAME . '_' . $queue_name, 0 );
+		$option_name    = self::NEXT_SYNC_TIME_OPTION_NAME . '_' . $queue_name;
+		$next_sync_time = (float) get_option( $option_name, 0 );
+
+		$is_more_than_one_hour = ( $next_sync_time - microtime( true ) ) >= HOUR_IN_SECONDS;
+
+		if ( $is_more_than_one_hour ) {
+			delete_option( $option_name );
+			$next_sync_time = 0;
+		}
+
+		return $next_sync_time;
 	}
 
 	/**
@@ -258,6 +292,7 @@ class Sender {
 	 */
 	public function do_full_sync() {
 		$sync_module = Modules::get_module( 'full-sync' );
+		'@phan-var Modules\Full_Sync_Immediately|Modules\Full_Sync $sync_module';
 		if ( ! $sync_module ) {
 			return;
 		}
@@ -279,7 +314,7 @@ class Sender {
 
 		$this->continue_full_sync_enqueue();
 		// immediate full sync sends data in continue_full_sync_enqueue.
-		if ( false === strpos( get_class( $sync_module ), 'Full_Sync_Immediately' ) ) {
+		if ( ! $sync_module instanceof Modules\Full_Sync_Immediately ) {
 			return $this->do_sync_and_set_delays( $this->full_sync_queue );
 		} else {
 			$status = $sync_module->get_status();
@@ -308,7 +343,9 @@ class Sender {
 			return false;
 		}
 
-		Modules::get_module( 'full-sync' )->continue_enqueuing();
+		$full_sync_module = Modules::get_module( 'full-sync' );
+		'@phan-var Modules\Full_Sync_Immediately|Modules\Full_Sync $full_sync_module';
+		$full_sync_module->continue_enqueuing();
 
 		$this->set_next_sync_time( time() + $this->get_enqueue_wait_time(), 'full-sync-enqueue' );
 	}
@@ -321,7 +358,10 @@ class Sender {
 	 * @return boolean|WP_Error True if this sync sending was successful, error object otherwise.
 	 */
 	public function do_sync() {
-		if ( ! Settings::is_dedicated_sync_enabled() ) {
+		// Sync directly during cron. We are doing this because otherwise
+		// the dedicated sync flow would be spawning HTTP requests during cron shutdown,
+		// which can be unreliable and cause sync lag for time-sensitive events like updates.
+		if ( ! Settings::is_dedicated_sync_enabled() || Settings::is_doing_cron() ) {
 			$result = $this->do_sync_and_set_delays( $this->sync_queue );
 		} else {
 			$result = Dedicated_Sender::spawn_sync( $this->sync_queue );
@@ -357,17 +397,35 @@ class Sender {
 		 *
 		 * @see \Automattic\Jetpack\Sync\Dedicated_Sender::can_spawn_dedicated_sync_request
 		 */
-		// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+		// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- This is just a constant string used for Validation.
 		echo Dedicated_Sender::DEDICATED_SYNC_VALIDATION_STRING;
 
 		// Try to disconnect the request as quickly as possible and process things in the background.
 		$this->fastcgi_finish_request();
 
-		// Output not used right now. Try to release dedicated sync lock
-		Dedicated_Sender::try_release_lock_spawn_request();
+		/**
+		 * Close the PHP session to free up the server threads to handle other requests while we
+		 * send sync data with Dedicated Sync.
+		 *
+		 * When we spawn Dedicated Sync, we send `$_COOKIES` with the request to help out with any
+		 * firewall and/or caching functionality that might prevent us to ping the site directly.
+		 *
+		 * This will cause Dedicated Sync to reuse the visitor's PHP session and lock it until the
+		 * request finishes, which can take anywhere from 1 to 30+ seconds, depending on the server
+		 * `max_execution_time` configuration.
+		 *
+		 * By closing the session we're freeing up the session, so other requests can acquire the
+		 * lock and proceed with their own tasks.
+		 */
+		if ( session_status() === PHP_SESSION_ACTIVE ) {
+			session_write_close();
+		}
 
 		// Actually try to send Sync events.
 		$result = $this->do_sync_and_set_delays( $this->sync_queue );
+
+		// Output not used right now. Try to release dedicated sync lock
+		Dedicated_Sender::try_release_lock_spawn_request();
 
 		// If no errors occurred, re-spawn a dedicated Sync request.
 		if ( true === $result ) {
@@ -375,7 +433,7 @@ class Sender {
 		}
 
 		if ( $do_real_exit ) {
-			exit;
+			exit( 0 );
 		}
 	}
 
@@ -387,7 +445,7 @@ class Sender {
 	 *
 	 * @access public
 	 *
-	 * @param Automattic\Jetpack\Sync\Queue $queue Queue object.
+	 * @param \Automattic\Jetpack\Sync\Queue $queue Queue object.
 	 *
 	 * @return boolean|WP_Error True if this sync sending was successful, error object otherwise.
 	 */
@@ -404,6 +462,10 @@ class Sender {
 
 		if ( ! Settings::is_sender_enabled( $queue->id ) ) {
 			return new WP_Error( 'sender_disabled_for_queue_' . $queue->id );
+		}
+
+		if ( get_transient( self::TEMP_SYNC_DISABLE_TRANSIENT_NAME ) ) {
+			return new WP_Error( 'sender_temporarily_disabled_while_pulling' );
 		}
 
 		// Return early if we've gotten a retry-after header response.
@@ -438,8 +500,10 @@ class Sender {
 			if ( 'wpcom_error' === $sync_result->get_error_code() ) {
 				$this->set_next_sync_time( time() + self::WPCOM_ERROR_SYNC_DELAY, $queue->id );
 			}
-		} elseif ( $exceeded_sync_wait_threshold ) {
-			// If we actually sent data and it took a while, wait before sending again.
+		} elseif ( $exceeded_sync_wait_threshold && ! Settings::is_doing_cron() ) {
+			// If a send was slow, briefly pause before the next one.
+			// Applies only to Dedicated/Normal Sync to avoid impacting user traffic;
+			// cron jobs are exempt.
 			$this->set_next_sync_time( time() + $this->get_sync_wait_time(), $queue->id );
 		}
 
@@ -451,8 +515,8 @@ class Sender {
 	 *
 	 * @access public
 	 *
-	 * @param (array|Automattic\Jetpack\Sync\Queue_Buffer) $buffer_or_items Queue buffer or array of objects.
-	 * @param boolean                                      $encode Whether to encode the items.
+	 * @param (array|\Automattic\Jetpack\Sync\Queue_Buffer) $buffer_or_items Queue buffer or array of objects.
+	 * @param boolean                                       $encode Whether to encode the items.
 	 * @return array Sync items to send.
 	 */
 	public function get_items_to_send( $buffer_or_items, $encode = true ) {
@@ -475,6 +539,11 @@ class Sender {
 		 * This is expensive, but the only way to really know :/
 		 */
 		foreach ( $items as $key => $item ) {
+			if ( ! is_array( $item ) ) {
+				$skipped_items_ids[] = $key;
+				continue;
+			}
+
 			// Suspending cache addition help prevent overloading in memory cache of large sites.
 			wp_suspend_cache_addition( true );
 			/**
@@ -497,7 +566,7 @@ class Sender {
 			}
 			$encoded_item = $this->codec->encode( $item );
 			$upload_size += strlen( $encoded_item );
-			if ( $upload_size > $this->upload_max_bytes && count( $items_to_send ) > 0 ) {
+			if ( $upload_size > $this->upload_max_bytes && array() !== $items_to_send ) {
 				break;
 			}
 			$items_to_send[ $key ] = $encode ? $encoded_item : $item;
@@ -516,7 +585,7 @@ class Sender {
 	 * @access private
 	 */
 	private function fastcgi_finish_request() {
-		if ( function_exists( 'fastcgi_finish_request' ) && version_compare( phpversion(), '7.0.16', '>=' ) ) {
+		if ( function_exists( 'fastcgi_finish_request' ) ) {
 			fastcgi_finish_request();
 		}
 	}
@@ -526,7 +595,7 @@ class Sender {
 	 *
 	 * @access public
 	 *
-	 * @param Automattic\Jetpack\Sync\Queue $queue Queue object.
+	 * @param \Automattic\Jetpack\Sync\Queue $queue Queue object.
 	 *
 	 * @return boolean|WP_Error True if this sync sending was successful, error object otherwise.
 	 */
@@ -540,6 +609,7 @@ class Sender {
 		 * Now that we're sure we are about to sync, try to ignore user abort
 		 * so we can avoid getting into a bad state.
 		 */
+		// https://plugins.trac.wordpress.org/ticket/2041
 		if ( function_exists( 'ignore_user_abort' ) ) {
 			ignore_user_abort( true );
 		}
@@ -607,11 +677,9 @@ class Sender {
 			} else {
 				// Detect if the last item ID was an error.
 				$had_wp_error = is_wp_error( end( $processed_item_ids ) );
-				if ( $had_wp_error ) {
-					$wp_error = array_pop( $processed_item_ids );
-				}
+				$wp_error     = $had_wp_error ? array_pop( $processed_item_ids ) : null;
 				// Also checkin any items that were skipped.
-				if ( count( $skipped_items_ids ) > 0 ) {
+				if ( array() !== $skipped_items_ids ) {
 					$processed_item_ids = array_merge( $processed_item_ids, $skipped_items_ids );
 				}
 				$processed_items = array_intersect_key( $items, array_flip( $processed_item_ids ) );
@@ -641,16 +709,17 @@ class Sender {
 	 *
 	 * @param string $action_name The action.
 	 * @param array  $data The data associated with the action.
+	 * @param string $key The key to use for the action.
 	 *
-	 * @return Items processed. TODO: this doesn't make much sense anymore, it should probably be just a bool.
+	 * @return array Items processed. TODO: this doesn't make much sense anymore, it should probably be just a bool.
 	 */
-	public function send_action( $action_name, $data = null ) {
+	public function send_action( $action_name, $data = null, $key = null ) {
 		if ( ! Settings::is_sender_enabled( 'full_sync' ) ) {
 			return array();
 		}
 
 		// Compose the data to be sent.
-		$action_to_send = $this->create_action_to_send( $action_name, $data );
+		$action_to_send = $this->create_action_to_send( $action_name, $data, $key );
 
 		list( $items_to_send, $skipped_items_ids, $items, $preprocess_duration ) = $this->get_items_to_send( $action_to_send, true ); // phpcs:ignore VariableAnalysis.CodeAnalysis.VariableAnalysis.UnusedVariable
 		Settings::set_is_sending( true );
@@ -678,11 +747,12 @@ class Sender {
 	 *
 	 * @param string $action_name The action.
 	 * @param array  $data The data associated with the action.
+	 * @param string $key The key to use for the action.
 	 * @return array An array of synthetic sync actions keyed by current microtime(true)
 	 */
-	private function create_action_to_send( $action_name, $data ) {
+	private function create_action_to_send( $action_name, $data, $key = null ) {
 		return array(
-			(string) microtime( true ) => array(
+			$key ?? (string) microtime( true ) => array(
 				$action_name,
 				$data,
 				get_current_user_id(),
@@ -730,7 +800,7 @@ class Sender {
 	 *
 	 * @access public
 	 *
-	 * @return Automattic\Jetpack\Sync\Queue Queue object.
+	 * @return \Automattic\Jetpack\Sync\Queue Queue object.
 	 */
 	public function get_sync_queue() {
 		return $this->sync_queue;
@@ -741,7 +811,7 @@ class Sender {
 	 *
 	 * @access public
 	 *
-	 * @return Automattic\Jetpack\Sync\Queue Queue object.
+	 * @return \Automattic\Jetpack\Sync\Queue Queue object.
 	 */
 	public function get_full_sync_queue() {
 		return $this->full_sync_queue;
@@ -752,7 +822,7 @@ class Sender {
 	 *
 	 * @access public
 	 *
-	 * @return Automattic\Jetpack\Sync\Codec_Interface Codec object.
+	 * @return \Automattic\Jetpack\Sync\Codec_Interface Codec object.
 	 */
 	public function get_codec() {
 		return $this->codec;
@@ -944,10 +1014,8 @@ class Sender {
 		foreach ( Modules::get_modules() as $module ) {
 			$module->reset_data();
 		}
-
-		foreach ( array( 'sync', 'full_sync', 'full-sync-enqueue' ) as $queue_name ) {
-			delete_option( self::NEXT_SYNC_TIME_OPTION_NAME . '_' . $queue_name );
-		}
+		// Reset Sync locks without unlocking queues since we already reset those.
+		Actions::reset_sync_locks( false );
 
 		Settings::reset_data();
 	}

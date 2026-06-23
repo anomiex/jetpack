@@ -1,12 +1,11 @@
 import { getRedirectUrl } from '@automattic/jetpack-components';
 import { __, _x } from '@wordpress/i18n';
+import PropTypes from 'prop-types';
+import { Component } from 'react';
 import Banner from 'components/banner';
 import SettingsCard from 'components/settings-card';
 import SettingsGroup from 'components/settings-group';
 import { FEATURE_SITE_BACKUPS_JETPACK } from 'lib/plans/constants';
-import { get } from 'lodash';
-import PropTypes from 'prop-types';
-import React, { Component } from 'react';
 
 export class JetpackBackup extends Component {
 	static propTypes = {
@@ -38,7 +37,7 @@ export class JetpackBackup extends Component {
 
 	getRewindMessage() {
 		const { siteRawUrl, rewindStatus } = this.props;
-		const rewindState = get( rewindStatus, 'state', false );
+		const rewindState = rewindStatus?.state ?? false;
 
 		switch ( rewindState ) {
 			case 'provisioning':
@@ -50,10 +49,10 @@ export class JetpackBackup extends Component {
 				};
 			case 'awaiting_credentials':
 				return {
-					title: __( 'Awaiting credentials', 'jetpack' ),
+					title: __( 'Add your server credentials', 'jetpack' ),
 					icon: 'notice',
 					description: __(
-						'You need to enter your server credentials to finish configuring Jetpack Backup.',
+						'Enter your SSH, SFTP or FTP credentials to enable one-click site restores and faster backups',
 						'jetpack'
 					),
 					url: getRedirectUrl( 'jetpack-settings-security-credentials', { site: siteRawUrl } ),
@@ -96,8 +95,8 @@ export class JetpackBackup extends Component {
 	render() {
 		const { rewindStatus, vaultPressData } = this.props;
 
-		const rewindState = get( rewindStatus, 'state', false );
-		const vaultPressEnabled = get( vaultPressData, [ 'data', 'features', 'backups' ], false );
+		const rewindState = rewindStatus?.state ?? false;
+		const vaultPressEnabled = vaultPressData?.data?.features?.backups ?? false;
 
 		const hasRewindData = false !== rewindState;
 		if ( ! hasRewindData && ! vaultPressEnabled ) {

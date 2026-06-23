@@ -1,10 +1,10 @@
-import { imagePath, GETTING_STARTED_WITH_JETPACK_BACKUP_VIDEO_URL } from 'constants/urls';
 import { getRedirectUrl } from '@automattic/jetpack-components';
 import { __, sprintf } from '@wordpress/i18n';
-import Button from 'components/button';
-import analytics from 'lib/analytics';
-import React, { useCallback, useEffect } from 'react';
+import { useCallback, useEffect } from 'react';
 import { connect } from 'react-redux';
+import Button from 'components/button';
+import { imagePath, GETTING_STARTED_WITH_JETPACK_BACKUP_VIDEO_URL } from 'constants/urls';
+import analytics from 'lib/analytics';
 import { getSiteRawUrl } from 'state/initial-state';
 import { siteHasFeature } from 'state/site';
 import { SidebarCard } from '../sidebar-card';
@@ -45,7 +45,7 @@ const OneClickRestoresComponent = props => {
 					<h2>{ __( 'Enable one-click restores', 'jetpack' ) }</h2>
 					<p>
 						{ sprintf(
-							/* translators: placeholder is the name of a backups plan: Daily Backups or Real-time Backups */
+							/* translators: %s: the name of a backups plan: Daily Backups or Real-time Backups */
 							__(
 								'Get the most out of your %s. One-click restores ensure you’ll be able to easily restore your site, if anything goes wrong.',
 								'jetpack'
@@ -88,7 +88,7 @@ const OneClickRestoresComponent = props => {
 						/>
 					</a>
 					<div>
-						<h2>{ __( 'Getting started with Jetpack Backup', 'jetpack' ) }</h2>
+						<h2>{ __( 'Getting started with Jetpack VaultPress Backup', 'jetpack' ) }</h2>
 						<p>{ __( 'A short video guide on how to back up your website', 'jetpack' ) }</p>
 					</div>
 				</div>

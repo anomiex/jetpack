@@ -6,21 +6,21 @@
  */
 
 // Assume we're in tests/php/bootstrap.php.
-$_plugin_root = dirname( dirname( __DIR__ ) );
+$_plugin_root = dirname( __DIR__, 2 );
 
 // Locate WordPress or wordpress-develop. We look in several places.
-if ( false !== getenv( 'WP_DEVELOP_DIR' ) ) {
+if ( false !== getenv( 'WORDPRESS_DEVELOP_DIR' ) ) {
 	// Jetpack Monorepo environment variable.
-	$_tests_dir = getenv( 'WP_DEVELOP_DIR' );
+	$_tests_dir = getenv( 'WORDPRESS_DEVELOP_DIR' );
 	if ( file_exists( "$_tests_dir/tests/phpunit/" ) ) {
 		$_tests_dir .= '/tests/phpunit/';
 	}
 } elseif ( false !== getenv( 'WP_TESTS_DIR' ) ) {
 	// WordPress core environment variable.
 	$_tests_dir = getenv( 'WP_TESTS_DIR' );
-} elseif ( file_exists( dirname( dirname( $_plugin_root ) ) . '/tests/phpunit/includes/bootstrap.php' ) ) {
+} elseif ( file_exists( dirname( $_plugin_root, 2 ) . '/tests/phpunit/includes/bootstrap.php' ) ) {
 	// Installed inside wordpress-develop.
-	$_tests_dir = dirname( dirname( $_plugin_root ) ) . '/tests/phpunit/includes/bootstrap.php';
+	$_tests_dir = dirname( $_plugin_root, 2 ) . '/tests/phpunit/includes/bootstrap.php';
 } elseif ( file_exists( '/vagrant/www/wordpress-develop/public_html/tests/phpunit/includes/bootstrap.php' ) ) {
 	// VVV.
 	$_tests_dir = '/vagrant/www/wordpress-develop/public_html/tests/phpunit';
@@ -36,10 +36,30 @@ if ( false !== getenv( 'WP_DEVELOP_DIR' ) ) {
 }
 
 if ( ! isset( $_tests_dir ) || ! file_exists( $_tests_dir . '/includes/bootstrap.php' ) ) {
-	echo 'Failed to automatically locate WordPress or wordpress-develop to run tests.' . PHP_EOL;
-	echo PHP_EOL;
-	echo 'Set the WP_DEVELOP_DIR environment variable to point to a copy of WordPress' . PHP_EOL;
-	echo 'or wordpress-develop.' . PHP_EOL;
+	if ( is_dir( '/tmp/wordpress-develop' ) && file_exists( '/var/scripts/ensure-php-version.sh' ) ) {
+		fprintf(
+			STDERR,
+			<<<'EOF'
+Looks like you're using the Jetpack Docker dev env, but the wordpress-develop checkout is incomplete.
+Try running `jetpack docker stop && jetpack docker up` to repopulate it.
+
+If that doesn't fix it, try (on the host) deleting `tools/docker/wordpress-develop/tests/` and then
+running `jetpack docker stop && jetpack docker up` again to repopulate it.
+
+EOF
+		);
+	} else {
+		fprintf(
+			STDERR,
+			<<<'EOF'
+Failed to automatically locate WordPress or wordpress-develop to run tests.
+
+Set the WORDPRESS_DEVELOP_DIR environment variable to point to a copy of WordPress
+or wordpress-develop.
+
+EOF
+		);
+	}
 	exit( 1 );
 }
 
@@ -64,6 +84,12 @@ function _manually_load_plugin() {
 	require $_plugin_root . '/plugin.php';
 }
 tests_add_filter( 'muplugins_loaded', '_manually_load_plugin' );
+
+// Override WP_TESTS_CONFIG_FILE_PATH via environment.
+// Important for monorepo CI, if you don't do this then different test runs might collide!
+if ( false !== getenv( 'WP_TESTS_CONFIG_FILE_PATH' ) ) {
+	define( 'WP_TESTS_CONFIG_FILE_PATH', getenv( 'WP_TESTS_CONFIG_FILE_PATH' ) );
+}
 
 // Start up the WP testing environment.
 require $_tests_dir . '/includes/bootstrap.php';

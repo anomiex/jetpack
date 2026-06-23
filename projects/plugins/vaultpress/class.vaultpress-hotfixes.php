@@ -1,10 +1,9 @@
 <?php
 // don't call the file directly
-defined( 'ABSPATH' ) or die();
+defined( 'ABSPATH' ) || die( 0 );
 
 class VaultPress_Hotfixes {
 	function __construct() {
-		global $wp_version;
 
 		add_filter( 'option_new_admin_email', array( $this, 'r18346_sanitize_admin_email' ) );
 
@@ -15,19 +14,6 @@ class VaultPress_Hotfixes {
 
 		// Protect WooCommerce from object injection via PayPal IPN notifications. Affects 2.0.20 -> 2.3.10
 		add_action( 'init', array( $this , 'protect_woocommerce_paypal_object_injection' ), 1 );
-
-		if ( version_compare( $wp_version, '4.7.1', '<=' ) ) {
-			// Protect WordPress 4.4 - 4.7.1 against WP REST type abuse
-			if ( version_compare( $wp_version, '4.4', '>=' ) ) {
-				add_filter( 'rest_pre_dispatch', array( $this, 'protect_rest_type_juggling' ), 10, 3 );
-			}
-
-			//	Protect WordPress 4.0 - 4.7.1 against faulty youtube embeds
-			if ( version_compare( $wp_version, '4.0', '>=' ) ) {
-				$this->protect_youtube_embeds();
-			}
-		}
-
 	}
 
 	function protect_rest_type_juggling( $replace, $server, $request ) {
@@ -44,7 +30,7 @@ class VaultPress_Hotfixes {
 		}
 
 		wp_embed_unregister_handler( 'youtube_embed_url' );
-		wp_embed_register_handler( 'youtube_embed_url', '#https?://(www.)?youtube\.com/(?:v|embed)/([^/]+)#i', array( $this, 'safe_embed_handler_youtube' ), 9, 4 );
+		wp_embed_register_handler( 'youtube_embed_url', '#https?://(www.)?youtube\.com/(?:v|embed)/([^/]+)#i', array( $this, 'safe_embed_handler_youtube' ), 9 );
 	}
 
 	function safe_embed_handler_youtube( $matches, $attr, $url, $rawattr ) {
@@ -130,15 +116,15 @@ class VaultPress_Hotfixes {
 			return;
 
 		if ( ! isset( $_POST['post_id'] ) || ! isset( $_POST['target_meta'] ) )
-			die();
+			die( 0 );
 
 		// Ensure the current user has permission to write to the post.
 		if ( ! current_user_can( 'edit_post', intval( $_POST['post_id'] ) ) )
-			die();
+			die( 0 );
 
 		// Limit the fields that can be written to
 		if ( ! in_array( $_POST['target_meta'], array( 'title', 'description', 'keywords' ) ) )
-			die();
+			die( 0 );
 
 		// Strip tags from the metadata value.
 		$_POST['new_meta'] = strip_tags( $_POST['new_meta'] );
@@ -158,7 +144,7 @@ class VaultPress_Hotfixes {
 			$check_fields = array( 'custom', 'cm' );
 			foreach ( $check_fields as $field ) {
 				if ( isset( $_REQUEST[ $field ] ) && preg_match( '/[CO]:\+?[0-9]+:/', $_REQUEST[ $field ] ) ) {
-					die();
+					die( 0 );
 				}
 			}
 		}
@@ -324,7 +310,7 @@ class VaultPress_kses {
 						{
 						$working = 1;
 						$mode = 0;
-						if(false === array_key_exists($attrname, $attrarr)) {
+						if ( ! array_key_exists( $attrname, $attrarr ) ) {
 							$attrarr[$attrname] = array ('name' => $attrname, 'value' => '', 'whole' => $attrname, 'vless' => 'y');
 						}
 						$attr = preg_replace('/^\s+/', '', $attr);
@@ -341,7 +327,7 @@ class VaultPress_kses {
 						if ( in_array(strtolower($attrname), $uris) )
 							$thisval = VaultPress_kses::wp_kses_bad_protocol($thisval, $allowed_protocols);
 
-						if(false === array_key_exists($attrname, $attrarr)) {
+						if ( ! array_key_exists( $attrname, $attrarr ) ) {
 							$attrarr[$attrname] = array ('name' => $attrname, 'value' => $thisval, 'whole' => "$attrname=\"$thisval\"", 'vless' => 'n');
 						}
 						$working = 1;
@@ -357,7 +343,7 @@ class VaultPress_kses {
 						if ( in_array(strtolower($attrname), $uris) )
 							$thisval = VaultPress_kses::wp_kses_bad_protocol($thisval, $allowed_protocols);
 
-						if(false === array_key_exists($attrname, $attrarr)) {
+						if ( ! array_key_exists( $attrname, $attrarr ) ) {
 							$attrarr[$attrname] = array ('name' => $attrname, 'value' => $thisval, 'whole' => "$attrname='$thisval'", 'vless' => 'n');
 						}
 						$working = 1;
@@ -373,7 +359,7 @@ class VaultPress_kses {
 						if ( in_array(strtolower($attrname), $uris) )
 							$thisval = VaultPress_kses::wp_kses_bad_protocol($thisval, $allowed_protocols);
 
-						if(false === array_key_exists($attrname, $attrarr)) {
+						if ( ! array_key_exists( $attrname, $attrarr ) ) {
 							$attrarr[$attrname] = array ('name' => $attrname, 'value' => $thisval, 'whole' => "$attrname=\"$thisval\"", 'vless' => 'n');
 						}
 						# We add quotes to conform to W3C's HTML spec.
@@ -392,10 +378,11 @@ class VaultPress_kses {
 			}
 		} # while
 
-		if ($mode == 1 && false === array_key_exists($attrname, $attrarr))
+		if ( $mode === 1 && ! array_key_exists( $attrname, $attrarr ) ) {
 			# special case, for when the attribute list ends with a valueless
 			# attribute like "selected"
 			$attrarr[$attrname] = array ('name' => $attrname, 'value' => '', 'whole' => $attrname, 'vless' => 'y');
+		}
 
 		return $attrarr;
 	}
@@ -452,7 +439,6 @@ class VaultPress_kses {
 		else
 			return '';
 	}
-
 }
 
 if ( !function_exists( 'get_available_languages' ) ) {

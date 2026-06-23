@@ -3,19 +3,13 @@ import { withInstanceId, compose } from '@wordpress/compose';
 import { Component } from '@wordpress/element';
 import { __, _n, sprintf } from '@wordpress/i18n';
 import { ENTER, ESCAPE, UP, DOWN, LEFT, RIGHT } from '@wordpress/keycodes';
-import classnames from 'classnames';
-import { debounce, map } from 'lodash';
+import clsx from 'clsx';
+import { debounce } from 'lodash';
 
 function filterOptions( options = [], maxResults = 10 ) {
 	const filtered = [];
 	for ( let i = 0; i < options.length; i++ ) {
 		const option = options[ i ];
-
-		// Merge label into keywords
-		let { keywords = [] } = option;
-		if ( 'string' === typeof option.label ) {
-			keywords = [ ...keywords, option.label ];
-		}
 
 		filtered.push( option );
 
@@ -84,7 +78,7 @@ export class Lookup extends Component {
 			const selectedIndex =
 				filteredOptions.length === this.state.filteredOptions.length ? this.state.selectedIndex : 0;
 			this.setState( {
-				[ 'options' ]: keyedOptions,
+				options: keyedOptions,
 				filteredOptions,
 				selectedIndex,
 				isOpen: filteredOptions.length > 0,
@@ -160,7 +154,7 @@ export class Lookup extends Component {
 		if ( filteredOptions.length ) {
 			debouncedSpeak(
 				sprintf(
-					/* translators: placeholder is a number. */
+					/* translators: %d: the number of results. */
 					_n(
 						'%d result found, use up and down arrow keys to navigate.',
 						'%d results found, use up and down arrow keys to navigate.',
@@ -199,14 +193,14 @@ export class Lookup extends Component {
 						noArrow
 					>
 						<div id={ listBoxId } role="listbox" className="components-autocomplete__results">
-							{ map( filteredOptions, ( option, index ) => (
+							{ filteredOptions.map( ( option, index ) => (
 								<Button
 									key={ option.key }
 									id={ `components-autocomplete-item-${ instanceId }-${ option.key }` }
 									role="option"
 									aria-selected={ index === selectedIndex }
 									disabled={ option.isDisabled }
-									className={ classnames( 'components-autocomplete__result', className, {
+									className={ clsx( 'components-autocomplete__result', className, {
 										'is-selected': index === selectedIndex,
 									} ) }
 									onClick={ () => this.select( option ) }

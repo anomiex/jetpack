@@ -2,15 +2,16 @@ import { getRedirectUrl } from '@automattic/jetpack-components';
 import { Button } from '@wordpress/components';
 import { createInterpolateElement } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
+import { Link } from '@wordpress/ui';
 import PropTypes from 'prop-types';
-import React, { useCallback } from 'react';
+import { Fragment, useCallback, useEffect } from 'react';
 import ConnectedPlugins from '../../connected-plugins';
 
 /**
  * Disconnect step in disconnection flow.
  *
  * @param {object} props - The properties.
- * @returns {React.Component} - The StepDisconnect component
+ * @return {import('react').Component} - The StepDisconnect component
  */
 const StepDisconnect = props => {
 	const {
@@ -45,19 +46,36 @@ const StepDisconnect = props => {
 		},
 		[ trackModalClick, onDisconnect ]
 	);
+	const handleEscapePress = useCallback(
+		event => {
+			if ( event.key === 'Escape' && ! isDisconnecting ) {
+				handleStayConnectedClick();
+			}
+		},
+		[ handleStayConnectedClick, isDisconnecting ]
+	);
+
+	useEffect( () => {
+		document.addEventListener( 'keydown', handleEscapePress, false );
+
+		return () => {
+			document.removeEventListener( 'keydown', handleEscapePress, false );
+		};
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [] );
 
 	/**
 	 * Render the disconnect button, allows for some variance based on context.
 	 *
-	 * @returns {React.Component} - Button used for disconnect.
+	 * @return {import('react').Component} - Button used for disconnect.
 	 */
 	const renderDisconnectButton = () => {
-		let buttonText = __( 'Disconnect', 'jetpack' );
+		let buttonText = __( 'Disconnect', 'jetpack-connection-js' );
 		// When showing on the plugins page, this button should deactivate the plugin as well.
 		if ( isDisconnecting ) {
-			buttonText = __( 'Disconnecting…', 'jetpack' );
+			buttonText = __( 'Disconnecting…', 'jetpack-connection-js' );
 		} else if ( context === 'plugins' ) {
-			buttonText = __( 'Deactivate', 'jetpack' );
+			buttonText = __( 'Deactivate', 'jetpack-connection-js' );
 		}
 
 		return (
@@ -76,7 +94,7 @@ const StepDisconnect = props => {
 	 * Show some fallback output if there are no connected plugins to show and no passed disconnect component.
 	 * This is a more generic message about disconnecting Jetpack.
 	 *
-	 * @returns {React.ElementType} - Fallback message for when there are no connected plugins or passed components to show.
+	 * @return {import('react').ElementType|undefined} - Fallback message for when there are no connected plugins or passed components to show.
 	 */
 	const renderFallbackOutput = () => {
 		const hasOtherConnectedPlugins =
@@ -87,17 +105,25 @@ const StepDisconnect = props => {
 			return (
 				<div className="jp-connection__disconnect-dialog__step-copy">
 					<p className="jp-connection__disconnect-dialog__large-text">
-						{ __( 'Jetpack is currently powering multiple products on your site.', 'jetpack' ) }
+						{ __(
+							'Jetpack is currently powering multiple products on your site.',
+							'jetpack-connection-js'
+						) }
 						<br />
-						{ __( 'Once you disconnect Jetpack, these will no longer work.', 'jetpack' ) }
+						{ __(
+							'Once you disconnect Jetpack, these will no longer work.',
+							'jetpack-connection-js'
+						) }
 					</p>
 				</div>
 			);
 		}
+
+		return undefined;
 	};
 
 	return (
-		<React.Fragment>
+		<Fragment>
 			<div className="jp-connection__disconnect-dialog__content">
 				<h1 id="jp-connection__disconnect-dialog__heading">{ title }</h1>
 				<ConnectedPlugins
@@ -107,34 +133,31 @@ const StepDisconnect = props => {
 				{ disconnectStepComponent }
 				{ renderFallbackOutput() }
 			</div>
-
 			<div className="jp-connection__disconnect-dialog__actions">
 				<div className="jp-row">
-					<div className="lg-col-span-7 md-col-span-8 sm-col-span-4">
+					<div className="lg-col-span-8 md-col-span-9 sm-col-span-4">
 						<p>
 							{ createInterpolateElement(
 								__(
 									'<strong>Need help?</strong> Learn more about the <jpConnectionInfoLink>Jetpack connection</jpConnectionInfoLink> or <jpSupportLink>contact Jetpack support</jpSupportLink>.',
-									'jetpack'
+									'jetpack-connection-js'
 								),
 								{
 									strong: <strong></strong>,
 									jpConnectionInfoLink: (
-										<a
+										<Link
+											openInNewTab
 											href={ getRedirectUrl(
 												'why-the-wordpress-com-connection-is-important-for-jetpack'
 											) }
-											rel="noopener noreferrer"
-											target="_blank"
 											className="jp-connection__disconnect-dialog__link"
 											onClick={ trackLearnClick }
 										/>
 									),
 									jpSupportLink: (
-										<a
+										<Link
+											openInNewTab
 											href={ getRedirectUrl( 'jetpack-support' ) }
-											rel="noopener noreferrer"
-											target="_blank"
 											className="jp-connection__disconnect-dialog__link"
 											onClick={ trackSupportClick }
 										/>
@@ -143,7 +166,7 @@ const StepDisconnect = props => {
 							) }
 						</p>
 					</div>
-					<div className="jp-connection__disconnect-dialog__button-wrap lg-col-span-5 md-col-span-8 sm-col-span-4">
+					<div className="jp-connection__disconnect-dialog__button-wrap lg-col-span-4 md-col-span-7 sm-col-span-4">
 						<Button
 							variant="primary"
 							disabled={ isDisconnecting }
@@ -151,8 +174,12 @@ const StepDisconnect = props => {
 							className="jp-connection__disconnect-dialog__btn-dismiss"
 						>
 							{ context === 'plugins'
-								? __( 'Cancel', 'jetpack' )
-								: __( 'Stay connected', 'jetpack', /* dummy arg to avoid bad minification */ 0 ) }
+								? __( 'Cancel', 'jetpack-connection-js' )
+								: __(
+										'Stay connected',
+										'jetpack-connection-js',
+										/* dummy arg to avoid bad minification */ 0
+								  ) }
 						</Button>
 						{ renderDisconnectButton() }
 					</div>
@@ -161,7 +188,7 @@ const StepDisconnect = props => {
 					<p className="jp-connection__disconnect-dialog__error">{ disconnectError }</p>
 				) }
 			</div>
-		</React.Fragment>
+		</Fragment>
 	);
 };
 
@@ -175,7 +202,7 @@ StepDisconnect.propTypes = {
 	/** An error that occurred during a request to disconnect. */
 	disconnectError: PropTypes.bool,
 	/** A component to be rendered as part of this step */
-	disconnectStepComponent: PropTypes.elementType,
+	disconnectStepComponent: PropTypes.element,
 	/** Plugins that are using the Jetpack connection. */
 	connectedPlugins: PropTypes.array,
 	/** The slug of the plugin that is initiating the disconnection. */

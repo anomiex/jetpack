@@ -1,11 +1,18 @@
 <?php
 // don't call the file directly
-defined( 'ABSPATH' ) or die();
+defined( 'ABSPATH' ) || die( 0 );
 
 class VaultPress_Database {
 
 	var $table = null;
 	var $pks = null;
+
+	/**
+	 * Table structure.
+	 *
+	 * @var ?object
+	 */
+	public $structure;
 
 	function __construct() {
 	}
@@ -161,6 +168,9 @@ class VaultPress_Database {
 		global $wpdb;
 		if ( !is_object( $data ) || !is_object( $datatypes ) )
 			return false;
+
+		$keys = array();
+		$vals = array();
 
 		foreach ( array_keys( (array)$data ) as $key )
 			$keys[] = sprintf( "`%s`", esc_sql( $key ) );
@@ -351,7 +361,7 @@ class VaultPress_Database {
 			return array( 'last_error' => 'Checksum mistmatch', 'data_file' => $data_file );
 		if ( function_exists( 'exec' ) && ( $mysql = exec( 'which mysql' ) ) ) {
 			$details = explode( ':', DB_HOST, 2 );
-			$params = array( defined( 'DB_CHARSET' ) && DB_CHARSET ? DB_CHARSET : 'utf8', DB_USER, DB_PASSWORD, $details[0], isset( $details[1] ) ? $details[1] : 3306, DB_NAME, $data_file );
+			$params  = array( defined( 'DB_CHARSET' ) && DB_CHARSET ? DB_CHARSET : 'utf8', DB_USER, DB_PASSWORD, $details[0], $details[1] ?? 3306, DB_NAME, $data_file );
 			exec( sprintf( '%s %s', escapeshellcmd( $mysql ), vsprintf( '-A --default-character-set=%s -u%s -p%s -h%s -P%s %s < %s', array_map( 'escapeshellarg', $params ) ) ), $output, $r );
 			if ( 0 === $r ) {
 				if ( $delete )

@@ -5,9 +5,11 @@
  * @package automattic/jetpack
  */
 
+use Automattic\Jetpack\Assets\Logo;
 use Automattic\Jetpack\Connection\Manager;
 use Automattic\Jetpack\Connection\Tokens;
 use Automattic\Jetpack\Status;
+use Automattic\Jetpack\Waf\Brute_Force_Protection\Brute_Force_Protection_Shared_Functions;
 
 /**
  * Used to manage Jetpack installation on Multisite Network installs
@@ -62,7 +64,6 @@ class Jetpack_Network {
 	 */
 	private function __construct() {
 		require_once ABSPATH . '/wp-admin/includes/plugin.php'; // For the is_plugin... check.
-		require_once JETPACK__PLUGIN_DIR . 'modules/protect/shared-functions.php'; // For managing the global whitelist.
 
 		/**
 		 * Sanity check to ensure the install is Multisite and we
@@ -178,7 +179,7 @@ class Jetpack_Network {
 		$sites = get_sites();
 
 		foreach ( $sites as $s ) {
-			switch_to_blog( $s->blog_id );
+			switch_to_blog( (int) $s->blog_id );
 			$active_plugins = get_option( 'active_plugins' );
 
 			/*
@@ -193,7 +194,6 @@ class Jetpack_Network {
 			}
 			restore_current_blog();
 		}
-
 	}
 
 	/**
@@ -281,33 +281,12 @@ class Jetpack_Network {
 	 * @since 2.9
 	 */
 	public function add_network_admin_menu() {
-		add_menu_page( 'Jetpack', 'Jetpack', 'jetpack_network_admin_page', 'jetpack', array( $this, 'wrap_network_admin_page' ), 'div', 3 );
+		$icon = ( new Logo() )->get_base64_logo();
+		add_menu_page( 'Jetpack', 'Jetpack', 'jetpack_network_admin_page', 'jetpack', array( $this, 'wrap_network_admin_page' ), $icon, 3 );
 		$jetpack_sites_page_hook    = add_submenu_page( 'jetpack', __( 'Jetpack Sites', 'jetpack' ), __( 'Sites', 'jetpack' ), 'jetpack_network_sites_page', 'jetpack', array( $this, 'wrap_network_admin_page' ) );
 		$jetpack_settings_page_hook = add_submenu_page( 'jetpack', __( 'Settings', 'jetpack' ), __( 'Settings', 'jetpack' ), 'jetpack_network_settings_page', 'jetpack-settings', array( $this, 'wrap_render_network_admin_settings_page' ) );
-		add_action( "admin_print_styles-$jetpack_sites_page_hook", array( 'Jetpack_Admin_Page', 'load_wrapper_styles' ) );
-		add_action( "admin_print_styles-$jetpack_settings_page_hook", array( 'Jetpack_Admin_Page', 'load_wrapper_styles' ) );
-		/**
-		 * As jetpack_register_genericons is by default fired off a hook,
-		 * the hook may have already fired by this point.
-		 * So, let's just trigger it manually.
-		 */
-		require_once JETPACK__PLUGIN_DIR . '_inc/genericons.php';
-		jetpack_register_genericons();
-
-		if ( ! wp_style_is( 'jetpack-icons', 'registered' ) ) {
-			wp_register_style( 'jetpack-icons', plugins_url( 'css/jetpack-icons.min.css', JETPACK__PLUGIN_FILE ), false, JETPACK__VERSION );
-		}
-
-		add_action( 'admin_enqueue_scripts', array( $this, 'admin_menu_css' ) );
-	}
-
-	/**
-	 * Adds JP menu icon
-	 *
-	 * @since 2.9
-	 **/
-	public function admin_menu_css() {
-		wp_enqueue_style( 'jetpack-icons' );
+		add_action( "load-$jetpack_sites_page_hook", array( $this, 'admin_init_network_page' ) );
+		add_action( "load-$jetpack_settings_page_hook", array( $this, 'admin_init_network_page' ) );
 	}
 
 	/**
@@ -347,7 +326,7 @@ class Jetpack_Network {
 					}
 
 					wp_safe_redirect( $url );
-					exit;
+					exit( 0 );
 
 				case 'subsitedisconnect':
 					check_admin_referer( 'jetpack-subsite-disconnect' );
@@ -401,8 +380,8 @@ class Jetpack_Network {
 			$classname = 'error';
 		}
 		?>
-		<div id="message" class="<?php echo esc_attr( $classname ); ?> jetpack-message jp-connect" style="display:block !important;">
-			<p><?php echo esc_html( $notice ); ?></p>
+		<div id="message" class="<?php echo esc_attr( $classname ?? '' ); ?> jetpack-message jp-connect" style="display:block !important;">
+			<p><?php echo esc_html( $notice ?? '' ); ?></p>
 		</div>
 		<?php
 	}
@@ -527,10 +506,73 @@ class Jetpack_Network {
 	}
 
 	/**
-	 * A hook handler for adding admin pages and subpages.
+	 * Initializes assets for network admin pages.
+	 *
+	 * @since 15.7
+	 */
+	public function admin_init_network_page() {
+		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_network_admin_scripts' ) );
+
+		// Match the modernized single-site dashboards (e.g. Jetpack Forms): the
+		// network Sites/Settings pages render as full-viewport AdminPage shells,
+		// so strip core admin notices that would otherwise break the pinned
+		// layout. Network Admin fires `network_admin_notices`/`all_admin_notices`
+		// (not `admin_notices`). Jetpack's own notices use the `jetpack_notices`
+		// hook and are unaffected.
+		remove_all_actions( 'network_admin_notices' );
+		remove_all_actions( 'all_admin_notices' );
+	}
+
+	/**
+	 * Enqueues the JS and CSS for the unified network admin header.
+	 *
+	 * @since 15.7
+	 */
+	public function enqueue_network_admin_scripts() {
+		$build_dir         = JETPACK__PLUGIN_DIR . '_inc/build/';
+		$script_asset_path = $build_dir . 'network-admin.asset.php';
+
+		if ( ! file_exists( $script_asset_path ) ) {
+			return;
+		}
+
+		$script_asset = require $script_asset_path;
+
+		wp_enqueue_script(
+			'jetpack-network-admin',
+			plugins_url( '_inc/build/network-admin.js', JETPACK__PLUGIN_FILE ),
+			$script_asset['dependencies'],
+			$script_asset['version'],
+			true
+		);
+
+		wp_enqueue_style(
+			'jetpack-network-admin',
+			plugins_url( '_inc/build/network-admin.css', JETPACK__PLUGIN_FILE ),
+			array(),
+			$script_asset['version']
+		);
+
+		wp_set_script_translations( 'jetpack-network-admin', 'jetpack' );
+
+		wp_localize_script(
+			'jetpack-network-admin',
+			'JetpackNetworkAdminData',
+			array(
+				'sitesUrl'    => network_admin_url( 'admin.php?page=jetpack' ),
+				'settingsUrl' => network_admin_url( 'admin.php?page=jetpack-settings' ),
+			)
+		);
+	}
+
+	/**
+	 * Renders the Network Sites page with the unified admin header.
 	 */
 	public function wrap_network_admin_page() {
-		Jetpack_Admin_Page::wrap_ui( array( $this, 'network_admin_page' ) );
+		echo '<div id="jp-network-admin-root" data-page="sites"></div>';
+		echo '<div id="jp-network-admin-content" style="display:none">';
+		$this->network_admin_page();
+		echo '</div>';
 	}
 
 	/**
@@ -542,7 +584,6 @@ class Jetpack_Network {
 	 */
 	public function network_admin_page() {
 		global $current_site;
-		$this->network_admin_page_header();
 
 		$jp = Jetpack::init();
 
@@ -576,7 +617,6 @@ class Jetpack_Network {
 		$network_sites_table->prepare_items();
 		$network_sites_table->display();
 		echo '</form></div>';
-
 	}
 
 	/**
@@ -597,6 +637,7 @@ class Jetpack_Network {
 	 * Fires when the Jetpack > Settings page is saved.
 	 *
 	 * @since 2.9
+	 * @return never
 	 */
 	public function save_network_settings_page() {
 
@@ -608,14 +649,14 @@ class Jetpack_Network {
 					network_admin_url( 'admin.php' )
 				)
 			);
-			exit();
+			exit( 0 );
 		}
 
-		// Try to save the Protect whitelist before anything else, since that action can result in errors.
-		$whitelist = isset( $_POST['global-whitelist'] ) ? filter_var( wp_unslash( $_POST['global-whitelist'] ) ) : '';
-		$whitelist = str_replace( ' ', '', $whitelist );
-		$whitelist = explode( PHP_EOL, $whitelist );
-		$result    = jetpack_protect_save_whitelist( $whitelist, true );
+		// Try to save the Protect allow list before anything else, since that action can result in errors.
+		$allow_list = isset( $_POST['global-allow-list'] ) ? filter_var( wp_unslash( $_POST['global-allow-list'] ) ) : '';
+		$allow_list = str_replace( ' ', '', $allow_list );
+		$allow_list = explode( PHP_EOL, $allow_list );
+		$result     = Brute_Force_Protection_Shared_Functions::save_allow_list( $allow_list, true );
 		if ( is_wp_error( $result ) ) {
 			wp_safe_redirect(
 				add_query_arg(
@@ -626,7 +667,7 @@ class Jetpack_Network {
 					network_admin_url( 'admin.php' )
 				)
 			);
-			exit();
+			exit( 0 );
 		}
 
 		/*
@@ -660,21 +701,23 @@ class Jetpack_Network {
 				network_admin_url( 'admin.php' )
 			)
 		);
-		exit();
+		exit( 0 );
 	}
 
 	/**
-	 * A hook handler for adding admin pages and subpages.
+	 * Renders the Network Settings page with the unified admin header.
 	 */
 	public function wrap_render_network_admin_settings_page() {
-		Jetpack_Admin_Page::wrap_ui( array( $this, 'render_network_admin_settings_page' ) );
+		echo '<div id="jp-network-admin-root" data-page="settings"></div>';
+		echo '<div id="jp-network-admin-content" style="display:none">';
+		$this->render_network_admin_settings_page();
+		echo '</div>';
 	}
 
 	/**
 	 * A hook rendering the admin settings page.
 	 */
 	public function render_network_admin_settings_page() {
-		$this->network_admin_page_header();
 		$options = wp_parse_args( get_site_option( $this->settings_name ), $this->setting_defaults );
 
 		$modules      = array();
@@ -694,7 +737,7 @@ class Jetpack_Network {
 		$data = array(
 			'modules'                   => $modules,
 			'options'                   => $options,
-			'jetpack_protect_whitelist' => jetpack_protect_format_whitelist(),
+			'jetpack_protect_whitelist' => Brute_Force_Protection_Shared_Functions::format_allow_list(),
 		);
 
 		Jetpack::init()->load_view( 'admin/network-settings.php', $data );

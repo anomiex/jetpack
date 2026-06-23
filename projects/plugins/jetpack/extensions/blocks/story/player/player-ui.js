@@ -1,57 +1,59 @@
+import { getBlockIconComponent } from '@automattic/jetpack-shared-extension-utils';
 import { isBlobURL } from '@wordpress/blob';
 import { useResizeObserver } from '@wordpress/compose';
 import { useDispatch, useSelect } from '@wordpress/data';
 import { useRef, useState, useEffect, useLayoutEffect, useCallback } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
-import classNames from 'classnames';
-import { some } from 'lodash';
-import icon from '../icon';
+import clsx from 'clsx';
+import blockMetadata from '../block.json';
 import { Background, Controls, Header, Overlay } from './components';
 import useLongPress from './lib/use-long-press';
 import ProgressBar from './progress-bar';
 import Slide from './slide';
 
-export default function PlayerUI( { id, slides, metadata, disabled } ) {
-	const { setFullscreen, setEnded, setPlaying, setMuted, showSlide } = useDispatch(
-		'jetpack/story/player'
-	);
-	const {
-		playing,
-		muted,
-		currentSlideIndex,
-		currentSlideEnded,
-		ended,
-		fullscreen,
-		settings,
-	} = useSelect(
-		select => {
-			const {
-				getCurrentSlideIndex,
-				getSettings,
-				hasCurrentSlideEnded,
-				hasEnded,
-				isFullscreen,
-				isMuted,
-				isPlaying,
-			} = select( 'jetpack/story/player' );
-			return {
-				playing: isPlaying( id ),
-				muted: isMuted( id ),
-				currentSlideIndex: getCurrentSlideIndex( id ),
-				currentSlideEnded: hasCurrentSlideEnded( id ),
-				ended: hasEnded( id ),
-				fullscreen: isFullscreen( id ),
-				settings: getSettings( id ),
-			};
-		},
-		[ id ]
-	);
+const icon = getBlockIconComponent( blockMetadata );
 
-	const slideContainerRef = useRef();
+export default function PlayerUI( { id, slides, metadata, disabled } ) {
+	const { setFullscreen, setEnded, setPlaying, setMuted, showSlide } =
+		useDispatch( 'jetpack/story/player' );
+	const { playing, muted, currentSlideIndex, currentSlideEnded, ended, fullscreen, settings } =
+		useSelect(
+			select => {
+				const {
+					getCurrentSlideIndex,
+					getSettings,
+					hasCurrentSlideEnded,
+					hasEnded,
+					isFullscreen,
+					isMuted,
+					isPlaying,
+				} = select( 'jetpack/story/player' );
+				return {
+					playing: isPlaying( id ),
+					muted: isMuted( id ),
+					currentSlideIndex: getCurrentSlideIndex( id ),
+					currentSlideEnded: hasCurrentSlideEnded( id ),
+					ended: hasEnded( id ),
+					fullscreen: isFullscreen( id ),
+					settings: getSettings( id ),
+				};
+			},
+			[ id ]
+		);
+
+	const slideContainerRef = useRef( undefined );
 	const [ maxSlideWidth, setMaxSlideWidth ] = useState( null );
-	const [ resizeListener, { width, height } ] = useResizeObserver();
+	const setElement = useResizeObserver(
+		resizeObserverEntries => {
+			const width = resizeObserverEntries[ 0 ]?.contentRect.width;
+			if ( width ) {
+				setMaxSlideWidth( width );
+			}
+		},
+		{ box: 'border-box' }
+	);
 	const [ targetAspectRatio, setTargetAspectRatio ] = useState( settings.defaultAspectRatio );
-	const uploading = some( slides, media => isBlobURL( media.url ) );
+	const uploading = slides.some( media => isBlobURL( media.url ) );
 	const isVideo = slideIndex => {
 		const media = slideIndex < slides.length ? slides[ slideIndex ] : null;
 		if ( ! media ) {
@@ -117,29 +119,21 @@ export default function PlayerUI( { id, slides, metadata, disabled } ) {
 
 	// Max slide width is used to display the story in portrait mode on desktop
 	useLayoutEffect( () => {
-		if ( ! slideContainerRef.current ) {
+		const containerHeight = slideContainerRef?.current.offsetHeight;
+		if ( ! slideContainerRef.current || ! settings.defaultAspectRatio || containerHeight <= 0 ) {
 			return;
 		}
-		let ratioBasedWidth = Math.round(
-			settings.defaultAspectRatio * slideContainerRef.current.offsetHeight
-		);
+		setElement( slideContainerRef.current );
+		let ratioBasedWidth = Math.round( settings.defaultAspectRatio * containerHeight );
 		if ( fullscreen ) {
+			const width = slideContainerRef.current.offsetWidth; // Get the current width
 			ratioBasedWidth =
 				Math.abs( 1 - ratioBasedWidth / width ) < settings.cropUpTo ? width : ratioBasedWidth;
 		}
 		setMaxSlideWidth( ratioBasedWidth );
+		setTargetAspectRatio( ratioBasedWidth / containerHeight );
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [ width, height, fullscreen ] );
-
-	useLayoutEffect( () => {
-		if (
-			maxSlideWidth &&
-			slideContainerRef.current &&
-			slideContainerRef.current.offsetHeight > 0
-		) {
-			setTargetAspectRatio( maxSlideWidth / slideContainerRef.current.offsetHeight );
-		}
-	}, [ maxSlideWidth ] );
+	}, [ setElement, fullscreen ] );
 
 	let label;
 	if ( fullscreen ) {
@@ -164,12 +158,11 @@ export default function PlayerUI( { id, slides, metadata, disabled } ) {
 	/* eslint-disable jsx-a11y/click-events-have-key-events */
 	return (
 		<div className="wp-story-display-contents">
-			{ resizeListener }
 			<div
 				role={ role }
 				aria-label={ label }
 				tabIndex={ fullscreen ? -1 : 0 }
-				className={ classNames( 'wp-story-container', {
+				className={ clsx( 'wp-story-container', {
 					'wp-story-with-controls': ! disabled && ! fullscreen && ! settings.playInFullscreen,
 					'wp-story-fullscreen': fullscreen,
 					'wp-story-ended': ended,

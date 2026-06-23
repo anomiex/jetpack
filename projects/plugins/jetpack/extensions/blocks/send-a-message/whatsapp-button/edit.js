@@ -1,14 +1,16 @@
-import { BlockControls, InspectorControls, RichText } from '@wordpress/block-editor';
+import { BlockControls, InspectorControls, RichText, useBlockProps } from '@wordpress/block-editor';
 import { useDispatch } from '@wordpress/data';
 import { useEffect, useCallback } from '@wordpress/element';
-import classnames from 'classnames';
+import clsx from 'clsx';
 import { countryCodes } from '../shared/countrycodes.js';
 import WhatsAppButtonConfiguration from './configuration';
 import '../view.scss';
 
 export default function WhatsAppButtonEdit( { attributes, setAttributes, className, clientId } ) {
 	const { countryCode, buttonText, colorClass, backgroundColor } = attributes;
-
+	const blockProps = useBlockProps( {
+		className: clsx( className, colorClass && `is-color-${ colorClass }` ),
+	} );
 	const { selectBlock } = useDispatch( 'core/block-editor' );
 
 	const getCountryCode = useCallback( async () => {
@@ -44,12 +46,8 @@ export default function WhatsAppButtonEdit( { attributes, setAttributes, classNa
 		}
 	}, [ clientId, countryCode, getCountryCode, selectBlock ] );
 
-	const getBlockClassNames = () => {
-		return classnames( className, colorClass ? 'is-color-' + colorClass : undefined );
-	};
-
 	return (
-		<div className={ getBlockClassNames() }>
+		<div { ...blockProps }>
 			<BlockControls>
 				<WhatsAppButtonConfiguration
 					context="toolbar"

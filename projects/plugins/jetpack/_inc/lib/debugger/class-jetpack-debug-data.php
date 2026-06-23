@@ -8,8 +8,10 @@
 use Automattic\Jetpack\Connection\Tokens;
 use Automattic\Jetpack\Connection\Urls;
 use Automattic\Jetpack\Constants;
+use Automattic\Jetpack\Current_Plan as Jetpack_Plan;
 use Automattic\Jetpack\Identity_Crisis;
 use Automattic\Jetpack\Redirect;
+use Automattic\Jetpack\Status;
 use Automattic\Jetpack\Sync\Modules;
 use Automattic\Jetpack\Sync\Sender;
 
@@ -136,39 +138,49 @@ class Jetpack_Debug_Data {
 		$debug_info = array();
 
 		/* Add various important Jetpack options */
-		$debug_info['site_id']        = array(
+		$debug_info['site_id']                  = array(
 			'label'   => 'Jetpack Site ID',
 			'value'   => Jetpack_Options::get_option( 'id' ),
 			'private' => false,
 		);
-		$debug_info['ssl_cert']       = array(
+		$debug_info['ssl_cert']                 = array(
 			'label'   => 'Jetpack SSL Verfication Bypass',
 			'value'   => ( Jetpack_Options::get_option( 'fallback_no_verify_ssl_certs' ) ) ? 'Yes' : 'No',
 			'private' => false,
 		);
-		$debug_info['time_diff']      = array(
+		$debug_info['time_diff']                = array(
 			'label'   => "Offset between Jetpack server's time and this server's time.",
 			'value'   => Jetpack_Options::get_option( 'time_diff' ),
 			'private' => false,
 		);
-		$debug_info['version_option'] = array(
+		$debug_info['version_option']           = array(
 			'label'   => 'Current Jetpack Version Option',
 			'value'   => Jetpack_Options::get_option( 'version' ),
 			'private' => false,
 		);
-		$debug_info['old_version']    = array(
+		$debug_info['old_version']              = array(
 			'label'   => 'Previous Jetpack Version',
 			'value'   => Jetpack_Options::get_option( 'old_version' ),
 			'private' => false,
 		);
-		$debug_info['public']         = array(
+		$debug_info['public']                   = array(
 			'label'   => 'Jetpack Site Public',
 			'value'   => ( Jetpack_Options::get_option( 'public' ) ) ? 'Public' : 'Private',
 			'private' => false,
 		);
-		$debug_info['master_user']    = array(
+		$debug_info['master_user']              = array(
 			'label'   => 'Jetpack Master User',
 			'value'   => self::human_readable_master_user(), // Only ID number and user name.
+			'private' => false,
+		);
+		$debug_info['is_offline_mode']          = array(
+			'label'   => 'Jetpack Offline Mode',
+			'value'   => ( new Status() )->is_offline_mode() ? 'on' : 'off',
+			'private' => false,
+		);
+		$debug_info['is_offline_mode_constant'] = array(
+			'label'   => 'JETPACK_DEV_DEBUG Constant',
+			'value'   => ( defined( 'JETPACK_DEV_DEBUG' ) && JETPACK_DEV_DEBUG ) ? 'on' : 'off',
 			'private' => false,
 		);
 
@@ -214,12 +226,12 @@ class Jetpack_Debug_Data {
 		);
 		$debug_info['blog_token']   = array(
 			'label'   => 'Blog Public Key',
-			'value'   => ( $blog_token ) ? $blog_key : 'Not set.',
+			'value'   => $blog_key ?? 'Not set.',
 			'private' => false,
 		);
 		$debug_info['user_token']   = array(
 			'label'   => 'User Public Key',
-			'value'   => ( $user_token ) ? $user_key : 'Not set.',
+			'value'   => $user_key ?? 'Not set.',
 			'private' => false,
 		);
 
@@ -273,12 +285,13 @@ class Jetpack_Debug_Data {
 
 		$debug_info['protect_header'] = array(
 			'label'   => 'Trusted IP',
-			'value'   => wp_json_encode( get_site_option( 'trusted_ip_header' ) ),
+			'value'   => wp_json_encode( get_site_option( 'trusted_ip_header' ), JSON_UNESCAPED_SLASHES ),
 			'private' => false,
 		);
 
 		/** Sync Debug Information */
 		$sync_module = Modules::get_module( 'full-sync' );
+		'@phan-var \Automattic\Jetpack\Sync\Modules\Full_Sync_Immediately|\Automattic\Jetpack\Sync\Modules\Full_Sync $sync_module';
 		if ( $sync_module ) {
 			$sync_statuses              = $sync_module->get_status();
 			$human_readable_sync_status = array();
@@ -289,7 +302,7 @@ class Jetpack_Debug_Data {
 			}
 			$debug_info['full_sync'] = array(
 				'label'   => 'Full Sync Status',
-				'value'   => wp_json_encode( $human_readable_sync_status ),
+				'value'   => wp_json_encode( $human_readable_sync_status, JSON_UNESCAPED_SLASHES ),
 				'private' => false,
 			);
 		}
@@ -334,12 +347,12 @@ class Jetpack_Debug_Data {
 
 		$debug_info['idc_urls']         = array(
 			'label'   => 'IDC URLs',
-			'value'   => wp_json_encode( $idc_urls ),
+			'value'   => wp_json_encode( $idc_urls, JSON_UNESCAPED_SLASHES ),
 			'private' => false,
 		);
 		$debug_info['idc_error_option'] = array(
 			'label'   => 'IDC Error Option',
-			'value'   => wp_json_encode( Jetpack_Options::get_option( 'sync_error_idc' ) ),
+			'value'   => wp_json_encode( Jetpack_Options::get_option( 'sync_error_idc' ), JSON_UNESCAPED_SLASHES ),
 			'private' => false,
 		);
 		$debug_info['idc_optin']        = array(
@@ -349,7 +362,7 @@ class Jetpack_Debug_Data {
 		);
 
 		// @todo -- Add testing results?
-		$cxn_tests               = new Jetpack_Cxn_Tests();
+		$cxn_tests               = new Automattic\Jetpack\Connection\Connection_Health_Tests();
 		$debug_info['cxn_tests'] = array(
 			'label'   => 'Connection Tests',
 			'value'   => '',
@@ -358,7 +371,7 @@ class Jetpack_Debug_Data {
 		if ( $cxn_tests->pass() ) {
 			$debug_info['cxn_tests']['value'] = 'All Pass.';
 		} else {
-			$debug_info['cxn_tests']['value'] = wp_json_encode( $cxn_tests->list_fails() );
+			$debug_info['cxn_tests']['value'] = wp_json_encode( $cxn_tests->list_fails(), JSON_UNESCAPED_SLASHES );
 		}
 
 		return $debug_info;
@@ -378,7 +391,7 @@ class Jetpack_Debug_Data {
 
 		$user = new WP_User( $master_user );
 
-		if ( ! $user ) {
+		if ( ! $user->exists() ) {
 			return __( 'Master user no longer exists. Please disconnect and reconnect Jetpack.', 'jetpack' );
 		}
 

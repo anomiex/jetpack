@@ -1,14 +1,23 @@
-@import '@automattic/jetpack-base-styles/gutenberg-base-styles';
+@use "@automattic/jetpack-base-styles/gutenberg-base-styles" as gb;
 
 .jetpack-clipboard-input {
 	display: flex;
 
 	.components-text-control__input,
 	.components-clipboard-button {
-		min-height: $button-size;
+		min-height: gb.$button-size;
 	}
 
 	.components-clipboard-button {
 		margin-left: 6px;
+		padding: 0 !important;
+
+		svg {
+			padding-left: 5px;
+		}
+
+		span {
+			padding-right: 5px;
+		}
 	}
 }

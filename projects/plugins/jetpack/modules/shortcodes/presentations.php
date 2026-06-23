@@ -1,7 +1,4 @@
 <?php //phpcs:ignore WordPress.Files.FileName.InvalidClassFileName
-
-use Automattic\Jetpack\Assets;
-
 /**
  * Presentations
  * Presentations plugin based on the work done by <a href="http://darylkoop.com/">Daryl Koopersmith</a>. Powered by jmpress.js
@@ -56,6 +53,12 @@ use Automattic\Jetpack\Assets;
  * @package automattic/jetpack
  */
 
+use Automattic\Jetpack\Assets;
+
+if ( ! defined( 'ABSPATH' ) ) {
+	exit( 0 );
+}
+
 if ( ! class_exists( 'Presentations' ) ) :
 	/**
 	 * Create a shortcode to display Presentations and slides.
@@ -106,7 +109,7 @@ if ( ! class_exists( 'Presentations' ) ) :
 			}
 
 			foreach ( $GLOBALS['posts'] as $p ) {
-				if ( has_shortcode( $p->post_content, 'presentation' ) ) {
+				if ( isset( $p->post_content ) && has_shortcode( $p->post_content, 'presentation' ) ) {
 					$this->scripts_and_style_included = true;
 					break;
 				}
@@ -121,17 +124,17 @@ if ( ! class_exists( 'Presentations' ) ) :
 			wp_enqueue_style( 'presentations', $plugin . 'css/style.css', array(), JETPACK__VERSION );
 			// Add JavaScript.
 			wp_enqueue_script( 'jquery' );
-			wp_enqueue_script(
-				'jmpress',
-				Assets::get_file_url_for_environment( '_inc/build/shortcodes/js/jmpress.min.js', 'modules/shortcodes/js/jmpress.js' ),
+			wp_register_script(
+				'jetpack-shortcode-deps',
+				plugins_url( '_inc/build/shortcodes/js/dependencies.min.js', JETPACK__PLUGIN_FILE ),
 				array( 'jquery' ),
-				JETPACK__VERSION,
+				'20251030',
 				true
 			);
 			wp_enqueue_script(
 				'presentations',
 				Assets::get_file_url_for_environment( '_inc/build/shortcodes/js/main.min.js', 'modules/shortcodes/js/main.js' ),
-				array( 'jquery', 'jmpress' ),
+				array( 'jquery', 'jetpack-shortcode-deps' ),
 				JETPACK__VERSION,
 				true
 			);
@@ -249,26 +252,23 @@ if ( ! class_exists( 'Presentations' ) ) :
 			$out .= "<p class='not-supported-msg' style='display: inherit; padding: 25%; text-align: center;'>";
 			$out .= __( 'This slideshow could not be started. Try refreshing the page or viewing it in another browser.', 'jetpack' ) . '</p>';
 
-			// Bail out unless the scripts were added.
-			if ( $this->scripts_and_style_included ) {
-				$out .= sprintf(
-					'<div class="presentation" duration="%s" data-autoplay="%s" style="%s">',
-					esc_attr( $duration ),
-					esc_attr( $autoplay ),
-					esc_attr( $style )
-				);
-				$out .= "<div class='nav-arrow-left'></div>";
-				$out .= "<div class='nav-arrow-right'></div>";
-				$out .= "<div class='nav-fullscreen-button'></div>";
+			$out .= sprintf(
+				'<div class="presentation" duration="%s" data-autoplay="%s" style="%s">',
+				esc_attr( $duration ),
+				esc_attr( $autoplay ),
+				esc_attr( $style )
+			);
+			$out .= "<div class='nav-arrow-left'></div>";
+			$out .= "<div class='nav-arrow-right'></div>";
+			$out .= "<div class='nav-fullscreen-button'></div>";
 
-				if ( $autoplay ) {
-					$out .= '<div class="autoplay-overlay" style="display: none;"><p class="overlay-msg">';
-					$out .= __( 'Click to autoplay the presentation!', 'jetpack' );
-					$out .= '</p></div>';
-				}
-
-				$out .= do_shortcode( $content );
+			if ( $autoplay ) {
+				$out .= '<div class="autoplay-overlay" style="display: none;"><p class="overlay-msg">';
+				$out .= __( 'Click to autoplay the presentation!', 'jetpack' );
+				$out .= '</p></div>';
 			}
+
+			$out .= do_shortcode( $content );
 
 			$out .= '</section>';
 

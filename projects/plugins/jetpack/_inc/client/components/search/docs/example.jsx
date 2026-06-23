@@ -1,13 +1,12 @@
+import { PureComponent } from 'react';
 import Search from 'components/search';
-import SearchCard from 'components/search-card';
-import React from 'react';
 
 /**
  * Globals
  */
 const noop = () => {};
 
-class SearchDemo extends React.PureComponent {
+class SearchDemo extends PureComponent {
 	static displayName = 'Search';
 
 	render() {
@@ -17,8 +16,6 @@ class SearchDemo extends React.PureComponent {
 					<a href="/devdocs/design/search">Search</a>
 				</h2>
 				<Search onSearch={ noop } placeholder="Placeholder text..." />
-				<h2>Search Card</h2>
-				<SearchCard onSearch={ noop } placeholder="Placeholder text..." />
 			</div>
 		);
 	}

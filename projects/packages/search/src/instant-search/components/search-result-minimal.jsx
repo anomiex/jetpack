@@ -1,4 +1,6 @@
-import React, { Component } from 'react';
+import { cleanForSlug } from '@wordpress/url';
+import * as React from 'react';
+import { Component } from 'react';
 import Gridicon from './gridicon';
 import PathBreadcrumbs from './path-breadcrumbs';
 import PostTypeIcon from './post-type-icon';
@@ -25,7 +27,7 @@ class SearchResultMinimal extends Component {
 		return tags.slice( 0, MAX_TAGS_OR_CATEGORIES );
 	}
 
-	getCategories() {
+	getCategories( returnAll = false ) {
 		let cats = this.props.result.fields[ 'category.name.default' ];
 
 		if ( ! cats ) {
@@ -34,6 +36,10 @@ class SearchResultMinimal extends Component {
 
 		if ( ! Array.isArray( cats ) ) {
 			cats = [ cats ];
+		}
+
+		if ( returnAll ) {
+			return cats;
 		}
 
 		return cats.slice( 0, MAX_TAGS_OR_CATEGORIES );
@@ -50,7 +56,7 @@ class SearchResultMinimal extends Component {
 					{ tags.length !== 0 && (
 						<ul className="jetpack-instant-search__search-result-minimal-tags">
 							{ tags.map( tag => (
-								<li className="jetpack-instant-search__search-result-minimal-tag">
+								<li key={ tag } className="jetpack-instant-search__search-result-minimal-tag">
 									<Gridicon icon="tag" size={ this.getIconSize() } />
 									<span className="jetpack-instant-search__search-result-minimal-tag-text">
 										{ tag }
@@ -62,7 +68,7 @@ class SearchResultMinimal extends Component {
 					{ cats.length !== 0 && (
 						<ul className="jetpack-instant-search__search-result-minimal-cats">
 							{ cats.map( cat => (
-								<li className="jetpack-instant-search__search-result-minimal-cat">
+								<li key={ cat } className="jetpack-instant-search__search-result-minimal-cat">
 									<Gridicon icon="folder" size={ this.getIconSize() } />
 									<span className="jetpack-instant-search__search-result-minimal-cat-text">
 										{ cat }
@@ -82,7 +88,16 @@ class SearchResultMinimal extends Component {
 				className="jetpack-instant-search__search-result-minimal-content"
 				//eslint-disable-next-line react/no-danger
 				dangerouslySetInnerHTML={ {
-					__html: this.props.result.highlight.content.join( ' ... ' ),
+					__html:
+						this.props.result.highlight && typeof this.props.result.highlight === 'object'
+							? Object.entries( this.props.result.highlight )
+									.filter(
+										( [ key, value ] ) =>
+											key !== 'comments' && key !== 'title' && Array.isArray( value )
+									)
+									.map( ( [ , array ] ) => array.join( ' ... ' ) )
+									.join( ' ... ' )
+							: '',
 				} }
 			/>
 		);
@@ -93,19 +108,39 @@ class SearchResultMinimal extends Component {
 		if ( result_type !== 'post' ) {
 			return null;
 		}
-		const noMatchingContent = ! highlight.content || highlight.content[ 0 ] === '';
+		const noMatchingContent =
+			! highlight ||
+			typeof highlight !== 'object' ||
+			Object.entries( highlight ).every(
+				( [ key, value ] ) =>
+					key === 'comments' || key === 'title' || ! Array.isArray( value ) || value[ 0 ] === ''
+			);
 
 		return (
-			<li className="jetpack-instant-search__search-result jetpack-instant-search__search-result-minimal">
+			<li
+				className={ [
+					'jetpack-instant-search__search-result',
+					'jetpack-instant-search__search-result-minimal',
+					this.getCategories( true )
+						.map( cat => 'jetpack-instant-search__search-result-category--' + cleanForSlug( cat ) )
+						.join( ' ' ),
+				].join( ' ' ) }
+			>
 				<h3 className="jetpack-instant-search__search-result-title jetpack-instant-search__search-result-minimal-title">
 					<PostTypeIcon postType={ fields.post_type } shortcodeTypes={ fields.shortcode_types } />
 					<a
 						className="jetpack-instant-search__search-result-title-link jetpack-instant-search__search-result-minimal-title-link"
 						href={ `//${ fields[ 'permalink.url.raw' ] }` }
 						onClick={ this.props.onClick }
-						//eslint-disable-next-line react/no-danger
-						dangerouslySetInnerHTML={ { __html: highlight.title } }
-					/>
+					>
+						<span
+							//eslint-disable-next-line react/no-danger
+							dangerouslySetInnerHTML={ { __html: highlight.title } }
+						/>
+						{ fields[ 'forum.topic_resolved' ] === 'yes' && (
+							<span className="jetpack-instant-search__search-result-title-checkmark" />
+						) }
+					</a>
 				</h3>
 				{ noMatchingContent ? this.renderNoMatchingContent() : this.renderMatchingContent() }
 				<SearchResultComments comments={ highlight && highlight.comments } />

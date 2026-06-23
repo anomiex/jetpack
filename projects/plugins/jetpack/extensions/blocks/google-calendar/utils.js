@@ -1,4 +1,4 @@
-const url_regex_string = 's*https?://calendar.google.com/calendar';
+const url_regex_string = 'https?://calendar\\.google\\.com/calendar';
 export const URL_REGEX = new RegExp( `^${ url_regex_string }`, 'i' );
 export const IFRAME_REGEX = new RegExp(
 	`<iframe((?:\\s+\\w+=(['"]).*?\\2)*)\\s+src=(["'])(${ url_regex_string }.*?)\\3((?:\\s+\\w+=(['"]).*?\\6)*)`,
@@ -17,13 +17,13 @@ const ATTRIBUTE_REGEX = /\s+(\w+)=(["'])(.*?)\2/gi;
  *
  * to an embed URL.
  *
- * @param   {string} shareableUrl - The Google Calendar shareable URL
- * @returns {string} The embed URL or undefined if the conversion fails
+ * @param {string} shareableUrl - The Google Calendar shareable URL
+ * @return {string|undefined} The embed URL or undefined if the conversion fails
  */
 export function convertShareableUrl( shareableUrl ) {
 	const parsedUrl = SHAREABLE_REGEX.exec( shareableUrl );
 	if ( ! parsedUrl ) {
-		return;
+		return undefined;
 	}
 	return (
 		'https://calendar.google.com/calendar/embed?src=' + encodeURIComponent( atob( parsedUrl[ 1 ] ) )
@@ -33,26 +33,26 @@ export function convertShareableUrl( shareableUrl ) {
 /**
  * Given an <iframe> that matches IFRAME_REGEX, extract the url, width, and height.
  *
- * @param   {string} html - The HTML to extract from.
- * @returns {Object} An object containing the url, width, and height.
+ * @param {string} html - The HTML to extract from.
+ * @return {object|undefined} An object containing the url, width, and height.
  */
 export function extractAttributesFromIframe( html ) {
 	const data = IFRAME_REGEX.exec( html );
 
 	if ( ! data ) {
-		return;
+		return undefined;
 	}
 
 	const attributes = {};
 
 	data.forEach( ( match, index ) => {
 		if ( 0 === index ) {
-			return;
+			return undefined;
 		}
 
 		if ( URL_REGEX.test( match ) ) {
 			attributes.url = match;
-			return;
+			return undefined;
 		}
 
 		let attr_match;
@@ -72,8 +72,8 @@ export function extractAttributesFromIframe( html ) {
  * Parses user submitted embed string into an object containing a url and
  * potentially width and height data if the embed code is an iframe.
  *
- * @param   {string} embedString - Embed string to parse.
- * @returns {Object} An object containing URL data.
+ * @param {string} embedString - Embed string to parse.
+ * @return {object} An object containing URL data.
  */
 export function parseEmbed( embedString ) {
 	if ( IFRAME_REGEX.test( embedString ) ) {

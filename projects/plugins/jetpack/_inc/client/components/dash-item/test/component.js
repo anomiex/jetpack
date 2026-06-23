@@ -1,5 +1,4 @@
 import { getRedirectUrl } from '@automattic/jetpack-components';
-import React from 'react';
 import { render, screen } from 'test/test-utils';
 import { DashItem } from '../index';
 import { buildInitialState } from './fixtures';
@@ -82,12 +81,14 @@ describe( 'DashItem', () => {
 
 	describe( 'when site is connected, is a PRO module, user can toggle', () => {
 		// While the button is passed to <SectionHeader>, that doesn't render it.
+		// eslint-disable-next-line jest/no-disabled-tests -- @todo Fix this, or remove it.
 		it.skip( 'displays a PRO button for a PRO feature', () => {
 			render( <DashItem { ...testProps } />, { initialState: buildInitialState() } );
 			expect( screen.getByRole( 'link', { name: 'Paid' } ) ).toBeInTheDocument();
 		} );
 
 		// Same.
+		// eslint-disable-next-line jest/no-disabled-tests -- @todo Fix this, or remove it.
 		it.skip( 'the button for a PRO feature is linked to #/plans', () => {
 			render( <DashItem { ...testProps } />, { initialState: buildInitialState() } );
 			expect( screen.getByRole( 'link', { name: 'Paid' } ) ).toHaveAttribute( 'href', '#/plans' );
@@ -117,7 +118,7 @@ describe( 'DashItem', () => {
 		} );
 	} );
 
-	describe( 'when site is connected, is a PRO module, user can not toggle', () => {
+	describe( 'when site is connected, is a PRO module, user cannot toggle', () => {
 		it( 'displays a toggle for users that can toggle', () => {
 			render( <DashItem { ...testProps } userCanToggle={ false } />, {
 				initialState: buildInitialState(),
@@ -138,8 +139,8 @@ describe( 'DashItem', () => {
 		} );
 	} );
 
-	describe( 'when site is connected, not a PRO module, user can not toggle', () => {
-		it( 'if user can not toggle, it does not display a toggle', () => {
+	describe( 'when site is connected, not a PRO module, user cannot toggle', () => {
+		it( 'if user cannot toggle, it does not display a toggle', () => {
 			render( <DashItem { ...testProps } pro={ false } userCanToggle={ false } />, {
 				initialState: buildInitialState(),
 			} );
@@ -154,7 +155,7 @@ describe( 'DashItem', () => {
 		} );
 	} );
 
-	describe( 'when site is in Offline Mode, not a PRO module, user can not toggle', () => {
+	describe( 'when site is in Offline Mode, not a PRO module, user cannot toggle', () => {
 		it( 'does not display the PRO button linked to #/plans when site is in Offline Mode', () => {
 			render( <DashItem { ...testProps } pro={ false } isOfflineMode={ true } />, {
 				initialState: buildInitialState(),

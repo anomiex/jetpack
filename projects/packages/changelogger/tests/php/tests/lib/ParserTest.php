@@ -11,6 +11,7 @@ use Automattic\Jetpack\Changelog\ChangeEntry;
 use Automattic\Jetpack\Changelog\Changelog;
 use Automattic\Jetpack\Changelog\ChangelogEntry;
 use Automattic\Jetpack\Changelog\Parser;
+use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -18,14 +19,41 @@ use PHPUnit\Framework\TestCase;
  *
  * @covers \Automattic\Jetpack\Changelog\Parser
  */
+#[CoversClass( Parser::class )]
 class ParserTest extends TestCase {
+
+	/**
+	 * Get a stub Parser.
+	 *
+	 * @return Parser&\PHPUnit\Framework\MockObject\Stub
+	 */
+	private function getStubParser() {
+		if ( is_callable( array( $this, 'getStubBuilder' ) ) ) {
+			return $this->getStubBuilder( Parser::class )
+				->onlyMethods( array( 'parse', 'format' ) )
+				->getStub();
+		} else {
+			return $this->getMockParser();
+		}
+	}
+
+	/**
+	 * Get a mock Parser.
+	 *
+	 * @return Parser&\PHPUnit\Framework\MockObject\MockObject
+	 */
+	private function getMockParser() {
+		return $this->getMockBuilder( Parser::class )
+			->onlyMethods( array( 'parse', 'format' ) )
+			->getMock();
+	}
 
 	/**
 	 * Test parseFromFile.
 	 */
 	public function testParseFromFile() {
-		$mock = $this->getMockBuilder( Parser::class )->getMockForAbstractClass();
-		$mock->method( 'parse' )->will( $this->returnArgument( 0 ) );
+		$mock = $this->getStubParser();
+		$mock->method( 'parse' )->willReturnArgument( 0 );
 
 		$temp = tempnam( sys_get_temp_dir(), 'phpunit-testParseFromFile-' );
 		try {
@@ -36,7 +64,7 @@ class ParserTest extends TestCase {
 		}
 
 		$fp = fopen( 'php://memory', 'w+' );
-		fputs( $fp, 'Foo baz?' );
+		fwrite( $fp, 'Foo baz?' );
 		rewind( $fp );
 		$this->assertSame( 'Foo baz?', $mock->parseFromFile( $fp ) );
 	}
@@ -45,9 +73,11 @@ class ParserTest extends TestCase {
 	 * Test formatToFile.
 	 */
 	public function testFormatToFile() {
-		$mock      = $this->getMockBuilder( Parser::class )->getMockForAbstractClass();
+		$mock      = $this->getMockParser();
 		$changelog = new Changelog();
-		$mock->method( 'format' )->with( $this->identicalTo( $changelog ) )->willReturn( 'Formatted?' );
+		$mock->method( 'format' )
+			->with( $this->identicalTo( $changelog ) )
+			->willReturn( 'Formatted?' );
 
 		$temp = tempnam( sys_get_temp_dir(), 'phpunit-testFormatToFile-' );
 		try {
@@ -59,9 +89,9 @@ class ParserTest extends TestCase {
 		}
 
 		$fp = fopen( 'php://memory', 'w+' );
-		fputs( $fp, 'Foo baz?' );
+		fwrite( $fp, 'Foo baz?' );
 		$this->assertTrue( $mock->formatToFile( $fp, $changelog ) );
-		fputs( $fp, '!' );
+		fwrite( $fp, '!' );
 		rewind( $fp );
 		$this->assertSame( 'Foo baz?Formatted?!', stream_get_contents( $fp ) );
 
@@ -73,7 +103,7 @@ class ParserTest extends TestCase {
 	 * Test newChangelogEntry.
 	 */
 	public function testNewChangelogEntry() {
-		$mock = $this->getMockBuilder( Parser::class )->getMockForAbstractClass();
+		$mock = $this->getStubParser();
 		$this->assertInstanceOf( ChangelogEntry::class, $mock->newChangelogEntry( '1.0' ) );
 	}
 
@@ -81,8 +111,7 @@ class ParserTest extends TestCase {
 	 * Test newChangeEntry.
 	 */
 	public function testNewChangeEntry() {
-		$mock = $this->getMockBuilder( Parser::class )->getMockForAbstractClass();
+		$mock = $this->getStubParser();
 		$this->assertInstanceOf( ChangeEntry::class, $mock->newChangeEntry() );
 	}
-
 }

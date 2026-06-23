@@ -1,19 +1,21 @@
-import classNames from 'classnames';
-import React from 'react';
+import clsx from 'clsx';
+import type { FC, ReactNode } from 'react';
 
 import './style.scss';
 
 type Props = {
-	header: React.ReactNode;
+	header: ReactNode;
+	children: ReactNode;
 	illustrationPath?: string;
 	compact?: boolean;
+	className?: string;
 };
-const SidebarCard: React.FC< Props > = props => {
-	const { header, children, illustrationPath, compact } = props;
+const SidebarCard: FC< Props > = props => {
+	const { header, children, illustrationPath, compact, className } = props;
 
 	return (
 		<div
-			className={ classNames( 'jp-recommendations-sidebar-card', {
+			className={ clsx( 'jp-recommendations-sidebar-card', className, {
 				'with-illustration': !! illustrationPath,
 			} ) }
 		>
@@ -27,7 +29,7 @@ const SidebarCard: React.FC< Props > = props => {
 				header
 			) }
 			<div
-				className={ classNames( 'jp-recommendations-sidebar-card__content', {
+				className={ clsx( 'jp-recommendations-sidebar-card__content', {
 					'is-compact': compact,
 				} ) }
 			>

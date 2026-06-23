@@ -1,7 +1,9 @@
+import { getScriptData } from '@automattic/jetpack-script-data';
+
 /**
  * Returns the site fragment (slug) in the environment we're running Gutenberg in.
  *
- * @returns {?string} Site fragment (slug)
+ * @return {?string} Site fragment (slug)
  */
 export default function getSiteFragment() {
 	// Gutenberg in Jetpack adds a site fragment in the initial state
@@ -13,5 +15,5 @@ export default function getSiteFragment() {
 		return window.Jetpack_Editor_Initial_State.siteFragment;
 	}
 
-	return null;
+	return getScriptData()?.site?.suffix ?? null;
 }

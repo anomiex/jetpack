@@ -1,22 +1,23 @@
+import { ThemeProvider } from '@automattic/jetpack-components';
 import { PartnerCouponRedeem } from '@automattic/jetpack-partner-coupon';
+import { isWoASite } from '@automattic/jetpack-script-data';
 import { __ } from '@wordpress/i18n';
+import { chunk } from 'lodash';
+import { Component } from 'react';
+import { connect } from 'react-redux';
 import DashSectionHeader from 'components/dash-section-header';
+import QueryRecommendationsData from 'components/data/query-recommendations-data';
 import QueryScanStatus from 'components/data/query-scan-status';
 import QuerySite from 'components/data/query-site';
 import QuerySitePlugins from 'components/data/query-site-plugins';
 import { withModuleSettingsFormHelpers } from 'components/module-settings/with-module-settings-form-helpers';
 import analytics from 'lib/analytics';
-import { chunk, get } from 'lodash';
-import React, { Component } from 'react';
-import { connect } from 'react-redux';
 import { isOfflineMode, hasConnectedOwner, getConnectionStatus } from 'state/connection';
 import {
-	isAtomicSite,
 	getApiNonce,
 	getApiRootUrl,
 	getPartnerCoupon,
 	getPluginBaseUrl,
-	getRegistrationNonce,
 	getTracksUserData,
 	isMultisite,
 	userCanManageModules,
@@ -24,15 +25,15 @@ import {
 	userCanViewStats,
 	userIsSubscriber,
 } from 'state/initial-state';
-import { getModuleOverride } from 'state/modules';
+import { getModuleOverride, isModuleAvailable } from 'state/modules';
 import { getScanStatus, isFetchingScanStatus } from 'state/scan';
 import DashActivity from './activity';
 import DashAkismet from './akismet';
 import DashBackups from './backups';
-import DashBlocks from './blocks';
 import DashBoost from './boost';
 import DashConnections from './connections';
 import DashCRM from './crm';
+import DashJetpackAi from './jetpack-ai';
 import DashMonitor from './monitor';
 import DashPhoton from './photon';
 import DashProtect from './protect';
@@ -47,6 +48,19 @@ class AtAGlance extends Component {
 
 	trackUpgradeButtonView = ( feature = '' ) => {
 		return () => analytics.tracks.recordEvent( `jetpack_wpa_aag_upgrade_button_view`, { feature } );
+	};
+
+	/**
+	 * Determines whether a card should be added based on the feature and module availability.
+	 *
+	 * @param {string}  feature                         - The feature to check.
+	 * @param {boolean} [checkModuleAvailability=false] - Whether to check module availability.
+	 * @return {boolean} - Whether the card should be added.
+	 */
+	shouldAddCard = ( feature, checkModuleAvailability = false ) => {
+		const isActive = 'inactive' !== this.props.getModuleOverride( feature );
+		const isAvailable = ! checkModuleAvailability || this.props.isModuleAvailable( feature );
+		return isActive && isAvailable;
 	};
 
 	render() {
@@ -83,14 +97,14 @@ class AtAGlance extends Component {
 			</div>
 		);
 		// Status can be unavailable, active, provisioning, awaiting_credentials
-		const rewindStatus = get( this.props.rewindStatus, [ 'state' ], '' );
-		const rewindStatusReason = get( this.props.rewindStatus, [ 'reason' ], '' );
+		const rewindStatus = this.props.rewindStatus?.state ?? '';
+		const rewindStatusReason = this.props.rewindStatus?.reason ?? '';
 		const securityCards = [];
 
 		// Backup won't work with multi-sites, but Scan does if VaultPress is enabled
 		const hasVaultPressScanning =
 			! this.props.fetchingScanStatus && this.props.scanStatus?.reason === 'vp_active_on_site';
-		if ( ! this.props.isAtomicSite && ( ! this.props.multisite || hasVaultPressScanning ) ) {
+		if ( ! isWoASite() && ( ! this.props.multisite || hasVaultPressScanning ) ) {
 			securityCards.push(
 				<DashScan
 					{ ...settingsProps }
@@ -107,10 +121,10 @@ class AtAGlance extends Component {
 			/>
 		);
 
-		if ( 'inactive' !== this.props.getModuleOverride( 'protect' ) ) {
+		if ( this.shouldAddCard( 'protect', true ) ) {
 			securityCards.push( <DashProtect { ...settingsProps } /> );
 		}
-		if ( 'inactive' !== this.props.getModuleOverride( 'monitor' ) ) {
+		if ( this.shouldAddCard( 'monitor', true ) ) {
 			securityCards.push( <DashMonitor { ...settingsProps } /> );
 		}
 
@@ -125,10 +139,11 @@ class AtAGlance extends Component {
 			const canDisplaybundleCard =
 				! this.props.multisite && ! this.props.isOfflineMode && this.props.hasConnectedOwner;
 			const performanceCards = [];
-			if ( 'inactive' !== this.props.getModuleOverride( 'photon' ) ) {
+
+			if ( this.shouldAddCard( 'photon', true ) ) {
 				performanceCards.push( <DashPhoton { ...settingsProps } /> );
 			}
-			if ( 'inactive' !== this.props.getModuleOverride( 'search' ) ) {
+			if ( this.shouldAddCard( 'search' ) ) {
 				performanceCards.push(
 					<DashSearch
 						{ ...settingsProps }
@@ -136,7 +151,7 @@ class AtAGlance extends Component {
 					/>
 				);
 			}
-			if ( 'inactive' !== this.props.getModuleOverride( 'videopress' ) ) {
+			if ( this.shouldAddCard( 'videopress', true ) ) {
 				performanceCards.push(
 					<DashVideoPress
 						{ ...settingsProps }
@@ -146,19 +161,17 @@ class AtAGlance extends Component {
 			}
 
 			if ( this.props.userCanManagePlugins ) {
-				performanceCards.push(
-					<DashBoost siteAdminUrl={ this.props.siteAdminUrl } />,
-					<DashCRM siteAdminUrl={ this.props.siteAdminUrl } />
-				);
+				performanceCards.push( <DashCRM siteAdminUrl={ this.props.siteAdminUrl } /> );
 			}
 
-			// Add Blocks card.
-			performanceCards.push( <DashBlocks /> );
+			if ( this.shouldAddCard( 'jetpack-ai' ) ) {
+				performanceCards.push( <DashJetpackAi /> );
+			}
 
 			const redeemPartnerCoupon = ! this.props.isOfflineMode && this.props.partnerCoupon && (
 				<PartnerCouponRedeem
 					apiNonce={ this.props.apiNonce }
-					registrationNonce={ this.props.registrationNonce }
+					registrationNonce=""
 					apiRoot={ this.props.apiRoot }
 					assetBaseUrl={ this.props.pluginBaseUrl }
 					connectionStatus={ this.props.connectionStatus }
@@ -182,24 +195,37 @@ class AtAGlance extends Component {
 				</div>
 			) : null;
 
-			return (
-				<div className="jp-at-a-glance">
-					<QuerySitePlugins />
-					<QuerySite />
-					<QueryScanStatus />
-					{ redeemPartnerCoupon }
-					<DashStats { ...settingsProps } { ...urls } />
-					<Section
-						header={ securityHeader }
-						cards={ securityCards }
-						pinnedBundle={ pinnedBundle }
-					/>
-					<Section
-						header={ <DashSectionHeader label={ __( 'Performance and Growth', 'jetpack' ) } /> }
-						cards={ performanceCards }
-					/>
-					{ connections }
+			const boostSpeedScore = this.props.userCanManagePlugins ? (
+				<div className="jp-at-a-glance__pinned-bundle">
+					<DashBoost siteAdminUrl={ this.props.siteAdminUrl } />
 				</div>
+			) : undefined;
+
+			return (
+				<ThemeProvider>
+					<div className="jp-at-a-glance">
+						<h1 className="screen-reader-text">
+							{ __( 'Jetpack At A Glance Dashboard', 'jetpack' ) }
+						</h1>
+						<QuerySitePlugins />
+						<QuerySite />
+						<QueryRecommendationsData />
+						<QueryScanStatus />
+						{ redeemPartnerCoupon }
+						<DashStats { ...settingsProps } { ...urls } />
+						<Section
+							header={ securityHeader }
+							cards={ securityCards }
+							pinnedBundle={ pinnedBundle }
+						/>
+						<Section
+							header={ <DashSectionHeader label={ __( 'Performance and Growth', 'jetpack' ) } /> }
+							cards={ performanceCards }
+							pinnedBundle={ boostSpeedScore }
+						/>
+						{ connections }
+					</div>
+				</ThemeProvider>
 			);
 		}
 
@@ -236,9 +262,9 @@ export default connect( state => {
 		userCanViewStats: userCanViewStats( state ),
 		userCanManagePlugins: userCanManagePlugins( state ),
 		userIsSubscriber: userIsSubscriber( state ),
-		isAtomicSite: isAtomicSite( state ),
 		isOfflineMode: isOfflineMode( state ),
 		getModuleOverride: module_name => getModuleOverride( state, module_name ),
+		isModuleAvailable: module_name => isModuleAvailable( state, module_name ),
 		multisite: isMultisite( state ),
 		scanStatus: getScanStatus( state ),
 		fetchingScanStatus: isFetchingScanStatus( state ),
@@ -249,7 +275,6 @@ export default connect( state => {
 		tracksUserData: getTracksUserData( state ),
 		apiRoot: getApiRootUrl( state ),
 		apiNonce: getApiNonce( state ),
-		registrationNonce: getRegistrationNonce( state ),
 	};
 } )( withModuleSettingsFormHelpers( AtAGlance ) );
 

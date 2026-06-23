@@ -1,12 +1,19 @@
+/**
+ * External dependencies
+ */
 import { isBlobURL } from '@wordpress/blob';
 import { RichText } from '@wordpress/block-editor';
 import { Spinner } from '@wordpress/components';
 import { Component, createRef } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
-import classnames from 'classnames';
+import clsx from 'clsx';
 import { isEqual } from 'lodash';
 import ResizeObserver from 'resize-observer-polyfill';
+/**
+ * Internal dependencies
+ */
 import createSwiper from './create-swiper';
+import { paginationCustomRender } from './pagination';
 import {
 	swiperApplyAria,
 	swiperInit,
@@ -116,27 +123,28 @@ class Slideshow extends Component {
 		const { autoplay, className, delay, effect, images } = this.props;
 		// Note: React omits the data attribute if the value is null, but NOT if it is false.
 		// This is the reason for the unusual logic related to autoplay below.
-		/* eslint-disable jsx-a11y/anchor-is-valid */
 		return (
 			<div
 				className={ className }
 				data-autoplay={ autoplay || null }
 				data-delay={ autoplay ? delay : null }
 				data-effect={ effect }
+				style={ {
+					'--aspect-ratio': images[ 0 ]?.aspectRatio
+						? `calc(${ images[ 0 ].aspectRatio })`
+						: undefined,
+				} }
 			>
-				<div
-					className="wp-block-jetpack-slideshow_container swiper-container"
-					ref={ this.slideshowRef }
-				>
+				<div className="wp-block-jetpack-slideshow_container swiper" ref={ this.slideshowRef }>
 					<ul className="wp-block-jetpack-slideshow_swiper-wrapper swiper-wrapper">
-						{ images.map( ( { alt, caption, id, url } ) => (
+						{ images.map( ( { alt, caption, id, url, aspectRatio }, index ) => (
 							<li
-								className={ classnames(
+								className={ clsx(
 									'wp-block-jetpack-slideshow_slide',
 									'swiper-slide',
 									isBlobURL( url ) && 'is-transient'
 								) }
-								key={ id ? id : url }
+								key={ id ? `${ id }-${ index }` : `${ url }-${ index }` }
 							>
 								<figure>
 									<img
@@ -145,6 +153,7 @@ class Slideshow extends Component {
 											`wp-block-jetpack-slideshow_image wp-image-${ id }` /* wp-image-${ id } makes WordPress add a srcset */
 										}
 										data-id={ id }
+										data-aspect-ratio={ aspectRatio }
 										src={ url }
 									/>
 									{ isBlobURL( url ) && <Spinner /> }
@@ -181,7 +190,6 @@ class Slideshow extends Component {
 				</div>
 			</div>
 		);
-		/* eslint-enable jsx-a11y/anchor-is-valid */
 	}
 
 	prefersReducedMotion = () => {
@@ -206,8 +214,11 @@ class Slideshow extends Component {
 						  }
 						: false,
 				effect: this.props.effect,
-				loop: true,
+				// Initially disable loop to prevent warnings during initialization
+				// See also: https://stackoverflow.com/a/78680695
+				loop: false,
 				initialSlide,
+				followFinger: false,
 				navigation: {
 					nextEl: this.btnNextRef.current,
 					prevEl: this.btnPrevRef.current,
@@ -215,7 +226,8 @@ class Slideshow extends Component {
 				pagination: {
 					clickable: true,
 					el: this.paginationRef.current,
-					type: 'bullets',
+					type: 'custom',
+					renderCustom: paginationCustomRender,
 				},
 			},
 			{

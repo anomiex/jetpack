@@ -1,5 +1,5 @@
 import { _n, sprintf } from '@wordpress/i18n';
-import React from 'react';
+import * as React from 'react';
 import Gridicon from './gridicon';
 
 import './product-ratings.scss';
@@ -7,11 +7,11 @@ import './product-ratings.scss';
 /**
  * Renders a hook-based component for displaying product ratings.
  *
- * @param {object} props - Component properties.
- * @param {number} props.count - Number of ratings.
- * @param {number} props.rating - Average rating out of five.
+ * @param {object} props           - Component properties.
+ * @param {number} props.count     - Number of ratings.
+ * @param {number} props.rating    - Average rating out of five.
  * @param {string} props.permalink - Permalink URL to product page.
- * @returns {object} Product rating component.
+ * @return {object} Product rating component.
  */
 export default function ProductRatings( { rating = 0, count = 0, permalink } ) {
 	return (
@@ -27,14 +27,14 @@ export default function ProductRatings( { rating = 0, count = 0, permalink } ) {
 				href={ permalink + '#reviews' }
 			>
 				{ sprintf(
-					/* Translators: the placeholder is the number of product reviews. */
+					/* Translators: %d: the number of product reviews. */
 					_n( '%d review', '%d reviews', count, 'jetpack-search-pkg' ),
 					count
 				) }
 			</a>
 			<span className="screen-reader-text">
 				{ sprintf(
-					/* Translators: the first placeholder is the average product rating out of 5; the second is the number of product reviews. */
+					/* Translators: %1$d: the average product rating out of 5, %2$d: the number of product reviews. */
 					_n(
 						'Average rating of %1$d out of 5 from %2$d review.',
 						'Average rating of %1$d out of 5 from %2$d reviews.',

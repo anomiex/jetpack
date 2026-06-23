@@ -8,12 +8,13 @@
 namespace Automattic\Jetpack\Changelogger\Tests;
 
 use Automattic\Jetpack\Changelogger\Application;
+use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Tester\CommandTester;
 
 /**
  * Base test case for the changelogger tool commands.
  */
-class CommandTestCase extends TestCase {
+abstract class CommandTestCase extends TestCase {
 
 	/**
 	 * Get the command.
@@ -35,5 +36,4 @@ class CommandTestCase extends TestCase {
 	protected function getTester( $name ) {
 		return new CommandTester( $this->getCommand( $name ) );
 	}
-
 }

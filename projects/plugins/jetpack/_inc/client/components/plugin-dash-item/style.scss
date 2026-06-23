@@ -1,11 +1,14 @@
-@import '@automattic/jetpack-base-styles/style';
-@import '_inc/client/scss/variables/_colors.scss';
-@import '../../scss/mixin_breakpoint.scss';
+@use "@automattic/jetpack-base-styles/style";
+@use "../../scss/variables/colors";
+@use "../../scss/mixins/breakpoints";
+@use "../../scss/mixins/ui";
 
 .plugin-dash-item {
 
+	@include ui.dashboard-card-shadow;
+
 	p {
-		font-size: var( --font-body-small );
+		font-size: var(--font-body-small);
 	}
 
 	.plugin-dash-item__section-header,
@@ -16,12 +19,14 @@
 	}
 
 	.dops-banner.dops-card {
-		border-left-color: $color-product;
 		height: 100%;
+		border: 0;
+		box-shadow: none;
+
 		.dops-banner__icons {
 
-			.dops-banner__icon-circle{
-				background-color: $color-product;
+			.dops-banner__icon-circle {
+				background-color: colors.$color-product;
 				height: 32px;
 				width: 32px;
 
@@ -34,16 +39,17 @@
 				}
 			}
 
-			@include breakpoint( '<480px' ) {
-		
+			@include breakpoints.breakpoint( "<480px" ) {
+
 				.dops-banner__icon {
 					display: none;
 				}
+
 				.dops-banner__icon-circle {
 					display: block;
 				}
 			}
-		} 
+		}
 	}
 
 	.plugin-dash-item__content {

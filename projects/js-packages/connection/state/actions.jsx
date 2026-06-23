@@ -10,9 +10,12 @@ const CLEAR_REGISTRATION_ERROR = 'CLEAR_REGISTRATION_ERROR';
 const REGISTER_SITE = 'REGISTER_SITE';
 const SET_AUTHORIZATION_URL = 'SET_AUTHORIZATION_URL';
 const CONNECT_USER = 'CONNECT_USER';
+const DISCONNECT_USER_SUCCESS = 'DISCONNECT_USER_SUCCESS';
 const FETCH_AUTHORIZATION_URL = 'FETCH_AUTHORIZATION_URL';
 const SET_CONNECTED_PLUGINS = 'SET_CONNECTED_PLUGINS';
 const REFRESH_CONNECTED_PLUGINS = 'REFRESH_CONNECTED_PLUGINS';
+const SET_CONNECTION_ERRORS = 'SET_CONNECTION_ERRORS';
+const SET_IS_OFFLINE_MODE = 'SET_IS_OFFLINE_MODE';
 
 const setConnectionStatus = connectionStatus => {
 	return { type: SET_CONNECTION_STATUS, connectionStatus };
@@ -32,6 +35,10 @@ const setSiteIsRegistering = isRegistering => {
 
 const setUserIsConnecting = isConnecting => {
 	return { type: SET_USER_IS_CONNECTING, isConnecting };
+};
+
+const disconnectUserSuccess = () => {
+	return { type: DISCONNECT_USER_SUCCESS };
 };
 
 const setRegistrationError = registrationError => {
@@ -54,36 +61,46 @@ const setConnectedPlugins = connectedPlugins => {
 	return { type: SET_CONNECTED_PLUGINS, connectedPlugins };
 };
 
+const setConnectionErrors = connectionErrors => {
+	return { type: SET_CONNECTION_ERRORS, connectionErrors };
+};
+
+const setIsOfflineMode = isOfflineMode => {
+	return { type: SET_IS_OFFLINE_MODE, isOfflineMode };
+};
+
 /**
  * Connect site with wp.com user
  *
- * @param {object} Object - contains from and redirectFunc
- * @param {string} Object.from - Value that represents the redirect origin
- * @param {Function} Object.redirectFunc - A function to handle the redirect, defaults to location.assign
- * @param {string} [Object.redirectUri] - A URI that the user will be redirected to
- * @yields {object} Action object that will be yielded
+ * @param {object}   Object                   - contains from and redirectFunc
+ * @param {string}   Object.from              - Value that represents the redirect origin
+ * @param {Function} Object.redirectFunc      - A function to handle the redirect, defaults to location.assign
+ * @param {string}   [Object.redirectUri]     - A URI that the user will be redirected to
+ * @param {boolean}  [Object.skipPricingPage] - A flag to skip the pricing page in the connection flow
+ * @yield {object} Action object that will be yielded
  */
-function* connectUser( { from, redirectFunc, redirectUri } = {} ) {
+function* connectUser( { from, redirectFunc, redirectUri, skipPricingPage } = {} ) {
 	yield setUserIsConnecting( true );
-	yield { type: CONNECT_USER, from, redirectFunc, redirectUri };
+	yield { type: CONNECT_USER, from, redirectFunc, redirectUri, skipPricingPage };
 }
 
 /**
  *
  * Register an site into jetpack
  *
- * @param {object} Object - contains registrationNonce and redirectUri
+ * @param {object} Object                   - contains registrationNonce and redirectUri
  * @param {string} Object.registrationNonce - Registration nonce
- * @param {string} Object.redirectUri - URI that user will be redirected
- * @yields {object} Action object that will be yielded
- * @returns {Promise} Resolved or rejected value of registerSite
+ * @param {string} Object.redirectUri       - URI that user will be redirected
+ * @param {string} [Object.from]            - Value that represents the origin of the request (optional)
+ * @yield {object} Action object that will be yielded
+ * @return {Promise} Resolved or rejected value of registerSite
  */
-function* registerSite( { registrationNonce, redirectUri } ) {
+function* registerSite( { registrationNonce, redirectUri, from = '' } ) {
 	yield clearRegistrationError();
 	yield setSiteIsRegistering( true );
 
 	try {
-		const response = yield { type: REGISTER_SITE, registrationNonce, redirectUri };
+		const response = yield { type: REGISTER_SITE, registrationNonce, redirectUri, from };
 		yield setConnectionStatus( { isRegistered: true } );
 		yield setAuthorizationUrl( response.authorizeUrl );
 		yield setSiteIsRegistering( false );
@@ -98,16 +115,18 @@ function* registerSite( { registrationNonce, redirectUri } ) {
 /**
  * Side effect action which will fetch a new list of connectedPlugins from the server
  *
- * @returns {Promise} - Promise which resolves when the product status is activated.
+ * @return {Promise} - Promise which resolves when the product status is activated.
  */
-const refreshConnectedPlugins = () => async ( { dispatch } ) => {
-	return await new Promise( resolve => {
-		return restApi.fetchConnectedPlugins().then( data => {
-			dispatch( setConnectedPlugins( data ) );
-			resolve( data );
+const refreshConnectedPlugins =
+	() =>
+	async ( { dispatch } ) => {
+		return await new Promise( resolve => {
+			return restApi.fetchConnectedPlugins().then( data => {
+				dispatch( setConnectedPlugins( data ) );
+				resolve( data );
+			} );
 		} );
-	} );
-};
+	};
 
 const actions = {
 	setConnectionStatus,
@@ -121,8 +140,11 @@ const actions = {
 	setAuthorizationUrl,
 	registerSite,
 	connectUser,
+	disconnectUserSuccess,
 	setConnectedPlugins,
 	refreshConnectedPlugins,
+	setConnectionErrors,
+	setIsOfflineMode,
 };
 
 export {
@@ -137,7 +159,10 @@ export {
 	REGISTER_SITE,
 	SET_AUTHORIZATION_URL,
 	CONNECT_USER,
+	DISCONNECT_USER_SUCCESS,
 	SET_CONNECTED_PLUGINS,
 	REFRESH_CONNECTED_PLUGINS,
+	SET_CONNECTION_ERRORS,
+	SET_IS_OFFLINE_MODE,
 	actions as default,
 };

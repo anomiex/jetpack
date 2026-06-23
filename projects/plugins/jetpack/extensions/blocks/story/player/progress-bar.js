@@ -1,16 +1,22 @@
 import { useSelect } from '@wordpress/data';
-import { range } from 'lodash';
 import { Bullet } from './components';
 
-export const ProgressBullet = ( { key, playerId, index, disabled, isSelected, onClick } ) => {
+export const ProgressBullet = ( {
+	bulletIndex,
+	playerId,
+	index,
+	disabled,
+	isSelected,
+	onClick,
+} ) => {
 	const progress = useSelect(
 		select => select( 'jetpack/story/player' ).getCurrentSlideProgressPercentage( playerId ),
-		[]
+		[ playerId ]
 	);
 
 	return (
 		<Bullet
-			key={ key }
+			key={ `bullet-${ bulletIndex }` }
 			index={ index }
 			progress={ progress }
 			disabled={ disabled }
@@ -25,7 +31,7 @@ export const ProgressBar = ( { playerId, slides, disabled, onSlideSeek, maxBulle
 		select => ( {
 			currentSlideIndex: select( 'jetpack/story/player' ).getCurrentSlideIndex( playerId ),
 		} ),
-		[]
+		[ playerId ]
 	);
 
 	const bulletCount = Math.min( slides.length, maxBullets );
@@ -52,9 +58,9 @@ export const ProgressBar = ( { playerId, slides, disabled, onSlideSeek, maxBulle
 			{ firstReachableSlideIndex > 0 && (
 				<Bullet key="bullet-0" index={ firstReachableSlideIndex - 1 } progress={ 100 } isEllipsis />
 			) }
-			{ range( 1, bulletCount + 1 ).map( ( slide, bulletIndex ) => {
+			{ Array.from( Array( bulletCount ), ( _, i ) => i + 1 ).map( ( slide, bulletIndex ) => {
 				const slideIndex = bulletIndex + firstReachableSlideIndex;
-				let progress = null;
+				let progress;
 				if ( slideIndex < currentSlideIndex ) {
 					progress = 100;
 				} else if ( slideIndex > currentSlideIndex ) {
@@ -63,6 +69,7 @@ export const ProgressBar = ( { playerId, slides, disabled, onSlideSeek, maxBulle
 					return (
 						<ProgressBullet
 							playerId={ playerId }
+							bulletIndex={ bulletIndex }
 							key={ `bullet-${ bulletIndex }` }
 							index={ slideIndex }
 							disabled={ disabled }

@@ -10,6 +10,7 @@ namespace Automattic\Jetpack\Changelogger\Tests;
 use Automattic\Jetpack\Changelogger\Application;
 use Automattic\Jetpack\Changelogger\Config;
 use Automattic\Jetpack\Changelogger\ConfigException;
+use PHPUnit\Framework\Attributes\CoversClass;
 use RuntimeException;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Tester\ApplicationTester;
@@ -20,16 +21,15 @@ use Wikimedia\TestingAccessWrapper;
  *
  * @covers \Automattic\Jetpack\Changelogger\Application
  */
+#[CoversClass( Application::class )]
 class ApplicationTest extends TestCase {
 	use \Yoast\PHPUnitPolyfills\Polyfills\AssertionRenames;
-	use \Yoast\PHPUnitPolyfills\Polyfills\AssertIsType;
 
 	/**
 	 * Set up.
-	 *
-	 * @before
 	 */
-	public function set_up() {
+	public function setUp(): void {
+		parent::setUp();
 		$this->useTempDir();
 		file_put_contents( 'composer.json', "{}\n" );
 	}
@@ -45,7 +45,7 @@ class ApplicationTest extends TestCase {
 
 		$app->setAutoExit( false );
 		$tester = new ApplicationTester( $app );
-		$tester->run( array( 'command' => 'list' ) );
+		$tester->run( array( 'command' => 'list' ), array( 'decorated' => false ) );
 		$output = $tester->getDisplay();
 		$this->assertMatchesRegularExpression( '/Available commands:/', $output );
 		$this->assertMatchesRegularExpression( '/add\s*Adds a change file/', $output );
@@ -56,11 +56,11 @@ class ApplicationTest extends TestCase {
 	 *
 	 * @param callable $callback Command callback.
 	 * @param array    $options Options:
-	 *     - catch-exceptions: (bool) Whether the application should catch exceptions. Default false.
-	 *     - inputs: (array) Value to pass to $tester->setInputs().
+	 *   - catch-exceptions: (bool) Whether the application should catch exceptions. Default false.
+	 *   - inputs: (array) Value to pass to $tester->setInputs().
 	 * @return ApplicationTester
 	 */
-	private function runApplication( $callback, array $options = array( 'interactive' => false ) ) {
+	private function runApplication( $callback, array $options = array() ) {
 		$app = new Application();
 		$app->setAutoExit( false );
 		$app->setCatchExceptions( false );
@@ -72,7 +72,13 @@ class ApplicationTest extends TestCase {
 
 		$command = new Command( 'testDoRun' );
 		$command->setCode( $callback );
-		$app->add( $command );
+		// @todo Remove test and else branch when we drop support for symfony/console <7.4 (i.e. PHP <8.2)
+		if ( is_callable( array( $app, 'addCommand' ) ) ) {
+			$app->addCommand( $command );
+		} else {
+			// @phan-suppress-next-line PhanDeprecatedFunction -- Guarded.
+			$app->add( $command );
+		}
 
 		$tester = new ApplicationTester( $app );
 
@@ -85,7 +91,7 @@ class ApplicationTest extends TestCase {
 			unset( $options['inputs'] );
 		}
 
-		$options[] = 'decorated';
+		$options['decorated'] = false;
 		$tester->run( array( 'command' => 'testDoRun' ), $options );
 		return $tester;
 	}
@@ -113,6 +119,9 @@ class ApplicationTest extends TestCase {
 	 */
 	public function testDoRun_ConfigException() {
 		$tester = $this->runApplication(
+			/** Test.
+			 *
+			 * @return never */
 			function () {
 				throw new ConfigException( 'Test config exception' );
 			}
@@ -126,6 +135,9 @@ class ApplicationTest extends TestCase {
 	 */
 	public function testDoRun_RuntimeException() {
 		$tester = $this->runApplication(
+			/** Test.
+			 *
+			 * @return never */
 			function () {
 				throw new RuntimeException( 'Test runtime exception' );
 			},
@@ -234,5 +246,4 @@ class ApplicationTest extends TestCase {
 		$this->assertSame( 42, $tester->getStatusCode() );
 		$this->assertSame( "No composer.json in current directory, do you want to use the one at $cwd/composer.json? [Y/n] ", $tester->getDisplay() );
 	}
-
 }

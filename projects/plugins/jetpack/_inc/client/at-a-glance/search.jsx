@@ -1,17 +1,21 @@
 import { getRedirectUrl } from '@automattic/jetpack-components';
 import { createInterpolateElement } from '@wordpress/element';
-import { __ } from '@wordpress/i18n';
+import { __, _x } from '@wordpress/i18n';
+import PropTypes from 'prop-types';
+import { Component } from 'react';
+import { connect } from 'react-redux';
+import Button from 'components/button';
 import Card from 'components/card';
 import DashItem from 'components/dash-item';
 import JetpackBanner from 'components/jetpack-banner';
 import analytics from 'lib/analytics';
 import { getJetpackProductUpsellByFeature, FEATURE_SEARCH_JETPACK } from 'lib/plans/constants';
-import { noop } from 'lodash';
-import { getProductDescriptionUrl } from 'product-descriptions/utils';
-import PropTypes from 'prop-types';
-import React, { Component } from 'react';
-import { connect } from 'react-redux';
+import {
+	getProductDescriptionUrl,
+	isSearchNewPricingLaunched202208,
+} from 'product-descriptions/utils';
 import { hasConnectedOwner, isOfflineMode, connectUser } from 'state/connection';
+import { currentThemeIsBlockTheme } from 'state/initial-state';
 import { siteHasFeature, isFetchingSitePurchases } from 'state/site';
 
 const SEARCH_DESCRIPTION = __(
@@ -19,13 +23,15 @@ const SEARCH_DESCRIPTION = __(
 	'jetpack'
 );
 const SEARCH_CUSTOMIZE_CTA = __( 'Customize your Search experience.', 'jetpack' );
-const SEARCH_SUPPORT = __( 'Search supports many customizations. ', 'jetpack' );
+const SEARCH_SUPPORT = __( 'Search supports many customizations.', 'jetpack' );
+
+const noop = () => {};
 
 /**
  * Displays a card for Search based on the props given.
  *
- * @param   {object} props Settings to render the card.
- * @returns {object}       Search card
+ * @param {object} props - Settings to render the card
+ * @return {object}       Search card
  */
 const renderCard = props => (
 	<DashItem
@@ -77,6 +83,14 @@ class DashSearch extends Component {
 		} );
 	};
 
+	trackAddSearchBlockLink = () => {
+		analytics.tracks.recordJetpackClick( {
+			type: 'search-block-link',
+			target: 'at-a-glance',
+			feature: 'search',
+		} );
+	};
+
 	activateSearch = () => {
 		this.props.updateOptions( {
 			search: true,
@@ -106,9 +120,13 @@ class DashSearch extends Component {
 				className: 'jp-dash-item__is-inactive',
 				status: 'no-pro-uninstalled-or-inactive',
 				pro_inactive: true,
-				overrideContent: this.props.hasConnectedOwner ? (
+				overrideContent: (
 					<JetpackBanner
-						callToAction={ __( 'Upgrade', 'jetpack' ) }
+						callToAction={
+							isSearchNewPricingLaunched202208()
+								? __( 'Start for free', 'jetpack' )
+								: _x( 'Upgrade', 'Call to action to buy a new plan', 'jetpack' )
+						}
 						title={ SEARCH_DESCRIPTION }
 						disableHref="false"
 						href={ this.props.upgradeUrl }
@@ -117,20 +135,6 @@ class DashSearch extends Component {
 						plan={ getJetpackProductUpsellByFeature( FEATURE_SEARCH_JETPACK ) }
 						icon="search"
 						trackBannerDisplay={ this.props.trackUpgradeButtonView }
-					/>
-				) : (
-					<JetpackBanner
-						callToAction={ __( 'Connect', 'jetpack' ) }
-						title={ __(
-							'Connect your WordPress.com account to upgrade and get Jetpack Search, which helps your visitors instantly find the right content – right when they need it.',
-							'jetpack'
-						) }
-						disableHref="false"
-						onClick={ this.props.connectUser }
-						eventFeature="search"
-						path="dashboard"
-						plan={ getJetpackProductUpsellByFeature( FEATURE_SEARCH_JETPACK ) }
-						icon="search"
 					/>
 				),
 			} );
@@ -154,7 +158,7 @@ class DashSearch extends Component {
 							{ __( 'Jetpack Search is powering search on your site.', 'jetpack' ) }
 						</p>
 					</DashItem>
-					{ this.props.hasInstantSearch ? (
+					{ this.props.hasInstantSearch && (
 						<Card
 							compact
 							className="jp-search-config-aag"
@@ -163,7 +167,8 @@ class DashSearch extends Component {
 						>
 							{ SEARCH_CUSTOMIZE_CTA }
 						</Card>
-					) : (
+					) }
+					{ ! this.props.hasInstantSearch && ! this.props.isBlockThemeActive && (
 						<Card
 							compact
 							className="jp-search-config-aag"
@@ -171,6 +176,16 @@ class DashSearch extends Component {
 							onClick={ this.trackAddSearchWidgetLink }
 						>
 							{ __( 'Add Search (Jetpack) Widget', 'jetpack' ) }
+						</Card>
+					) }
+					{ ! this.props.hasInstantSearch && this.props.isBlockThemeActive && (
+						<Card
+							compact
+							className="jp-search-config-aag"
+							href="site-editor.php"
+							onClick={ this.trackAddSearchBlockLink }
+						>
+							{ __( 'Add a Search Block', 'jetpack' ) }
 						</Card>
 					) }
 				</div>
@@ -182,11 +197,11 @@ class DashSearch extends Component {
 			pro_inactive: false,
 			content: createInterpolateElement(
 				__(
-					'<a>Activate</a> to help visitors quickly find answers with highly relevant instant search results and powerful filtering.',
+					'<Button>Activate</Button> to help visitors quickly find answers with highly relevant instant search results and powerful filtering.',
 					'jetpack'
 				),
 				{
-					a: <a href="javascript:void(0)" onClick={ this.activateSearch } />,
+					Button: <Button className="jp-link-button" onClick={ this.activateSearch } />,
 				}
 			),
 		} );
@@ -196,6 +211,7 @@ class DashSearch extends Component {
 export default connect(
 	state => {
 		return {
+			isBlockThemeActive: currentThemeIsBlockTheme( state ),
 			isOfflineMode: isOfflineMode( state ),
 			isFetching: isFetchingSitePurchases( state ),
 			hasClassicSearch: siteHasFeature( state, 'search' ),

@@ -1,4 +1,4 @@
-import { renderHook, act } from '@testing-library/react-hooks';
+import { act, renderHook } from '@testing-library/react';
 import useFetchGiphyData from '../hooks/use-fetch-giphy-data';
 
 const originalFetch = window.fetch;
@@ -54,7 +54,7 @@ const GIPHY_MULTIPLE_RESPONSE = {
  * Mock return value for a successful fetch JSON return value.
  *
  * @param {*} resolvedFetchPromiseResponse - JSON return value.
- * @returns {Promise} Mock return value.
+ * @return {Promise} Mock return value.
  */
 function getFetchMockReturnValue( resolvedFetchPromiseResponse ) {
 	const resolvedFetchPromise = Promise.resolve( resolvedFetchPromiseResponse );

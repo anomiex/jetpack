@@ -1,33 +1,45 @@
 import { getRedirectUrl } from '@automattic/jetpack-components';
 import { createInterpolateElement } from '@wordpress/element';
 import { _x, sprintf } from '@wordpress/i18n';
+import clsx from 'clsx';
+import PropTypes from 'prop-types';
+import { Component } from 'react';
+import { connect } from 'react-redux';
+import { useLocation } from 'react-router';
 import SectionNav from 'components/section-nav';
 import NavItem from 'components/section-nav/item';
 import NavTabs from 'components/section-nav/tabs';
 import analytics from 'lib/analytics';
-import PropTypes from 'prop-types';
-import React from 'react';
-import { connect } from 'react-redux';
-import { withRouter } from 'react-router-dom';
 import { hasConnectedOwner, isCurrentUserLinked, isOfflineMode } from 'state/connection';
 import {
-	getSiteAdminUrl,
 	getSiteRawUrl,
 	showRecommendations,
-	showMyJetpack,
-	getNewRecommendationsCount,
 	userCanManageModules as _userCanManageModules,
 	userCanViewStats as _userCanViewStats,
 	getPurchaseToken,
+	getSiteAdminUrl,
 } from 'state/initial-state';
 import { isModuleActivated as _isModuleActivated } from 'state/modules';
+import { getNonViewedRecommendationsCount } from 'state/recommendations';
 
-export class Navigation extends React.Component {
+export class Navigation extends Component {
 	trackNavClick = target => {
 		analytics.tracks.recordJetpackClick( {
 			target: 'nav_item',
 			path: target,
 		} );
+	};
+
+	trackNewRecommendations = () => {
+		// Only track this event if the new recommendations bubble is visible and the user is not on the 'Recommendations' tab already
+		if (
+			this.props.newRecommendationsCount > 0 &&
+			! this.props.location.pathname.startsWith( '/recommendations' )
+		) {
+			analytics.tracks.recordEvent( 'jetpack_recommendations_new_recommendation_bubble_visible', {
+				path: this.props.location.pathname,
+			} );
+		}
 	};
 
 	trackDashboardClick = () => {
@@ -43,25 +55,44 @@ export class Navigation extends React.Component {
 	};
 
 	trackRecommendationsClick = () => {
-		this.trackNavClick( 'recommendations' );
+		const isBubbleVisible = this.props.newRecommendationsCount > 0;
+
+		// Track when the recommendations tab is clicked and note whether or not the "new recommendations" bubble is visible.
+		analytics.tracks.recordJetpackClick( {
+			target: 'nav_item',
+			path: 'recommendations',
+			is_new_recommendations_bubble_visible: isBubbleVisible,
+		} );
 	};
 
-	trackMyJetpackClick = () => {
-		this.trackNavClick( 'my-jetpack' );
-	};
+	componentDidMount() {
+		this.trackNewRecommendations();
+	}
 
 	render() {
 		let navTabs;
+		const redirectUri = `redirect_to=${ this.props.adminUrl }admin.php?page=jetpack`;
+		const purchaseToken = this.props.purchaseToken
+			? `&purchasetoken=${ this.props.purchaseToken }`
+			: '';
+		// If the user is not connected, this query will trigger a connection after checkout flow.
+		const connectQuery = this.props.isLinked
+			? ''
+			: `&connect_after_checkout=true&from_site_slug=${ this.props.siteUrl }&admin_url=${ this.props.adminUrl }`;
+		const query = `${ redirectUri }${ purchaseToken }${ connectQuery }`;
 
-		const jetpackPlansPath = getRedirectUrl(
-			this.props.hasConnectedOwner ? 'jetpack-plans' : 'jetpack-nav-site-only-plans',
-			{
-				site: this.props.siteUrl,
-				...( this.props.purchaseToken
-					? { query: `purchasetoken=${ this.props.purchaseToken }` }
-					: {} ),
-			}
+		let jetpackPlansPath = getRedirectUrl(
+			this.props.hasConnectedOwner ? 'jetpack-plans' : 'jetpack-nav-plans-no-site',
+			{ query }
 		);
+
+		// If the user is not connected, we want to remove the site query parameter from the URL.
+		// The pricing page sends the user to a list of sites rather than checkout if a site is in context
+		// and the user is not connected to the site.
+		// This is hacky, but we are deprecating the dashboard soon so it's not worth the effort for a more robust fix.
+		if ( ! this.props.isLinked ) {
+			jetpackPlansPath = jetpackPlansPath.replace( /&site=\d+/, '' );
+		}
 
 		if ( this.props.userCanManageModules ) {
 			navTabs = (
@@ -86,6 +117,7 @@ export class Navigation extends React.Component {
 					) }
 					{ ! this.props.isOfflineMode && (
 						<NavItem
+							isExternalLink={ true }
 							path={ jetpackPlansPath }
 							onClick={ this.trackPlansClick }
 							selected={ this.props.location.pathname === '/plans' }
@@ -108,22 +140,15 @@ export class Navigation extends React.Component {
 								{
 									count: (
 										<span
-											className={
-												'dops-section-nav-tab__update-badge count-' +
-												this.props.newRecommendationsCount
-											}
+											className={ clsx( 'dops-section-nav-tab__update-badge', {
+												'is-hidden':
+													this.props.location.pathname.startsWith( '/recommendations' ) ||
+													! this.props.newRecommendationsCount,
+											} ) }
 										></span>
 									),
 								}
 							) }
-						</NavItem>
-					) }
-					{ this.props.showMyJetpack && (
-						<NavItem
-							path={ this.props.adminUrl + 'admin.php?page=my-jetpack' }
-							onClick={ this.trackMyJetpackClick }
-						>
-							{ _x( 'My Jetpack', 'Navigation item.', 'jetpack' ) }
 						</NavItem>
 					) }
 				</NavTabs>
@@ -164,10 +189,9 @@ export default connect( state => {
 		isLinked: isCurrentUserLinked( state ),
 		hasConnectedOwner: hasConnectedOwner( state ),
 		showRecommendations: showRecommendations( state ),
-		newRecommendationsCount: getNewRecommendationsCount( state ),
+		newRecommendationsCount: getNonViewedRecommendationsCount( state ),
 		siteUrl: getSiteRawUrl( state ),
 		adminUrl: getSiteAdminUrl( state ),
 		purchaseToken: getPurchaseToken( state ),
-		showMyJetpack: showMyJetpack( state ),
 	};
-} )( withRouter( Navigation ) );
+} )( props => <Navigation { ...props } location={ useLocation() } /> );

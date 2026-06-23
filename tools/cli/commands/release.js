@@ -1,6 +1,7 @@
 import child_process from 'child_process';
+import path from 'path';
 import chalk from 'chalk';
-import inquirer from 'inquirer';
+import enquirer from 'enquirer';
 import { readComposerJson } from '../helpers/json.js';
 import { allProjects } from '../helpers/projectHelpers.js';
 import promptForProject from '../helpers/promptForProject.js';
@@ -10,7 +11,7 @@ import { chalkJetpackGreen } from '../helpers/styling.js';
  * Command definition for the release subcommand.
  *
  * @param {object} yargs - The Yargs dependency.
- * @returns {object} Yargs with the build commands defined.
+ * @return {object} Yargs with the build commands defined.
  */
 export function releaseDefine( yargs ) {
 	yargs.command(
@@ -46,6 +47,16 @@ export function releaseDefine( yargs ) {
 				.option( 'add-pr-num', {
 					describe: 'Append the GH PR number to each entry',
 					type: 'boolean',
+				} )
+				.option( 'use-version', {
+					describe: 'Specify a version number explicitly',
+					type: 'string',
+				} )
+				.option( 'init-next-cycle', {
+					describe: 'For `version`, init the next release cycle',
+					type: 'boolean',
+					hidden: true,
+					deprecated: 'No longer functional',
 				} );
 		},
 		async argv => {
@@ -135,47 +146,49 @@ export async function scriptRouter( argv ) {
 			} else if ( argv.beta ) {
 				argv.scriptArgs.unshift( '-b' );
 			}
+			if ( argv.useVersion ) {
+				argv.scriptArgs.unshift( '-r', argv.useVersion );
+			}
 			argv.addPrNum && argv.scriptArgs.unshift( '-p' );
-			argv.next = `Finished! Next: \n	- Create a new branch off trunk, review the changes, make any necessary adjustments. \n	- Commit your changes. \n	- To continue with the release process, update the readme.txt by running:\n		jetpack release ${ argv.project } readme \n`;
+			argv.next = `Finished! You may want to update the readme.txt by running 'jetpack release ${ argv.project } readme' \n`;
 			break;
 		case 'readme':
 			argv.script = `tools/plugin-changelog-to-readme.sh`;
 			argv.scriptArgs = [ argv.project ];
-			argv.next = `Finished! Next:
-				  - If this is a beta, ensure the stable tag in readme.txt is latest stable.
-				  - Create a PR and have your changes reviewed and merged.
-				  - Wait and make sure changes are propagated to mirror repos for each updated package.
-				  - After propagation, if you need to create a release branch, stand on trunk and then run:
-				      jetpack release ${ argv.project } release-branch \n`.replace( /^\t+/gm, '' );
+			argv.next = 'Finished updating readme!';
 			break;
 		case 'release-branch':
 			argv.version = await getReleaseVersion( argv );
 			argv = await promptForVersion( argv );
 			argv.script = `tools/create-release-branch.sh`;
 			argv.scriptArgs = [ argv.project, argv.version ];
-			argv.next = `Finished! Next:
-				  - Once the branch is pushed, GitHub Actions will build and create a branch on your plugin's mirror repo.
-				  - That mirror repo branch will be the branch that is tagged in GitHub and pushed to svn in WordPress.org.
-				  - When changes are pushed to the release branch that was just created, GitHub Actions takes care of building/mirroring to the mirror repo.
-				  - You will now likely want to start a new release cycle like so:
-				      jetpack release ${ argv.project } new-cycle \n`.replace( /^\t+/gm, '' );
+			argv.next = 'Release branch pushed!';
 			break;
 		case 'amend':
 			await checkBranchValid( argv );
-			argv.script = `vendor/bin/changelogger`;
+			argv.script = path.resolve( 'projects/packages/changelogger/vendor/bin/changelogger' );
 			argv.scriptArgs = [ `write`, `--amend` ];
 			argv.addPrNum && argv.scriptArgs.push( '--add-pr-num' );
+			if ( argv.useVersion ) {
+				argv.scriptArgs.push( '--use-version', argv.useVersion );
+			}
 			argv.workingDir = `projects/${ argv.project }`;
-			argv.next = `Finished! Next:
-				  - You will now likely want to update readme.txt again, then commit to the release branch:
+			argv.next = `Finished! You will now likely want to update readme.txt again:
 				    jetpack release ${ argv.project } readme \n`.replace( /^\t+/gm, '' );
 			break;
 		case 'version':
+			if ( argv.initNextCycle ) {
+				console.error(
+					'The --init-next-cycle option is no longer useful, since we no longer set alpha versions in trunk.'
+				);
+				process.exit( 1 );
+			}
 			argv.version = await getReleaseVersion( argv );
 			argv = await promptForVersion( argv );
 			argv.script = 'tools/project-version.sh';
 			argv.scriptArgs = [ '-u', argv.version, argv.project ];
-			argv.next = `Finished! Next, you will likely want to check the following project files to make sure versions were updated correctly:
+			argv.next =
+				`Finished! Next, you will likely want to check the following project files to make sure versions were updated correctly:
 				 - The main php file
 				 - package.json
 				 - composer.json (the autoloader-suffix filed)
@@ -194,7 +207,7 @@ export async function scriptRouter( argv ) {
  */
 export async function checkBranchValid( argv ) {
 	const currentBranch = child_process.execSync( 'git branch --show-current' ).toString().trim();
-	const branchPrefix = await readComposerJson( argv.project ).extra[ 'release-branch-prefix' ];
+	let branchPrefix = await readComposerJson( argv.project ).extra[ 'release-branch-prefix' ];
 	if ( ! branchPrefix ) {
 		console.log(
 			chalk.red(
@@ -204,7 +217,11 @@ export async function checkBranchValid( argv ) {
 		process.exit( 1 );
 	}
 
-	if ( ! currentBranch.startsWith( `${ branchPrefix }/branch-` ) ) {
+	if ( ! Array.isArray( branchPrefix ) ) {
+		branchPrefix = [ branchPrefix ];
+	}
+
+	if ( ! branchPrefix.some( prefix => currentBranch.startsWith( `${ prefix }/branch-` ) ) ) {
 		console.log(
 			chalk.red(
 				`Doesn't look like you're on a release branch! Please check out the release branch before amending the changelog.`
@@ -218,7 +235,7 @@ export async function checkBranchValid( argv ) {
  * Checks the project we're releasing.
  *
  * @param {object} argv - the arguments passed
- * @returns {object} argv
+ * @return {object} argv
  */
 export async function parseProj( argv ) {
 	// If we're passing a specific project
@@ -239,9 +256,13 @@ export async function parseProj( argv ) {
  * Get a potential version that we might need when creating a release branch or bumping versions.
  *
  * @param {object} argv - the arguments passed
- * @returns {object} argv
+ * @return {string} Version
  */
 export async function getReleaseVersion( argv ) {
+	if ( argv.useVersion ) {
+		return argv.useVersion;
+	}
+
 	let potentialVersion = child_process
 		.execSync( `tools/plugin-version.sh ${ argv.project }` )
 		.toString()
@@ -264,7 +285,7 @@ export async function getReleaseVersion( argv ) {
 		// Check if dev-releases is specified in project's composer.json
 		const hasDevReleases = await readComposerJson( argv.project ).extra[ 'dev-releases' ];
 		if ( hasDevReleases ) {
-			if ( devReleaseVersion ) {
+			if ( devReleaseVersion && devReleaseVersion.match( /^a\.\d+$/ ) ) {
 				devReleaseVersion = await getVersionBump( devReleaseVersion, argv.project );
 				potentialVersion = `${ stableVersion }-${ devReleaseVersion }`;
 			} else {
@@ -282,9 +303,9 @@ export async function getReleaseVersion( argv ) {
 /**
  * Bumps the correct number.
  *
- * @param {Array} version - the arguments passed
+ * @param {Array}  version - the arguments passed
  * @param {string} project - the project we're working with.
- * @returns {Array} the bumped version.
+ * @return {Array} the bumped version.
  */
 export async function getVersionBump( version, project ) {
 	version = version.split( '.' );
@@ -324,10 +345,10 @@ export async function getVersionBump( version, project ) {
  * Prompts for what version we're releasing
  *
  * @param {object} argv - the arguments passed.
- * @returns {string} version
+ * @return {string} version
  */
 export async function promptForVersion( argv ) {
-	const response = await inquirer.prompt( [
+	const response = await enquirer.prompt( [
 		{
 			type: 'input',
 			name: 'version',
@@ -343,12 +364,12 @@ export async function promptForVersion( argv ) {
  * Prompt if we're releasing a beta.
  *
  * @param {object} argv - the arguments passed
- * @returns {object} argv
+ * @return {object} argv
  */
 export async function promptDevBeta( argv ) {
-	const response = await inquirer.prompt( [
+	const response = await enquirer.prompt( [
 		{
-			type: 'list',
+			type: 'select',
 			name: 'version_type',
 			message: `What kind of release is this?`,
 			choices: [ 'alpha (including Atomic)', 'beta', 'stable' ],
@@ -375,33 +396,33 @@ export async function promptDevBeta( argv ) {
  * Asks for what part of the release process we want to run.
  *
  * @param {object} argv - the arguments passed
- * @returns {object} argv
+ * @return {object} argv
  */
 export async function promptForScript( argv ) {
-	const response = await inquirer.prompt( [
+	const response = await enquirer.prompt( [
 		{
-			type: 'list',
+			type: 'select',
 			name: 'script',
 			message: `What step of the release process are you looking to do for ${ argv.project }?`,
 			choices: [
 				{
-					name: `[Create Changelog.md  ] - Compile all changelog files into ${ argv.project }'s CHANGELOG.md `,
+					message: `Compile all changelog files into ${ argv.project }'s CHANGELOG.md `,
 					value: 'changelog',
 				},
 				{
-					name: `[Update Readme.txt    ] - Update ${ argv.project }'s readme.txt file based on the updated changelog.`,
+					message: `Update ${ argv.project }'s readme.txt file based on the updated changelog.`,
 					value: 'readme',
 				},
 				{
-					name: `[Create Release Branch] - Create a release branch for ${ argv.project }`,
+					message: `Create a release branch for ${ argv.project }`,
 					value: 'release-branch',
 				},
 				{
-					name: `[Amend Changelog.md   ] - Updates changelog.md with any files cherry picked to release branch prior to release.`,
+					message: `Updates changelog.md with any files cherry picked to release branch prior to release.`,
 					value: 'amend',
 				},
 				{
-					name: `[Update Version       ] - Update version number for ${ argv.project }.`,
+					message: `Update version number for ${ argv.project }.`,
 					value: 'version',
 				},
 			],

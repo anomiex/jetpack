@@ -1,12 +1,12 @@
-import classNames from 'classnames';
 import Clipboard from 'clipboard';
-import Button from 'components/button';
-import { omit, noop } from 'lodash';
+import clsx from 'clsx';
 import PropTypes from 'prop-types';
-import React from 'react';
-import ReactDom from 'react-dom';
+import { createRef, Component } from 'react';
+import Button from 'components/button';
 
-export default class ClipboardButton extends React.Component {
+const noop = () => {};
+
+export default class ClipboardButton extends Component {
 	static displayName = 'ClipboardButton';
 
 	static propTypes = {
@@ -14,14 +14,18 @@ export default class ClipboardButton extends React.Component {
 		text: PropTypes.string,
 		prompt: PropTypes.string,
 		onCopy: PropTypes.func,
+		rna: PropTypes.bool,
 	};
 
 	static defaultProps = {
 		onCopy: noop,
+		rna: false,
 	};
 
+	buttonRef = createRef();
+
 	componentDidMount() {
-		const button = ReactDom.findDOMNode( this.refs.button );
+		const button = this.buttonRef.current.domNode;
 		this.clipboard = new Clipboard( button, {
 			text: () => this.props.text,
 		} );
@@ -35,15 +39,21 @@ export default class ClipboardButton extends React.Component {
 	}
 
 	displayPrompt = () => {
+		// eslint-disable-next-line no-alert -- Fallback if clipboard doesn't work, lets the user copy it manually.
 		window.prompt( this.props.prompt, this.props.text );
 	};
 
 	render() {
-		const classes = classNames( 'dops-clipboard-button', this.props.className );
+		const classes = clsx( 'dops-clipboard-button', this.props.className );
 		return (
 			<Button
-				ref="button"
-				{ ...omit( this.props, Object.keys( this.constructor.propTypes ) ) }
+				rna={ this.props.rna }
+				ref={ this.buttonRef }
+				{ ...Object.fromEntries(
+					Object.entries( this.props ).filter(
+						( [ k ] ) => ! Object.hasOwn( this.constructor.propTypes, k )
+					)
+				) }
 				className={ classes }
 			/>
 		);

@@ -8,17 +8,41 @@
 namespace Automattic\Jetpack\My_Jetpack\Products;
 
 use Automattic\Jetpack\Connection\Client;
+use Automattic\Jetpack\Connection\Manager as Connection_Manager;
 use Automattic\Jetpack\Constants;
 use Automattic\Jetpack\My_Jetpack\Hybrid_Product;
 use Automattic\Jetpack\My_Jetpack\Wpcom_Products;
 use Automattic\Jetpack\Search\Module_Control as Search_Module_Control;
-use Jetpack_Options;
 use WP_Error;
+
+if ( ! defined( 'ABSPATH' ) ) {
+	exit( 0 );
+}
 
 /**
  * Class responsible for handling the Search product
  */
 class Search extends Hybrid_Product {
+	/**
+	 * Fallback starting price (USD, billed yearly) for the entry record tier, used when
+	 * the WPCOM pricing fetch fails so the dashboard still shows a price, not "$0".
+	 *
+	 * @var float
+	 */
+	const FALLBACK_STARTING_PRICE_USD = 100;
+
+	/**
+	 * Search "new pricing" version identifier (introduced 202208).
+	 *
+	 * Intentionally duplicated from Automattic\Jetpack\Search\Plan::JETPACK_SEARCH_NEW_PRICING_VERSION
+	 * rather than referencing that class. My Jetpack is bundled into standalone plugins (e.g. Jetpack
+	 * Boost) that do NOT ship the jetpack-search package, so referencing Search\Plan here fatals with
+	 * "Class not found" the moment this product builds its pricing data (introduced by PR #48892).
+	 *
+	 * @var string
+	 */
+	const SEARCH_NEW_PRICING_VERSION = '202208';
+
 	/**
 	 * The product slug
 	 *
@@ -41,6 +65,34 @@ class Search extends Hybrid_Product {
 	public static $plugin_slug = 'jetpack-search';
 
 	/**
+	 * The category of the product
+	 *
+	 * @var string
+	 */
+	public static $category = 'performance';
+
+	/**
+	 * Search has a standalone plugin
+	 *
+	 * @var bool
+	 */
+	public static $has_standalone_plugin = true;
+
+	/**
+	 * Whether this product has a free offering
+	 *
+	 * @var bool
+	 */
+	public static $has_free_offering = true;
+
+	/**
+	 * Whether this product requires a plan to work at all
+	 *
+	 * @var bool
+	 */
+	public static $requires_plan = true;
+
+	/**
 	 * The filename (id) of the plugin associated with this product.
 	 *
 	 * @var string
@@ -52,21 +104,35 @@ class Search extends Hybrid_Product {
 	);
 
 	/**
-	 * Get the internationalized product name
+	 * Search only requires site connection
+	 *
+	 * @var boolean
+	 */
+	public static $requires_user_connection = true;
+
+	/**
+	 * The feature slug that identifies the paid plan
+	 *
+	 * @var string
+	 */
+	public static $feature_identifying_paid_plan = 'search';
+
+	/**
+	 * Get the product name
 	 *
 	 * @return string
 	 */
 	public static function get_name() {
-		return __( 'Search', 'jetpack-my-jetpack' );
+		return 'Search';
 	}
 
 	/**
-	 * Get the internationalized product title
+	 * Get the product title
 	 *
 	 * @return string
 	 */
 	public static function get_title() {
-		return __( 'Jetpack Search', 'jetpack-my-jetpack' );
+		return 'Jetpack Search';
 	}
 
 	/**
@@ -75,7 +141,7 @@ class Search extends Hybrid_Product {
 	 * @return string
 	 */
 	public static function get_description() {
-		return __( 'Help them find what they need', 'jetpack-my-jetpack' );
+		return __( 'Instantly deliver the most relevant results to your visitors.', 'jetpack-my-jetpack' );
 	}
 
 	/**
@@ -96,7 +162,7 @@ class Search extends Hybrid_Product {
 		return array(
 			__( 'Instant search and indexing', 'jetpack-my-jetpack' ),
 			__( 'Powerful filtering', 'jetpack-my-jetpack' ),
-			__( 'Supports 29 languages', 'jetpack-my-jetpack' ),
+			__( 'Supports 38 languages', 'jetpack-my-jetpack' ),
 			__( 'Spelling correction', 'jetpack-my-jetpack' ),
 		);
 	}
@@ -110,8 +176,10 @@ class Search extends Hybrid_Product {
 		// Basic pricing info.
 		$pricing = array_merge(
 			array(
-				'available'          => true,
-				'wpcom_product_slug' => static::get_wpcom_product_slug(),
+				'available'               => true,
+				'trial_available'         => static::has_trial_support(),
+				'wpcom_product_slug'      => static::get_wpcom_product_slug(),
+				'wpcom_free_product_slug' => static::get_wpcom_free_product_slug(),
 			),
 			Wpcom_Products::get_product_pricing( static::get_wpcom_product_slug() )
 		);
@@ -120,10 +188,33 @@ class Search extends Hybrid_Product {
 		$search_pricing = static::get_pricing_from_wpcom( $record_count );
 
 		if ( is_wp_error( $search_pricing ) ) {
+			// Default to the current pricing experience when the WPCOM fetch fails so the
+			// dashboard degrades to the production default, not the legacy single-card view.
+			$pricing['pricing_version'] = self::SEARCH_NEW_PRICING_VERSION;
+
+			// If the generic product pricing was also unavailable, fall back to a USD
+			// starting price so the pricing grid renders a price instead of "$0".
+			if ( empty( $pricing['full_price'] ) ) {
+				$pricing['currency_code']  = 'USD';
+				$pricing['full_price']     = self::FALLBACK_STARTING_PRICE_USD;
+				$pricing['discount_price'] = self::FALLBACK_STARTING_PRICE_USD;
+			}
+
 			return $pricing;
 		}
 
+		$pricing['estimated_record_count'] = $record_count;
+
 		return array_merge( $pricing, $search_pricing );
+	}
+
+	/**
+	 * Get the URL the user is taken after purchasing the product through the checkout
+	 *
+	 * @return ?string
+	 */
+	public static function get_post_checkout_url() {
+		return self::get_manage_url();
 	}
 
 	/**
@@ -133,6 +224,42 @@ class Search extends Hybrid_Product {
 	 */
 	public static function get_wpcom_product_slug() {
 		return 'jetpack_search';
+	}
+
+	/**
+	 * Get the WPCOM free product slug
+	 *
+	 * @return ?string
+	 */
+	public static function get_wpcom_free_product_slug() {
+		return 'jetpack_search_free';
+	}
+
+	/**
+	 * Returns true if the new_pricing_202208 is set to not empty in URL for testing purpose, or it's active.
+	 */
+	public static function is_new_pricing_202208() {
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized, WordPress.Security.ValidatedSanitizedInput.MissingUnslash
+		if ( isset( $_GET['new_pricing_202208'] ) && $_GET['new_pricing_202208'] ) {
+			return true;
+		}
+
+		$record_count   = intval( Search_Stats::estimate_count() );
+		$search_pricing = static::get_pricing_from_wpcom( $record_count );
+		if ( is_wp_error( $search_pricing ) ) {
+			// Default to the current pricing experience when the WPCOM fetch fails.
+			return true;
+		}
+
+		return self::SEARCH_NEW_PRICING_VERSION === $search_pricing['pricing_version'];
+	}
+
+	/**
+	 * Override status to `needs_activation` when status is `needs_plan`.
+	 */
+	public static function get_status() {
+		$status = parent::get_status();
+		return $status;
 	}
 
 	/**
@@ -146,18 +273,44 @@ class Search extends Hybrid_Product {
 	 */
 	public static function get_pricing_from_wpcom( $record_count ) {
 		static $pricings = array();
+		$connection      = new Connection_Manager();
+		$blog_id         = \Jetpack_Options::get_option( 'id' );
 
 		if ( isset( $pricings[ $record_count ] ) ) {
 			return $pricings[ $record_count ];
 		}
 
-		$response = wp_remote_get(
-			sprintf( Constants::get_constant( 'JETPACK__WPCOM_JSON_API_BASE' ) . '/wpcom/v2/jetpack-search/pricing?record_count=%1$d&locale=%2$s', $record_count, get_user_locale() ),
-			array( 'timeout' => 2 )
-		);
+		// If the site is connected, request pricing with the blog token
+		if ( $blog_id ) {
+			$endpoint = sprintf( '/jetpack-search/pricing?record_count=%1$d&locale=%2$s', $record_count, get_user_locale() );
 
-		if ( 200 !== wp_remote_retrieve_response_code( $response ) ) {
-			return new WP_Error( 'search_pricing_fetch_failed' );
+			// If available in the user data, set the user's currency as one of the params
+			if ( $connection->is_user_connected() ) {
+				$user_details = $connection->get_connected_user_data();
+				if ( ! empty( $user_details['user_currency'] ) && $user_details['user_currency'] !== 'USD' ) {
+					$endpoint .= sprintf( '&currency=%s', $user_details['user_currency'] );
+				}
+			}
+
+			$response = Client::wpcom_json_api_request_as_blog(
+				$endpoint,
+				'2',
+				array( 'timeout' => 5 ),
+				null,
+				'wpcom'
+			);
+		} else {
+			$response = wp_remote_get(
+				sprintf( Constants::get_constant( 'JETPACK__WPCOM_JSON_API_BASE' ) . '/wpcom/v2/jetpack-search/pricing?record_count=%1$d&locale=%2$s', $record_count, get_user_locale() ),
+				array( 'timeout' => 5 )
+			);
+		}
+
+		if ( is_wp_error( $response ) || 200 !== wp_remote_retrieve_response_code( $response ) ) {
+			// Cache the failure too: get_pricing_for_ui() reaches this twice per request
+			// (once via has_trial_support(), once directly), and each miss is a 5s timeout.
+			$pricings[ $record_count ] = new WP_Error( 'search_pricing_fetch_failed' );
+			return $pricings[ $record_count ];
 		}
 
 		$body                      = wp_remote_retrieve_body( $response );
@@ -166,50 +319,49 @@ class Search extends Hybrid_Product {
 	}
 
 	/**
-	 * Hits the wpcom api to check Search status.
+	 * Checks whether the product supports trial or not
 	 *
-	 * @todo Maybe add caching.
+	 * Returns true if it supports. Return false otherwise.
 	 *
-	 * @return Object|WP_Error
-	 */
-	private static function get_state_from_wpcom() {
-		static $status = null;
-
-		if ( $status !== null ) {
-			return $status;
-		}
-
-		$blog_id = Jetpack_Options::get_option( 'id' );
-
-		$response = Client::wpcom_json_api_request_as_blog(
-			'/sites/' . $blog_id . '/jetpack-search/plan',
-			'2',
-			array( 'timeout' => 2 ),
-			null,
-			'wpcom'
-		);
-
-		if ( 200 !== wp_remote_retrieve_response_code( $response ) ) {
-			return new WP_Error( 'search_state_fetch_failed' );
-		}
-
-		$body   = wp_remote_retrieve_body( $response );
-		$status = json_decode( $body );
-		return $status;
-	}
-
-	/**
-	 * Checks whether the current plan of the site already supports the product
-	 *
-	 * Returns true if it supports. Return false if a purchase is still required.
-	 *
-	 * Free products will always return true.
+	 * Free products will always return false.
 	 *
 	 * @return boolean
 	 */
-	public static function has_required_plan() {
-		$search_state = static::get_state_from_wpcom();
-		return ! empty( $search_state->supports_search ) || ! empty( $search_state->supports_instant_search );
+	public static function has_trial_support() {
+		return static::is_new_pricing_202208();
+	}
+
+	/**
+	 * Get the product-slugs of the paid plans for this product (not including bundles)
+	 *
+	 * @return array
+	 */
+	public static function get_paid_plan_product_slugs() {
+		return array(
+			'jetpack_search',
+			'jetpack_search_monthly',
+			'jetpack_search_bi_yearly',
+		);
+	}
+
+	/**
+	 * Checks if the site purchases contain a free search plan
+	 *
+	 * @return bool
+	 */
+	public static function has_free_plan_for_product() {
+		$purchases_data = Wpcom_Products::get_site_current_purchases();
+		if ( is_wp_error( $purchases_data ) ) {
+			return false;
+		}
+		if ( is_array( $purchases_data ) && ! empty( $purchases_data ) ) {
+			foreach ( $purchases_data as $purchase ) {
+				if ( str_contains( $purchase->product_slug, 'jetpack_search_free' ) ) {
+					return true;
+				}
+			}
+		}
+		return false;
 	}
 
 	/**
@@ -250,4 +402,13 @@ class Search extends Hybrid_Product {
 		return admin_url( 'admin.php?page=jetpack-search' );
 	}
 
+	/**
+	 * Return product bundles list
+	 * that supports the product.
+	 *
+	 * @return boolean|array Products bundle list.
+	 */
+	public static function is_upgradable_by_bundle() {
+		return array( 'complete' );
+	}
 }

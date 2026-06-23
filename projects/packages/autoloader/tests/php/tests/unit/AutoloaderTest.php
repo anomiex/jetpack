@@ -1,4 +1,4 @@
-<?php // phpcs:ignore WordPress.Files.FileName
+<?php
 /**
  * Autoloader test suite.
  *
@@ -8,6 +8,8 @@
 // We live in the namespace of the test autoloader to avoid many use statements.
 namespace Automattic\Jetpack\Autoloader\jpCurrent;
 
+use PHPUnit\Framework\Attributes\PreserveGlobalState;
+use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
 use PHPUnit\Framework\TestCase;
 use Test_Plugin_Factory;
 
@@ -17,13 +19,15 @@ use Test_Plugin_Factory;
  * @runTestsInSeparateProcesses Ensure that each test loads class files new.
  * @preserveGlobalState disabled
  */
+#[RunTestsInSeparateProcesses]
+#[PreserveGlobalState( false )]
 class AutoloaderTest extends TestCase {
 
 	/**
 	 * The older version of the autoloader that we want to use. Note that
 	 * the version should support PSR-4 since this one does.
 	 */
-	const OLDER_VERSION = '2.4.0.0';
+	const OLDER_VERSION = '2.6.0.0';
 
 	/**
 	 * The directory of a plugin using the autoloader.
@@ -34,10 +38,9 @@ class AutoloaderTest extends TestCase {
 
 	/**
 	 * Setup before class runs before the class.
-	 *
-	 * @beforeClass
 	 */
-	public static function set_up_before_class() {
+	public static function setUpBeforeClass(): void {
+		parent::setUpBeforeClass();
 		self::$older_plugin_dir = Test_Plugin_Factory::create_test_plugin( false, self::OLDER_VERSION )->make();
 	}
 

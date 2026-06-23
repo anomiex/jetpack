@@ -6,12 +6,12 @@
  * @package automattic/jetpack
  */
 
-// phpcs:disable WordPress.WP.AlternativeFunctions, WordPress.PHP.DiscouragedPHPFunctions, WordPress.Security.EscapeOutput.OutputNotEscaped, WordPress.WP.GlobalVariablesOverride
-
 chdir( __DIR__ . '/../' );
 
 /**
  * Display usage information and exit.
+ *
+ * @return never
  */
 function usage() {
 	global $argv;
@@ -43,7 +43,7 @@ EOH;
 
 $exit        = 0;
 $idx         = 0;
-$verbose     = false;
+$verbose     = false; // phpcs:ignore VariableAnalysis.CodeAnalysis.VariableAnalysis.UnusedVariable -- false positive
 $list        = false;
 $maybe_merge = false;
 $base        = null;
@@ -52,7 +52,7 @@ for ( $i = 1; $i < $argc; $i++ ) {
 	switch ( $argv[ $i ] ) {
 		case '-v':
 		case '--debug':
-			$verbose = true;
+			$verbose = true; // phpcs:ignore VariableAnalysis.CodeAnalysis.VariableAnalysis.UnusedVariable -- still a false positive
 			break;
 		case '--list':
 			$list = true;
@@ -63,9 +63,9 @@ for ( $i = 1; $i < $argc; $i++ ) {
 		case '-h':
 		case '--help':
 			usage();
-			break;
+			break; // @phan-suppress-current-line PhanPluginUnreachableCode -- Safer to include it even though usage() never returns.
 		default:
-			if ( substr( $argv[ $i ], 0, 1 ) !== '-' ) {
+			if ( ! str_starts_with( $argv[ $i ], '-' ) ) {
 				switch ( $idx++ ) {
 					case 0:
 						$base = $argv[ $i ];
@@ -85,31 +85,36 @@ for ( $i = 1; $i < $argc; $i++ ) {
 	}
 }
 
-if ( null === $head ) {
+if ( $base === null || $head === null ) {
 	fprintf( STDERR, "\e[1;31mBase and head refs are required.\e[0m\n" );
 	usage();
 }
 
-if ( $verbose ) {
-	/**
-	 * Output debug info.
-	 *
-	 * @param array ...$args Arguments to printf. A newline is automatically appended.
-	 */
-	function debug( ...$args ) {
-		if ( getenv( 'CI' ) ) {
-			$args[0] = "\e[34m${args[0]}\e[0m\n";
+/**
+ * Output debug info.
+ *
+ * @param string $fmt Printf format string. A newline is automatically appended.
+ * @param mixed  ...$args Arguments to printf.
+ */
+function debug( $fmt, ...$args ) {
+	global $verbose;
+
+	if ( ! $verbose ) {
+		return;
+	}
+
+	static $color;
+	if ( $color === null ) {
+		$dim = shell_exec( 'tput dim 2>/dev/null' );
+		if ( is_string( $dim ) && substr( $dim, 0, 2 ) === "\e[" && substr( $dim, -1 ) === 'm' ) {
+			$color = substr( $dim, 2, -1 );
 		} else {
-			$args[0] = "\e[1;30m${args[0]}\e[0m\n";
+			$color = '90';
 		}
-		fprintf( STDERR, ...$args );
 	}
-} else {
-	/**
-	 * Do not output debug info.
-	 */
-	function debug() {
-	}
+
+	$fmt = "\e[{$color}m{$fmt}\e[0m\n";
+	fprintf( STDERR, $fmt, ...$args );
 }
 
 if ( $maybe_merge && $list ) {
@@ -139,14 +144,8 @@ if ( $maybe_merge ) {
 // Find projects that use changelogger, and read the relevant config.
 $changelogger_projects = array();
 foreach ( glob( 'projects/*/*/composer.json' ) as $file ) {
-	$data = json_decode( file_get_contents( $file ), true );
-	if ( 'projects/packages/changelogger/composer.json' !== $file &&
-		! isset( $data['require']['automattic/jetpack-changelogger'] ) &&
-		! isset( $data['require-dev']['automattic/jetpack-changelogger'] )
-	) {
-		continue;
-	}
-	$data  = isset( $data['extra']['changelogger'] ) ? $data['extra']['changelogger'] : array();
+	$data  = json_decode( file_get_contents( $file ), true );
+	$data  = $data['extra']['changelogger'] ?? array();
 	$data += array(
 		'changelog'   => 'CHANGELOG.md',
 		'changes-dir' => 'changelog',
@@ -158,7 +157,7 @@ foreach ( glob( 'projects/*/*/composer.json' ) as $file ) {
 debug( 'Checking diff from %s...%s.', $base, $head );
 $pipes = null;
 $p     = proc_open(
-	sprintf( 'git -c core.quotepath=off diff --no-renames --name-only %s...%s', escapeshellarg( $base ), escapeshellarg( $head ) ),
+	sprintf( 'git -c core.quotepath=off diff --no-renames --name-status %s...%s', escapeshellarg( $base ), escapeshellarg( $head ) ),
 	array( array( 'pipe', 'r' ), array( 'pipe', 'w' ), STDERR ),
 	$pipes
 );
@@ -169,36 +168,42 @@ fclose( $pipes[0] );
 
 $ok_projects      = array();
 $touched_projects = array();
-// phpcs:ignore WordPress.CodeAnalysis.AssignmentInCondition.FoundInWhileCondition
+// phpcs:ignore Generic.CodeAnalysis.AssignmentInCondition.FoundInWhileCondition
 while ( ( $line = fgets( $pipes[1] ) ) ) {
-	$line  = trim( $line );
-	$parts = explode( '/', $line, 5 );
+	$line                  = trim( $line );
+	list( $status, $file ) = explode( "\t", $line, 2 );
+	$parts                 = explode( '/', $file, 5 );
 	if ( count( $parts ) < 4 || 'projects' !== $parts[0] ) {
-		debug( 'Ignoring non-project file %s.', $line );
+		debug( 'Ignoring non-project file %s.', $file );
 		continue;
 	}
 	$slug = "{$parts[1]}/{$parts[2]}";
 	if ( ! isset( $changelogger_projects[ $slug ] ) ) {
-		debug( 'Ignoring file %s, project %s does not use changelogger.', $line, $slug );
+		debug( 'Ignoring file %s, as project %s does not use changelogger.', $file, $slug );
 		continue;
 	}
 	if ( $parts[3] === $changelogger_projects[ $slug ]['changelog'] ) {
-		debug( 'Ignoring changelog file %s.', $line );
-		continue;
+		if ( $status === 'A' ) {
+			debug( 'PR adds changelog file %s, but this does not count as having a change file.', $file );
+		} else {
+			debug( 'PR touches changelog file %s, so marking %s as having a change file.', $file, $slug );
+			$ok_projects[ $slug ] = true;
+			continue;
+		}
 	}
 	if ( $parts[3] === $changelogger_projects[ $slug ]['changes-dir'] ) {
 		if ( '.' === $parts[4][0] ) {
-			debug( 'Ignoring changes dir dotfile %s.', $line );
+			debug( 'Ignoring changes dir dotfile %s.', $file );
 		} else {
-			debug( 'PR touches file %s, marking %s as having a change file.', $line, $slug );
+			debug( 'PR touches file %s, so marking %s as having a change file.', $file, $slug );
 			$ok_projects[ $slug ] = true;
 		}
 		continue;
 	}
 
-	debug( 'PR touches file %s, marking %s as touched.', $line, $slug );
+	debug( 'PR touches file %s, so marking %s as touched.', $file, $slug );
 	if ( ! isset( $touched_projects[ $slug ] ) ) {
-		$touched_projects[ $slug ][] = $line;
+		$touched_projects[ $slug ][] = $file;
 	}
 }
 
@@ -215,7 +220,7 @@ if ( ! $needed_projects ) {
 }
 
 // Look for unmerged change entry files.
-debug( 'Checking for unmerged change entry files.' );
+debug( 'Checking for unmerged change entry files...' );
 $pipes = null;
 $p     = proc_open(
 	'git -c core.quotepath=off status --no-renames --porcelain',
@@ -228,10 +233,9 @@ if ( ! $p ) {
 fclose( $pipes[0] );
 
 $unmerged_projects = array();
-// phpcs:ignore WordPress.CodeAnalysis.AssignmentInCondition.FoundInWhileCondition
+// phpcs:ignore Generic.CodeAnalysis.AssignmentInCondition.FoundInWhileCondition
 while ( ( $line = fgets( $pipes[1] ) ) ) {
-	$line  = trim( $line );
-	$file  = substr( $line, 3 );
+	$file  = trim( substr( $line, 3 ) );
 	$parts = explode( '/', $file, 5 );
 	if ( count( $parts ) < 4 || 'projects' !== $parts[0] ) {
 		debug( 'Ignoring non-project file %s.', $file );
@@ -239,14 +243,14 @@ while ( ( $line = fgets( $pipes[1] ) ) ) {
 	}
 	$slug = "{$parts[1]}/{$parts[2]}";
 	if ( ! isset( $changelogger_projects[ $slug ] ) ) {
-		debug( 'Ignoring file %s, project %s does not use changelogger.', $file, $slug );
+		debug( 'Ignoring file %s, as project %s does not use changelogger.', $file, $slug );
 		continue;
 	}
 	if ( $parts[3] === $changelogger_projects[ $slug ]['changes-dir'] && '.' !== $parts[4][0] ) {
 		if ( empty( $needed_projects[ $slug ] ) ) {
-			debug( 'Ignoring unmerged change entry file %s, project %s is already ok.', $file, $slug );
+			debug( 'Ignoring unmerged change entry file %s, as project %s is already ok.', $file, $slug );
 		} else {
-			debug( 'Unmerged changes touch change entry file %s, marking %s as having an unmerged change file.', $file, $slug );
+			debug( 'Unmerged changes touch change entry file %s, so marking %s as having an unmerged change file.', $file, $slug );
 			$unmerged_projects[ $slug ][] = $file;
 		}
 		continue;
@@ -264,7 +268,7 @@ if ( $status ) {
 // Offer to merge, if applicable.
 if ( $unmerged_projects && $maybe_merge ) {
 	echo "The following change entry files exist and are needed but are not committed.\n";
-	echo ' - ' . join( "\n - ", array_merge( ...( array_values( $unmerged_projects ) ) ) ) . "\n";
+	echo ' - ' . implode( "\n - ", array_merge( ...( array_values( $unmerged_projects ) ) ) ) . "\n";
 	echo 'Shall I merge them for you? [Y/n] ';
 	$do_merge = null;
 	while ( $do_merge === null ) {
@@ -291,7 +295,7 @@ if ( $unmerged_projects && $maybe_merge ) {
 			if ( ! $p ) {
 				exit( 1 );
 			}
-			$str = join( "\0", array_merge( ...( array_values( $unmerged_projects ) ) ) );
+			$str = implode( "\0", array_merge( ...( array_values( $unmerged_projects ) ) ) );
 			while ( $str !== '' ) {
 				$l = fwrite( $pipes[0], $str );
 				if ( $l === false ) {
@@ -326,7 +330,7 @@ foreach ( $touched_projects as $slug => $files ) {
 			$msg   = sprintf(
 				$msg,
 				$slug,
-				join( $ct > 2 ? ', ' : ' ', $unmerged_projects[ $slug ] )
+				implode( $ct > 2 ? ', ' : ' ', $unmerged_projects[ $slug ] )
 			);
 			$msg2  = '';
 			$exit |= 4;

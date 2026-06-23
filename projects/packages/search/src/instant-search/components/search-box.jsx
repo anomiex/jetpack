@@ -1,28 +1,31 @@
 import { __ } from '@wordpress/i18n';
-// eslint-disable-next-line lodash/import-scope
-import uniqueId from 'lodash/uniqueId';
-import React, { Fragment, useState, useEffect, useRef } from 'react';
+import * as React from 'react';
+import { Fragment, useState, useEffect, useRef, forwardRef } from 'react';
+import { OVERLAY_SEARCH_BOX_INPUT_CLASS_NAME } from '../lib/constants';
 import Gridicon from './gridicon';
 import './search-box.scss';
 
 let initiallyFocusedElement = null;
 const stealFocusWithInput = inputElement => () => {
-	initiallyFocusedElement = document.activeElement;
+	initiallyFocusedElement = inputElement.ownerDocument.activeElement;
 	inputElement.focus();
 };
 const restoreFocus = () => initiallyFocusedElement && initiallyFocusedElement.focus();
 
-const SearchBox = props => {
-	const [ inputId ] = useState( () => uniqueId( 'jetpack-instant-search__box-input-' ) );
-	const inputRef = useRef( null );
+let searchBoxCounter = 0;
+
+const SearchBox = forwardRef( ( props, ref ) => {
+	const [ inputId ] = useState( () => `jetpack-instant-search__box-input-${ ++searchBoxCounter }` );
+	const localInputRef = useRef( null );
+	const inputRef = ref || localInputRef;
 
 	useEffect( () => {
-		if ( props.isVisible ) {
+		if ( props.isVisible && inputRef.current ) {
 			stealFocusWithInput( inputRef.current )();
 		} else if ( props.shouldRestoreFocus ) {
 			restoreFocus();
 		}
-	}, [ props.isVisible, props.shouldRestoreFocus ] );
+	}, [ props.isVisible, props.shouldRestoreFocus, inputRef ] );
 
 	return (
 		<Fragment>
@@ -35,11 +38,13 @@ const SearchBox = props => {
 					<input
 						autoComplete="off"
 						id={ inputId }
-						className="search-field jetpack-instant-search__box-input"
+						className={ 'search-field ' + OVERLAY_SEARCH_BOX_INPUT_CLASS_NAME }
 						inputMode="search"
 						// IE11 will immediately fire an onChange event when the placeholder contains a unicode character.
 						// Ensure that the search application is visible before invoking the onChange callback to guard against this.
 						onChange={ props.isVisible ? props.onChange : null }
+						onKeyDown={ props.onKeyDown }
+						onBlur={ props.onBlur }
 						ref={ inputRef }
 						placeholder={ __( 'Search…', 'jetpack-search-pkg' ) }
 						type="search"
@@ -55,13 +60,13 @@ const SearchBox = props => {
 						/>
 					) }
 
-					<button className="screen-reader-text assistive-text">
+					<button className="screen-reader-text assistive-text" tabIndex="-1">
 						{ __( 'Search', 'jetpack-search-pkg' ) }
 					</button>
 				</label>
 			</div>
 		</Fragment>
 	);
-};
+} );
 
 export default SearchBox;

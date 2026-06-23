@@ -6,7 +6,9 @@ export const PRODUCT_DESCRIPTION_PRODUCTS = {
 	JETPACK_SCAN: 'scan',
 	JETPACK_SEARCH: 'search',
 	JETPACK_SECURITY: 'security',
+	JETPACK_SOCIAL: 'social',
 	JETPACK_VIDEOPRESS: 'videopress',
+	JETPACK_AI: 'jetpack-ai',
 };
 
 export const productDescriptionRoutes = [
@@ -16,6 +18,16 @@ export const productDescriptionRoutes = [
 	`/product/${ PRODUCT_DESCRIPTION_PRODUCTS.JETPACK_SEARCH }`,
 	`/product/${ PRODUCT_DESCRIPTION_PRODUCTS.JETPACK_SECURITY }`,
 	`/product/${ PRODUCT_DESCRIPTION_PRODUCTS.JETPACK_VIDEOPRESS }`,
+];
+
+export const myJetpackRoutes = [
+	`/add-${ PRODUCT_DESCRIPTION_PRODUCTS.JETPACK_ANTI_SPAM }`,
+	`/add-${ PRODUCT_DESCRIPTION_PRODUCTS.JETPACK_BACKUP }`,
+	`/add-${ PRODUCT_DESCRIPTION_PRODUCTS.JETPACK_SCAN }`,
+	`/add-${ PRODUCT_DESCRIPTION_PRODUCTS.JETPACK_SEARCH }`,
+	`/add-${ PRODUCT_DESCRIPTION_PRODUCTS.JETPACK_SOCIAL }`,
+	`/add-${ PRODUCT_DESCRIPTION_PRODUCTS.JETPACK_VIDEOPRESS }`,
+	`/add-${ PRODUCT_DESCRIPTION_PRODUCTS.JETPACK_AI }`,
 ];
 
 export const productIllustrations = {

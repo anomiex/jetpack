@@ -1,7 +1,12 @@
 import { spawn } from 'child_process';
-import chalk from 'chalk';
+import { chalkStderr } from 'chalk';
 import ignore from 'ignore';
-import { getDependencies, filterDeps, getBuildOrder } from '../helpers/dependencyAnalysis.js';
+import {
+	getDependencies,
+	filterDeps,
+	getBuildOrder,
+	getDependencyDepths,
+} from '../helpers/dependencyAnalysis.js';
 
 // Files that mean --git-changed should report all projects as changed.
 const infrastructureFileSets = {};
@@ -9,15 +14,23 @@ infrastructureFileSets.base = new Set( [
 	'tools/cli/commands/dependencies.js',
 	'tools/cli/helpers/dependencyAnalysis.js',
 	'.github/actions/tool-setup/action.yml',
+	'.github/actions/tool-setup/composer-plugin/composer.json',
+	'.github/actions/tool-setup/composer-plugin/src/Plugin.php',
+	'.github/actions/tool-setup/packagist-proxy.mjs',
 	'.github/files/list-changed-projects.sh',
 	'.github/versions.sh',
 	// If pnpm stuff changed, we should build/test everything since we can't know what the change will affect.
 	'pnpm-lock.yaml',
+	'pnpm-workspace.yaml',
 ] );
 infrastructureFileSets.test = new Set( [
 	...infrastructureFileSets.base,
 	'.github/files/generate-ci-matrix.php',
-	'.github/files/process-coverage.sh',
+	'.github/files/coverage-munger/composer.json',
+	'.github/files/coverage-munger/package.json',
+	'.github/files/coverage-munger/extract-php-summary-data.php',
+	'.github/files/coverage-munger/process-coverage.sh',
+	'.github/files/coverage-munger/upload-coverage.sh',
 	'.github/files/setup-wordpress-env.sh',
 	'.github/workflows/tests.yml',
 ] );
@@ -28,9 +41,25 @@ infrastructureFileSets.build = new Set( [
 	'tools/cli/helpers/projectHelpers.js',
 	'.github/workflows/build.yml',
 ] );
+infrastructureFileSets.e2e = {
+	has( f ) {
+		return (
+			infrastructureFileSets.base.has( f ) ||
+			f.startsWith( 'tools/e2e-commons/' ) ||
+			f.startsWith( 'tools/docker/' )
+		);
+	},
+};
 
 // Files to ignore for --git-changed.
 const ignoreFiles = [ '**/*.md', '**/*.txt' ];
+
+// Patterns that, in certain conditions, should add extra projects to the dependency set.
+const extraFileSets = {};
+extraFileSets.base = {};
+extraFileSets.e2e = {
+	'^projects/plugins/jetpack/tests/e2e/specs/sync/': [ 'packages/sync' ],
+};
 
 export const command = 'dependencies <subcommand> [projects...]';
 export const describe = 'Report monorepo project dependencies';
@@ -39,15 +68,15 @@ export const describe = 'Report monorepo project dependencies';
  * Options definition for the dependencies subcommand.
  *
  * @param {object} yargs - The Yargs dependency.
- * @returns {object} Yargs with the build commands defined.
+ * @return {object} Yargs with the build commands defined.
  */
 export function builder( yargs ) {
 	return yargs
 		.positional( 'subcommand', {
 			describe:
-				'Whether to print `json` dependency data, a `list` of projects, or print a `build-order`.',
+				'Whether to print `json` dependency data, a `list` of projects, print a `build-order`, or calculate `depths`.',
 			type: 'string',
-			choices: [ 'json', 'list', 'build-order' ],
+			choices: [ 'json', 'list', 'build-order', 'depths' ],
 		} )
 		.positional( 'projects', {
 			describe: 'Only include dependencies relevant to these projects.',
@@ -68,14 +97,23 @@ export function builder( yargs ) {
 		.option( 'extra', {
 			describe: 'Extra dependencies to consider.',
 			type: 'string',
-			choices: [ 'build', 'test' ],
+			choices: [ 'build', 'test', 'e2e' ],
+		} )
+		.option( 'targets', {
+			describe: 'Targets for `depth`, comma-separated.',
+			type: 'string',
 		} )
 		.option( 'ignore-root', {
 			describe: 'Ignore the monorepo root.',
 			type: 'boolean',
 		} )
+		.option( 'dev', { type: 'boolean', hidden: true } )
+		.option( 'no-dev', {
+			describe: 'Do not consider dev dependencies.',
+			type: 'boolean',
+		} )
 		.option( 'pretty', {
-			describe: 'Pretty-print JSON or build-order output.',
+			describe: 'Pretty-print JSON, build-order, or depths output.',
 			type: 'boolean',
 		} );
 }
@@ -86,7 +124,7 @@ export function builder( yargs ) {
  * @param {object} argv - the arguments passed.
  */
 export async function handler( argv ) {
-	let deps = await getDependencies( process.cwd(), argv.extra );
+	let deps = await getDependencies( process.cwd(), argv.extra, argv.dev === false );
 
 	if ( argv.ignoreRoot ) {
 		deps.delete( 'monorepo' );
@@ -122,9 +160,12 @@ export async function handler( argv ) {
 		} );
 
 		const infrastructureFiles = infrastructureFileSets[ argv.extra ] || infrastructureFileSets.base;
+		const extraFiles = Object.entries( extraFileSets[ argv.extra ] || extraFileSets.base ).map(
+			( [ k, v ] ) => [ new RegExp( k ), v ]
+		);
 		const projset = new Set( argv.projects );
 		const ig = ignore().add( ignoreFiles );
-		const debug = argv.v ? m => console.error( chalk.stderr.blue( m ) ) : () => {};
+		const debug = argv.v ? m => console.error( chalkStderr.blue( m ) ) : () => {};
 		for ( const file of stdout.split( '\n' ).filter( v => v.length ) ) {
 			if ( infrastructureFiles.has( file ) ) {
 				debug( `Diff touches infrastructure file ${ file }, considering all projects as changed.` );
@@ -138,6 +179,16 @@ export async function handler( argv ) {
 				} else {
 					debug( `Diff touches ${ file }, marking ${ slug } as changed.` );
 					projset.add( slug );
+				}
+			}
+			for ( const [ re, extraprojs ] of extraFiles ) {
+				if ( file.match( re ) ) {
+					for ( const extraproj of extraprojs ) {
+						if ( ! projset.has( extraproj ) ) {
+							debug( `Diff touches ${ file }, marking ${ extraproj } as changed.` );
+							projset.add( extraproj );
+						}
+					}
 				}
 			}
 		}
@@ -172,21 +223,45 @@ export async function handler( argv ) {
 				argv.pretty ? '\t' : null
 			)
 		);
-		return;
-	}
-
-	if ( argv.subcommand === 'list' ) {
+	} else if ( argv.subcommand === 'list' ) {
 		if ( deps.size ) {
 			console.log( Array.from( deps.keys() ).join( '\n' ) );
 		}
-		return;
-	}
-
-	if ( argv.subcommand === 'build-order' ) {
+	} else if ( argv.subcommand === 'build-order' ) {
 		const order = getBuildOrder( deps );
 		for ( const group of order ) {
 			console.log( Array.from( group ).join( argv.pretty ? '\n' : ' ' ) );
 		}
-		return;
+	} else if ( argv.subcommand === 'depths' ) {
+		const depths = getDependencyDepths(
+			deps,
+			String( argv.targets ?? '' )
+				.split( ',' )
+				.map( v => v.trim() )
+		);
+		if ( argv.pretty ) {
+			const tiers = new Map();
+			for ( const [ p, d ] of depths.entries() ) {
+				if ( ! tiers.has( d ) ) {
+					tiers.set( d, [] );
+				}
+				tiers.get( d ).push( p );
+			}
+			const keys = tiers
+				.keys()
+				.toArray()
+				.sort( ( a, b ) => Math.sign( b - a ) || 0 );
+			for ( const d of keys ) {
+				console.log( d, tiers.get( d ).sort().join( ' ' ) );
+			}
+		} else {
+			const entries = depths
+				.entries()
+				.toArray()
+				.sort( ( [ p1, d1 ], [ p2, d2 ] ) => Math.sign( d2 - d1 ) || p1.localeCompare( p2 ) );
+			for ( const [ p, d ] of entries ) {
+				console.log( p, d );
+			}
+		}
 	}
 }

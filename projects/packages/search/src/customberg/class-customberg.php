@@ -26,6 +26,13 @@ class Customberg {
 	protected static $instance;
 
 	/**
+	 * Search Plan class.
+	 *
+	 * @var Plan
+	 */
+	public $plan;
+
+	/**
 	 * Get the singleton instance of the class.
 	 *
 	 * @return Customberg
@@ -44,6 +51,8 @@ class Customberg {
 	 */
 	public function init_hooks() {
 		add_action( 'admin_menu', array( $this, 'add_wp_admin_page' ), 999 );
+		add_filter( 'pre_option_jetpack_search_show_powered_by', array( $this, 'get_show_powered_by' ) );
+		$this->plan = new Plan();
 	}
 
 	/**
@@ -54,11 +63,12 @@ class Customberg {
 			return;
 		}
 
-		// Intentionally omits adding a submenu via the first null argument.
+		// Intentionally omits adding a submenu via the first empty argument.
 		$hook = add_submenu_page(
-			null,
-			__( 'Search Settings', 'jetpack-search-pkg' ),
-			__( 'Search', 'jetpack-search-pkg' ),
+			'',
+			/** "Search" is a product name, do not translate. */
+			'Jetpack Search',
+			'Search',
 			'manage_options', // Must be an admin.
 			'jetpack-search-configure',
 			array( $this, 'jetpack_search_admin_page' )
@@ -66,6 +76,18 @@ class Customberg {
 
 		add_action( "admin_print_scripts-$hook", array( $this, 'load_assets' ) );
 		add_action( 'admin_footer', array( 'Automattic\Jetpack\Search\Helper', 'print_instant_search_sidebar' ) );
+	}
+
+	/**
+	 * Force option value to be true if in free plan.
+	 *
+	 * @param string $value The incoming value to be replaced.
+	 */
+	public function get_show_powered_by( $value ) {
+		if ( $this->plan->is_free_plan() ) {
+			return true;
+		}
+		return $value;
 	}
 
 	/**
@@ -83,7 +105,7 @@ class Customberg {
 						top: 50%;
 					"/>
 				</div>
-				<div class="hide-if-js"><?php esc_html_e( 'Your Search customization page requires JavaScript to function properly.', 'jetpack-search-pkg' ); ?></div>
+				<div class="hide-if-js"><?php esc_html_e( 'Your Jetpack Search customization page requires JavaScript to function properly.', 'jetpack-search-pkg' ); ?></div>
 			</div>
 		<?php
 	}
@@ -119,7 +141,7 @@ class Customberg {
 		Assets::enqueue_script( 'jp-search-configure' );
 
 		// Use wp_add_inline_script instead of wp_localize_script, see https://core.trac.wordpress.org/ticket/25280.
-		wp_add_inline_script( 'jp-search-configure', 'var JetpackInstantSearchOptions=JSON.parse(decodeURIComponent("' . rawurlencode( wp_json_encode( Helper::generate_initial_javascript_state() ) ) . '"));', 'before' );
+		wp_add_inline_script( 'jp-search-configure', 'var JetpackInstantSearchOptions=' . wp_json_encode( Helper::generate_initial_javascript_state(), JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP ) . ';', 'before' );
 		wp_add_inline_script(
 			'jp-search-configure',
 			"window.jetpackSearchConfigureInit( 'jp-search-configure' )"

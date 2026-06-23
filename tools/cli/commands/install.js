@@ -1,10 +1,15 @@
 import fs from 'fs/promises';
 import chalk from 'chalk';
-import execa from 'execa';
+import { execa } from 'execa';
 import Listr from 'listr';
 import UpdateRenderer from 'listr-update-renderer';
 import VerboseRenderer from 'listr-verbose-renderer';
-import { needsPnpmInstall, getInstallArgs, projectDir } from '../helpers/install.js';
+import {
+	needsPnpmInstall,
+	getInstallArgs,
+	projectDir,
+	batchLockFileStatus,
+} from '../helpers/install.js';
 import { coerceConcurrency } from '../helpers/normalizeArgv.js';
 import { allProjects } from '../helpers/projectHelpers.js';
 import promptForProject from '../helpers/promptForProject.js';
@@ -16,7 +21,7 @@ export const describe = 'Installs a monorepo project';
  * Options definition for the install subcommand.
  *
  * @param {object} yargs - The Yargs dependency.
- * @returns {object} Yargs with the install commands defined.
+ * @return {object} Yargs with the install commands defined.
  */
 export function builder( yargs ) {
 	return yargs
@@ -34,14 +39,19 @@ export function builder( yargs ) {
 			type: 'boolean',
 			description: 'Installs everything',
 		} )
+		.option( 'pnpm-install', { type: 'boolean', hidden: true } )
 		.option( 'no-pnpm-install', {
 			type: 'boolean',
 			description: 'Skip execution of `pnpm install`.',
 		} )
+		.option( 'use-uncommitted-composer-lock', {
+			type: 'boolean',
+			description: 'Use uncommitted composer.lock files.',
+		} )
 		.option( 'concurrency', {
 			type: 'number',
 			description: 'Maximum number of install tasks to run at once. Ignored with `--verbose`.',
-			default: Infinity,
+			default: 20,
 			coerce: coerceConcurrency,
 		} );
 }
@@ -76,6 +86,8 @@ export async function handler( argv ) {
 	const tasks = [];
 	let didPnpm = false;
 
+	const lockedProjects = await batchLockFileStatus( [ ...new Set( argv.project ) ] );
+
 	for ( const project of new Set( argv.project ) ) {
 		// Does the project even exist?
 		if (
@@ -91,7 +103,7 @@ export async function handler( argv ) {
 			tasks.unshift( {
 				title: `Installing pnpm dependencies`,
 				task: async () =>
-					execa( 'pnpm', await getInstallArgs( 'monorepo', 'pnpm', argv ), {
+					execa( 'pnpm', await getInstallArgs( 'monorepo', 'pnpm', argv, lockedProjects ), {
 						cwd: process.cwd(),
 						stdio,
 					} ),
@@ -102,7 +114,7 @@ export async function handler( argv ) {
 		tasks.push( {
 			title: `Installing composer dependencies for ${ project }`,
 			task: async () =>
-				execa( 'composer', await getInstallArgs( project, 'composer', argv ), {
+				execa( 'composer', await getInstallArgs( project, 'composer', argv, lockedProjects ), {
 					cwd: projectDir( project ),
 					stdio,
 				} ),
@@ -115,6 +127,11 @@ export async function handler( argv ) {
 	} );
 	await listr.run().catch( err => {
 		console.error( err );
+		if ( ! argv.v ) {
+			console.error(
+				chalk.yellow( 'You might try running with `-v` to get more information on the failure' )
+			);
+		}
 		process.exit( err.exitCode || 1 );
 	} );
 }

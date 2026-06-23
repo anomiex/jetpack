@@ -1,12 +1,11 @@
-import classnames from 'classnames';
-import { assign, omit } from 'lodash';
+import clsx from 'clsx';
 import PropTypes from 'prop-types';
-import React from 'react';
+import { Component, createElement } from 'react';
 import Gridicon from '../gridicon';
 
 import './style.scss';
 
-class CardSection extends React.Component {
+class CardSection extends Component {
 	static propTypes = {
 		title: PropTypes.any,
 		vertical: PropTypes.any,
@@ -20,7 +19,7 @@ class CardSection extends React.Component {
 	render() {
 		return (
 			<div
-				className={ classnames( 'dops-card-section', this.props.className ) }
+				className={ clsx( 'dops-card-section', this.props.className ) }
 				style={ this.props.style }
 			>
 				{ this.props.title ? this._renderWithTitle() : this.props.children }
@@ -34,24 +33,20 @@ class CardSection extends React.Component {
 
 		return (
 			<div className={ wrapperClassName }>
-				<h4 ref="label" className="dops-card-section-label">
-					{ this.props.title }
-				</h4>
-				<div ref="content" className="dops-card-section-content">
-					{ this.props.children }
-				</div>
+				<h4 className="dops-card-section-label">{ this.props.title }</h4>
+				<div className="dops-card-section-content">{ this.props.children }</div>
 			</div>
 		);
 	};
 }
 
-class CardFooter extends React.Component {
+class CardFooter extends Component {
 	render() {
 		return <div className="dops-card-footer">{ this.props.children }</div>;
 	}
 }
 
-class Card extends React.Component {
+class Card extends Component {
 	static propTypes = {
 		meta: PropTypes.any,
 		icon: PropTypes.string,
@@ -76,7 +71,7 @@ class Card extends React.Component {
 	};
 
 	render() {
-		const className = classnames( 'dops-card', this.props.className, {
+		const className = clsx( 'dops-card', this.props.className, {
 			'is-card-link': !! this.props.href,
 			'is-compact': this.props.compact,
 		} );
@@ -85,11 +80,8 @@ class Card extends React.Component {
 
 		let linkIndicator;
 		if ( this.props.href ) {
-			linkIndicator = (
-				<Gridicon
-					className="dops-card__link-indicator"
-					icon={ this.props.target ? 'external' : 'chevron-right' }
-				/>
+			linkIndicator = this.props.target && (
+				<Gridicon className="dops-card__link-indicator" icon="external" />
 			);
 		} else {
 			omitProps.push( 'href', 'target' );
@@ -106,12 +98,17 @@ class Card extends React.Component {
 			);
 		}
 
-		return React.createElement(
+		return createElement(
 			this.props.href ? 'a' : this.props.tagName,
-			assign( omit( this.props, omitProps ), { className } ),
-			linkIndicator,
+			{
+				...Object.fromEntries(
+					Object.entries( this.props ).filter( ( [ k ] ) => ! omitProps.includes( k ) )
+				),
+				className,
+			},
 			fancyTitle,
-			this.props.children
+			this.props.children,
+			linkIndicator
 		);
 	}
 

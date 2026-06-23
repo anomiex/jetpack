@@ -1,15 +1,21 @@
 <?php // phpcs:ignore WordPress.Files.FileName.InvalidClassFileName
 
-require_once ABSPATH . 'wp-admin/includes/class-wp-upgrader.php';
-require_once ABSPATH . 'wp-admin/includes/file.php';
-
 use Automattic\Jetpack\Automatic_Install_Skin;
 use Automattic\Jetpack\Connection\Client;
+
+if ( ! defined( 'ABSPATH' ) ) {
+	exit( 0 );
+}
+
+require_once ABSPATH . 'wp-admin/includes/class-wp-upgrader.php';
+require_once ABSPATH . 'wp-admin/includes/file.php';
 
 /**
  * Themes install endpoint class.
  *
  * POST  /sites/%s/themes/%s/install
+ *
+ * @phan-constructor-used-for-side-effects
  */
 class Jetpack_JSON_API_Themes_Install_Endpoint extends Jetpack_JSON_API_Themes_Endpoint {
 
@@ -76,7 +82,7 @@ class Jetpack_JSON_API_Themes_Install_Endpoint extends Jetpack_JSON_API_Themes_E
 
 			if ( file_exists( $link ) ) {
 				// Delete if link was tmp local file
-				unlink( $link );
+				wp_delete_file( $link );
 			}
 
 			if ( ! $this->bulk && is_wp_error( $result ) ) {
@@ -211,7 +217,7 @@ class Jetpack_JSON_API_Themes_Install_Endpoint extends Jetpack_JSON_API_Themes_E
 
 		$response = $result['response'];
 		if ( $response['code'] !== 200 ) {
-			unlink( $file );
+			wp_delete_file( $file );
 			return new WP_Error( 'problem_fetching_theme', __( 'Problem downloading theme', 'jetpack' ) );
 		}
 

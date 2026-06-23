@@ -9,6 +9,7 @@
  * Includes the Composer autoloader.
  */
 require_once __DIR__ . '/../../vendor/autoload.php';
+require_once __DIR__ . '/php-polyfills.php';
 
 // Additional functions that brain/monkey doesn't currently define.
 if ( ! function_exists( 'wp_unslash' ) ) {
@@ -32,5 +33,32 @@ if ( ! function_exists( 'wp_unslash' ) ) {
 		} else {
 			return $value;
 		}
+	}
+}
+
+if ( ! function_exists( 'sanitize_key' ) ) {
+	/**
+	 * WordPress native `sanitize_key` function.
+	 *
+	 * @param string $key String key.
+	 * @return string Sanitized key.
+	 */
+	function sanitize_key( $key ) {
+		$sanitized_key = '';
+
+		if ( is_scalar( $key ) ) {
+			$sanitized_key = strtolower( $key );
+			$sanitized_key = preg_replace( '/[^a-z0-9_\-]/', '', $sanitized_key );
+		}
+
+		/**
+		 * Filters a sanitized key string.
+		 *
+		 * @since 3.0.0
+		 *
+		 * @param string $sanitized_key Sanitized key.
+		 * @param string $key           The key prior to sanitization.
+		 */
+		return apply_filters( 'sanitize_key', $sanitized_key, $key );
 	}
 }

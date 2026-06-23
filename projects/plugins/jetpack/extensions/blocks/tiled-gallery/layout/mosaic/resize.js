@@ -3,9 +3,9 @@ import { GUTTER_WIDTH } from '../../constants';
 /**
  * Distribute a difference across ns so that their sum matches the target
  *
- * @param   {Array<number>}  parts  - Array of numbers to fit
- * @param   {number}         target - Number that sum should match
- * @returns {Array<number>}         - Adjusted parts
+ * @param {Array<number>} parts  - Array of numbers to fit
+ * @param {number}        target - Number that sum should match
+ * @return {Array<number>}         - Adjusted parts
  */
 function adjustFit( parts, target ) {
 	const diff = target - parts.reduce( ( sum, n ) => sum + n, 0 );
@@ -63,12 +63,14 @@ function getImageRatio( img ) {
 }
 
 function applyRowRatio( row, [ ratio, weightedRatio ], width ) {
-	const rawHeight =
-		( 1 / ratio ) * ( width - GUTTER_WIDTH * ( row.childElementCount - 1 ) - weightedRatio );
+	// Account for both JS and CSS gutters (they're the same value)
+	const totalGutterSpace = GUTTER_WIDTH * 2 * ( row.childElementCount - 1 );
+	const availableWidth = width - totalGutterSpace;
+	const rawHeight = ( 1 / ratio ) * ( availableWidth - weightedRatio );
 
 	return applyColRatio( row, {
 		rawHeight,
-		rowWidth: width - GUTTER_WIDTH * ( row.childElementCount - 1 ),
+		rowWidth: availableWidth,
 	} );
 }
 

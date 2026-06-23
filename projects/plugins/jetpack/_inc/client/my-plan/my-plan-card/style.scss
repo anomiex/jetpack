@@ -1,14 +1,19 @@
-@import '../../scss/mixin_breakpoint';
-@import '../../scss/calypso-colors';
-@import '../../scss/functions/rem';
-@import '../../scss/typography';
+@use "../../scss/mixins/breakpoints";
+@use "../../scss/calypso-colors";
+@use "../../scss/typography";
 
 // My Plan Card
 .my-plan-card {
-	@include breakpoint( '>960px' ) {
+
+	@include breakpoints.breakpoint( ">960px" ) {
 		display: flex;
 		flex-flow: row nowrap;
 		justify-content: space-between;
+	}
+
+	&.plan-golden-token .my-plan-card__icon img {
+		max-width: 80px;
+		max-height: 80px;
 	}
 }
 
@@ -20,34 +25,67 @@
 
 .my-plan-card__header {
 	flex: 1;
+	margin: auto;
+}
+
+.is-plan .my-plan-card__title {
+	font-size: 24px;
+}
+
+.is-plan .my-plan-card__tag-line {
+	font-size: 16px;
+}
+
+.is-plan .my-plan-card__header {
+	margin: auto;
 }
 
 .my-plan-card__title {
-	font-size: $font-title-small;
-	font-weight: 600;
+	font-size: 20px;
+	font-weight: 500;
 	line-height: 30px;
-	margin: 6px 0;
-	color: $gray-dark;
+	margin: 4px 0;
+	color: calypso-colors.$black;
+
+	@include breakpoints.breakpoint( "<960px" ) {
+		padding-top: 16px;
+	}
 }
 
 .my-plan-card__tag-line {
 	$font-body-small: 14px;
 	font-weight: 400;
-	line-height: 18px;
-	margin: 0 0 24px;
+	line-height: 1.65;
+	margin: 0 0 4px 0;
 
-	@include breakpoint( '>960px' ) {
+	@include breakpoints.breakpoint( "<960px" ) {
 		margin-bottom: 8px;
+	}
+}
+
+.is-plan .my-plan-card__icon {
+	width: 99px;
+	height: 99px;
+	margin: 0 16px 0 0;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+
+	@include breakpoints.breakpoint( "<660px" ) {
+		order: 99;
+		width: 80px;
+		height: 80px;
+		margin: 20px 0 0 16px;
 	}
 }
 
 .my-plan-card__icon {
 	flex: 0 0 auto;
-	width: 64px;
-	height: 64px;
-	margin: 8px 20px 16px 0;
+	width: 48px;
+	height: 48px;
+	margin: 16px 24px 16px 0;
 
-	@include breakpoint( '<660px' ) {
+	@include breakpoints.breakpoint( "<660px" ) {
 		display: none;
 	}
 
@@ -63,9 +101,9 @@
 	flex-flow: row wrap;
 	align-items: center;
 	justify-content: space-between;
-	padding: 8px 0 0;
+	padding: 0;
 
-	@include breakpoint( '>960px' ) {
+	@include breakpoints.breakpoint( ">960px" ) {
 		flex-flow: column nowrap;
 		justify-content: center;
 		align-items: flex-end;
@@ -73,19 +111,19 @@
 	}
 
 	&::before {
-		content: '';
+		content: "";
 		position: absolute;
-		top: 0;
 		left: -16px;
 		right: -16px;
-		border-top: 1px solid $light-gray-700;
+		border-bottom: 1px solid var(--jp-gray);
+		bottom: 0;
 
-		@include breakpoint( '>480px' ) {
+		@include breakpoints.breakpoint( ">480px" ) {
 			left: -24px;
 			right: -24px;
 		}
 
-		@include breakpoint( '>960px' ) {
+		@include breakpoints.breakpoint( ">960px" ) {
 			content: none;
 		}
 	}
@@ -101,19 +139,46 @@
 }
 
 .my-plan-card__details {
-	padding-top: 8px;
-	color: $gray-darken-10;
+	padding: 8px 0 16px;
+	color: calypso-colors.$gray-darken-10;
+	display: contents;
 
-	@include breakpoint( '>480px' ) {
+	@include breakpoints.breakpoint( "<960px" ) {
+		display: block;
+	}
+
+	@include breakpoints.breakpoint( ">480px" ) {
 		white-space: nowrap;
 	}
 
-	@include breakpoint( '>960px' ) {
+	@include breakpoints.breakpoint( ">960px" ) {
 		padding-top: 0;
 	}
 
 	&.is-error {
-		color: $alert-red;
+		color: calypso-colors.$alert-red;
+	}
+
+	a.my-plan-card__renew {
+		text-decoration: underline;
+		margin-top: 8px;
+
+		&:hover {
+			text-decoration-thickness: 3px;
+			color: calypso-colors.$black;
+		}
+
+		&:focus {
+			text-decoration-line: none;
+			border-radius: 2px;
+			box-shadow: 0 0 0 var(--wp-admin-border-width-focus) #000;
+			outline: 3px solid transparent;
+			color: calypso-colors.$black;
+		}
+
+		&:active {
+			color: calypso-colors.$black;
+		}
 	}
 }
 
@@ -125,3 +190,22 @@
 		padding-top: 0;
 	}
 }
+
+.my-plan-card__expired {
+	color: calypso-colors.$alert-red;
+}
+
+.my-plan-card__renew {
+	display: flex;
+	justify-content: flex-end;
+	color: calypso-colors.$black;
+
+	.components-external-link__icon {
+		align-self: center;
+	}
+
+	@include breakpoints.breakpoint( "<960px" ) {
+		justify-content: flex-start;
+	}
+}
+

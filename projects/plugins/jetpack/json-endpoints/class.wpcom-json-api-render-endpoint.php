@@ -1,5 +1,9 @@
 <?php // phpcs:ignore WordPress.Files.FileName.InvalidClassFileName
 
+if ( ! defined( 'ABSPATH' ) ) {
+	exit( 0 );
+}
+
 /**
  * These are helpers for the shortcode and embed render endpoints.
  */
@@ -21,7 +25,7 @@ abstract class WPCOM_JSON_API_Render_Endpoint extends WPCOM_JSON_API_Endpoint {
 	public function process_render( $callback, $callback_arg ) {
 		global $wp_scripts, $wp_styles;
 
-		if ( false === defined( 'STYLESHEETPATH' ) ) {
+		if ( ! defined( 'STYLESHEETPATH' ) ) {
 			wp_templating_constants();
 		}
 
@@ -64,7 +68,7 @@ abstract class WPCOM_JSON_API_Render_Endpoint extends WPCOM_JSON_API_Endpoint {
 	public function add_assets( $return, $loaded_scripts, $loaded_styles ) {
 		global $wp_scripts, $wp_styles;
 		// scripts first, just cuz
-		if ( count( $loaded_scripts ) > 0 ) {
+		if ( $loaded_scripts !== array() ) {
 			$scripts = array();
 			foreach ( $loaded_scripts as $handle ) {
 				if ( ! isset( $wp_scripts->registered[ $handle ] ) ) {
@@ -92,7 +96,7 @@ abstract class WPCOM_JSON_API_Render_Endpoint extends WPCOM_JSON_API_Endpoint {
 			$return['scripts'] = $scripts;
 		}
 		// now styles
-		if ( count( $loaded_styles ) > 0 ) {
+		if ( $loaded_styles !== array() ) {
 			$styles = array();
 			foreach ( $loaded_styles as $handle ) {
 				if ( ! isset( $wp_styles->registered[ $handle ] ) ) {
@@ -111,7 +115,7 @@ abstract class WPCOM_JSON_API_Render_Endpoint extends WPCOM_JSON_API_Endpoint {
 				// is there a special media (print, screen, etc) for this? if not, default to 'all'
 				$media = 'all';
 				if ( isset( $wp_styles->registered[ $handle ]->args ) ) {
-					$media = esc_attr( $wp_styles->registered[ $handle ]->args );
+					$media = esc_attr( (string) $wp_styles->registered[ $handle ]->args );
 				}
 
 				// add to an array so we can return all this info
@@ -161,18 +165,6 @@ abstract class WPCOM_JSON_API_Render_Endpoint extends WPCOM_JSON_API_Endpoint {
 	 * @return string|false
 	 */
 	public function do_embed( $embed_url ) {
-		// in order for oEmbed to fire in the `$wp_embed->shortcode` method, we need to set a post as the current post
-		$_posts = get_posts(
-			array(
-				'posts_per_page'   => 1,
-				'suppress_filters' => false,
-			)
-		);
-		if ( ! empty( $_posts ) ) {
-			global $post;
-			$post = array_shift( $_posts ); // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited
-		}
-
 		global $wp_embed;
 		return $wp_embed->shortcode( array(), $embed_url );
 	}

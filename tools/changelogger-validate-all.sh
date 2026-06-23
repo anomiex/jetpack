@@ -6,6 +6,7 @@ cd "$( dirname "${BASH_SOURCE[0]}" )/.."
 BASE="$PWD"
 . "$BASE/tools/includes/check-osx-bash-version.sh"
 . "$BASE/tools/includes/chalk-lite.sh"
+. "$BASE/tools/includes/changelogger.sh"
 . "$BASE/tools/includes/alpha-tag.sh"
 
 # Print help and exit.
@@ -66,19 +67,9 @@ if ! $VERBOSE; then
 	}
 else
 	. "$BASE/tools/includes/nospin.sh"
-	if [[ -n "$CI" ]]; then
-		function debug {
-			# Grey doesn't work well in GH's output.
-			blue "$@"
-		}
-	fi
 fi
 
-if [[ ! -e projects/packages/changelogger/vendor/autoload.php ]]; then
-	spin
-	debug "Executing composer update in projects/packages/changelogger"
-	(cd projects/packages/changelogger && composer update $($VERBOSE || echo "--quiet") )
-fi
+init_changelogger
 
 function err {
 	if [[ -n "$CI" ]]; then
@@ -88,40 +79,59 @@ function err {
 	fi
 }
 
-EXIT=0
-for FILE in projects/*/*/composer.json; do
-	spin
-	DIR="${FILE%/composer.json}"
-	SLUG="${DIR#projects/}"
+function checkpkg {
+	local FILE=$1
+	local DIR="${FILE%/composer.json}"
+	local SLUG="${DIR#projects/}"
 	cd "$BASE/$DIR"
 
-	if [[ -x vendor/bin/changelogger ]]; then
-		CHANGELOGGER=vendor/bin/changelogger
-	elif jq -e '.["require"]["automattic/jetpack-changelogger"] // .["require-dev"]["automattic/jetpack-changelogger"] // false' composer.json > /dev/null; then
-		CHANGELOGGER="$BASE/projects/packages/changelogger/bin/changelogger"
-	else
-		debug "$SLUG does not use changelogger"
-		continue
-	fi
-
 	debug "Validating change entries for $SLUG"
-	if ! $CHANGELOGGER validate "${ARGS[@]}"; then
-		EXIT=1
-		continue
+	if ! changelogger validate "${ARGS[@]}"; then
+		return 1
 	fi
 
 	debug "Checking version numbers $SLUG"
-	CHANGES_DIR="$(jq -r '.extra.changelogger["changes-dir"] // "changelog"' composer.json)"
-	PRERELEASE=$(alpha_tag $CHANGELOGGER composer.json 0)
-	if [[ -d "$CHANGES_DIR" && "$(ls -- "$CHANGES_DIR")" ]]; then
-		VER=$($CHANGELOGGER version next --default-first-version --prerelease=$PRERELEASE) || { err "$VER"; EXIT=1; continue; }
-	else
-		VER=$($CHANGELOGGER version current --default-first-version --prerelease=$PRERELEASE) || { err "$VER"; EXIT=1; continue; }
-	fi
+	local PRERELEASE VER
+	PRERELEASE=$(alpha_tag composer.json 0)
+	VER=$(changelogger version current --default-first-version --prerelease=$PRERELEASE) || { err "$DIR: $VER"; return 1; }
 	if ! $BASE/tools/project-version.sh "${ARGS2[@]}" $CHECK_OR_UPDATE "$VER" "$SLUG"; then
-		EXIT=1
-		continue
+		return 1
 	fi
+	return 0
+}
+
+EXIT=0
+declare -A PIDS
+PIDS=()
+
+N=1
+if [[ $(uname) == 'Darwin' ]]; then
+	N=$( sysctl -n hw.physicalcpu )
+elif command -v nproc &>/dev/null; then
+	N=$( nproc )
+fi
+
+for FILE in projects/*/*/composer.json; do
+	spin
+
+	if [[ ${#PIDS[@]} -ge $N ]]; then
+		if ! wait -fn -p P "${!PIDS[@]}"; then
+			EXIT=1
+		fi
+		unset "PIDS[$P]"
+	fi
+
+	checkpkg "$FILE" &
+	PIDS[$!]=true
 done
+
+while [[ ${#PIDS[@]} -gt 0 ]]; do
+	spin
+	if ! wait -fn -p P "${!PIDS[@]}"; then
+		EXIT=1
+	fi
+	unset "PIDS[$P]"
+done
+
 spinclear
 exit $EXIT

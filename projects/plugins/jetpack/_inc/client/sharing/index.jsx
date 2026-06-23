@@ -1,18 +1,26 @@
 import { __ } from '@wordpress/i18n';
-import Card from 'components/card';
-import QuerySite from 'components/data/query-site';
-import React, { Component } from 'react';
+import { Component } from 'react';
 import { connect } from 'react-redux';
+import QuerySite from 'components/data/query-site';
 import {
 	isOfflineMode,
 	isUnavailableInOfflineMode,
 	isCurrentUserLinked,
 	getConnectUrl,
 } from 'state/connection';
-import { getSiteRawUrl, getSiteAdminUrl, userCanManageModules } from 'state/initial-state';
+import {
+	currentThemeIsBlockTheme,
+	getSiteRawUrl,
+	getSiteAdminUrl,
+	userCanManageModules,
+	isSharingBlockAvailable,
+	isLikeBlockAvailable,
+	getSiteId,
+} from 'state/initial-state';
 import { getModule } from 'state/modules';
 import { isModuleFound as _isModuleFound } from 'state/search';
 import { getSettings } from 'state/settings';
+import { getActiveFeatures } from 'state/site';
 import { Likes } from './likes';
 import { Publicize } from './publicize';
 import { ShareButtons } from './share-buttons';
@@ -27,17 +35,22 @@ class Sharing extends Component {
 			isLinked: this.props.isLinked,
 			connectUrl: this.props.connectUrl,
 			siteRawUrl: this.props.siteRawUrl,
+			blogID: this.props.blogID,
 			siteAdminUrl: this.props.siteAdminUrl,
 			userCanManageModules: this.props.userCanManageModules,
+			activeFeatures: this.props.activeFeatures,
+			hasSharingBlock: this.props.hasSharingBlock,
+			hasLikeBlock: this.props.hasLikeBlock,
+			isBlockTheme: this.props.isBlockTheme,
 		};
-
-		const foundPublicize = this.props.isModuleFound( 'publicize' ),
-			foundSharing = this.props.isModuleFound( 'sharedaddy' ),
-			foundLikes = this.props.isModuleFound( 'likes' );
 
 		if ( ! this.props.searchTerm && ! this.props.active ) {
 			return null;
 		}
+
+		const foundPublicize = this.props.isModuleFound( 'publicize' ),
+			foundSharing = this.props.isModuleFound( 'sharedaddy' ),
+			foundLikes = this.props.isModuleFound( 'likes' );
 
 		if ( ! foundPublicize && ! foundSharing && ! foundLikes ) {
 			return null;
@@ -46,17 +59,15 @@ class Sharing extends Component {
 		return (
 			<div>
 				<QuerySite />
-				<Card
-					title={
-						this.props.searchTerm
-							? __( 'Sharing', 'jetpack' )
-							: __(
-									'Share your content to social media, reaching new audiences and increasing engagement.',
-									'jetpack'
-							  )
-					}
-					className="jp-settings-description"
-				/>
+				<h1 className="screen-reader-text">{ __( 'Jetpack Sharing Settings', 'jetpack' ) }</h1>
+				<h2 className="jp-settings__section-title">
+					{ this.props.searchTerm
+						? __( 'Sharing', 'jetpack' )
+						: __(
+								'Share your content to social media, reaching new audiences and increasing engagement.',
+								'jetpack'
+						  ) }
+				</h2>
 				{ foundPublicize && <Publicize { ...commonProps } /> }
 				{ foundSharing && <ShareButtons { ...commonProps } /> }
 				{ foundLikes && <Likes { ...commonProps } /> }
@@ -75,7 +86,12 @@ export default connect( state => {
 		isLinked: isCurrentUserLinked( state ),
 		connectUrl: getConnectUrl( state ),
 		siteRawUrl: getSiteRawUrl( state ),
+		blogID: getSiteId( state ),
 		siteAdminUrl: getSiteAdminUrl( state ),
+		activeFeatures: getActiveFeatures( state ),
 		userCanManageModules: userCanManageModules( state ),
+		hasSharingBlock: isSharingBlockAvailable( state ),
+		hasLikeBlock: isLikeBlockAvailable( state ),
+		isBlockTheme: currentThemeIsBlockTheme( state ),
 	};
 } )( Sharing );

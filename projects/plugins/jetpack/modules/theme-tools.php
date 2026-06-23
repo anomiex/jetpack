@@ -9,12 +9,16 @@
  * @package automattic/jetpack
  */
 
+if ( ! defined( 'ABSPATH' ) ) {
+	exit( 0 );
+}
+
 /**
  * Conditionally require the Tonesque lib depending on theme support.
  */
 function jetpack_load_theme_tools() {
 	if ( current_theme_supports( 'tonesque' ) ) {
-		jetpack_require_lib( 'tonesque' );
+		require_once JETPACK__PLUGIN_DIR . '/_inc/lib/tonesque.php';
 	}
 }
 add_action( 'init', 'jetpack_load_theme_tools', 30 );
@@ -47,7 +51,6 @@ function jetpack_load_theme_compat() {
 			'twentyfourteen'  => JETPACK__PLUGIN_DIR . 'modules/theme-tools/compat/twentyfourteen.php',
 			'twentyfifteen'   => JETPACK__PLUGIN_DIR . 'modules/theme-tools/compat/twentyfifteen.php',
 			'twentysixteen'   => JETPACK__PLUGIN_DIR . 'modules/theme-tools/compat/twentysixteen.php',
-			'twentyseventeen' => JETPACK__PLUGIN_DIR . 'modules/theme-tools/compat/twentyseventeen.php',
 			'twentynineteen'  => JETPACK__PLUGIN_DIR . 'modules/theme-tools/compat/twentynineteen.php',
 			'twentytwenty'    => JETPACK__PLUGIN_DIR . 'modules/theme-tools/compat/twentytwenty.php',
 			'twentytwentyone' => JETPACK__PLUGIN_DIR . 'modules/theme-tools/compat/twentytwentyone.php',

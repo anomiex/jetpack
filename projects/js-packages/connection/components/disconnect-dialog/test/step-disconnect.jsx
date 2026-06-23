@@ -1,7 +1,6 @@
 import { jest } from '@jest/globals';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import React from 'react';
 import StepDisconnect from '../steps/step-disconnect';
 
 describe( 'StepDisconnect', () => {
@@ -67,8 +66,8 @@ describe( 'StepDisconnect', () => {
 
 	describe( 'When help links are clicked', () => {
 		const links = [
-			[ 'Jetpack connection', 'jetpack_disconnect_dialog_click_learn_about' ],
-			[ 'contact Jetpack support', 'jetpack_disconnect_dialog_click_support' ],
+			[ 'Jetpack connection(opens in a new tab)', 'jetpack_disconnect_dialog_click_learn_about' ],
+			[ 'contact Jetpack support(opens in a new tab)', 'jetpack_disconnect_dialog_click_support' ],
 		];
 		it.each( links )( `should track the "%s" click with %s`, async ( text, event ) => {
 			const user = userEvent.setup();

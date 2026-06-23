@@ -1,5 +1,4 @@
 import { getRedirectUrl } from '@automattic/jetpack-components';
-import React from 'react';
 import { render, screen } from 'test/test-utils';
 import { DashStats } from '../index';
 
@@ -76,7 +75,7 @@ describe( 'Dashboard Stats', () => {
 	describe( 'Initially', () => {
 		it( 'renders header and card', () => {
 			render( <DashStats { ...testProps } />, { initialState } );
-			expect( screen.getByRole( 'heading', { name: 'Site Stats' } ) ).toBeInTheDocument();
+			expect( screen.getByRole( 'heading', { name: 'Jetpack Stats' } ) ).toBeInTheDocument();
 			expect( screen.getByRole( 'link', { name: 'View detailed stats' } ) ).toBeInTheDocument();
 		} );
 

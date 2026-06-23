@@ -1,4 +1,4 @@
-<?php // phpcs:ignore WordPress.Files.FileName
+<?php
 /**
  * Plugin guesser test suite.
  *
@@ -8,16 +8,19 @@
 // We live in the namespace of the test autoloader to avoid many use statements.
 namespace Automattic\Jetpack\Autoloader\jpCurrent;
 
+use PHPUnit\Framework\Attributes\PreserveGlobalState;
+use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
 use PHPUnit\Framework\TestCase;
 
 /**
  * Test suite class for the Autoloader part that handles active plugin guessing.
  *
- * @runClassInSeparateProcess
+ * @runTestsInSeparateProcesses
  * @preserveGlobalState disabled
  */
+#[RunTestsInSeparateProcesses]
+#[PreserveGlobalState( false )]
 class PluginLocatorTest extends TestCase {
-	use \Yoast\PHPUnitPolyfills\Polyfills\AssertIsType;
 
 	/**
 	 * A mock of the path processor we're using.
@@ -35,20 +38,18 @@ class PluginLocatorTest extends TestCase {
 
 	/**
 	 * Setup runs before each test.
-	 *
-	 * @before
 	 */
-	public function set_up() {
+	public function setUp(): void {
+		parent::setUp();
 		$this->path_processor = $this->getMockBuilder( Path_Processor::class )->getMock();
 		$this->locator        = new Plugin_Locator( $this->path_processor );
 	}
 
 	/**
 	 * Teardown runs after each test.
-	 *
-	 * @after
 	 */
-	public function tear_down() {
+	public function tearDown(): void {
+		parent::tearDown();
 		// Make sure all of the test data we made use of is cleaned up after each test.
 		cleanup_test_wordpress_data();
 	}
@@ -95,9 +96,11 @@ class PluginLocatorTest extends TestCase {
 		);
 		$this->path_processor->expects( $this->exactly( 2 ) )
 			->method( 'find_directory_with_autoloader' )
-			->withConsecutive(
-				array( 0 ),
-				array( 'test/test.php' )
+			->with(
+				...with_consecutive(
+					array( 0 ),
+					array( 'test/test.php' )
+				)
 			)
 			->willReturn( false );
 
@@ -117,9 +120,11 @@ class PluginLocatorTest extends TestCase {
 
 		$this->path_processor->expects( $this->exactly( 2 ) )
 			->method( 'find_directory_with_autoloader' )
-			->withConsecutive(
-				array( 0 ),
-				array( 'dummy_current/dummy_current.php' )
+			->with(
+				...with_consecutive(
+					array( 0 ),
+					array( 'dummy_current/dummy_current.php' )
+				)
 			)
 			->willReturnOnConsecutiveCalls( false, WP_PLUGIN_DIR . '/dummy_current' );
 
@@ -141,9 +146,11 @@ class PluginLocatorTest extends TestCase {
 
 		$this->path_processor->expects( $this->exactly( 2 ) )
 			->method( 'find_directory_with_autoloader' )
-			->withConsecutive(
-				array( 0 ),
-				array( 'dummy_current/dummy_current.php' )
+			->with(
+				...with_consecutive(
+					array( 0 ),
+					array( 'dummy_current/dummy_current.php' )
+				)
 			)
 			->willReturnOnConsecutiveCalls( false, WP_PLUGIN_DIR . '/dummy_current' );
 
@@ -165,9 +172,11 @@ class PluginLocatorTest extends TestCase {
 
 		$this->path_processor->expects( $this->exactly( 2 ) )
 			->method( 'find_directory_with_autoloader' )
-			->withConsecutive(
-				array( 'dummy_current/dummy_current.php' ),
-				array( 123456 )
+			->with(
+				...with_consecutive(
+					array( 'dummy_current/dummy_current.php' ),
+					array( 123456 )
+				)
 			)
 			->willReturnOnConsecutiveCalls( WP_PLUGIN_DIR . '/dummy_current', false );
 
@@ -199,6 +208,8 @@ class PluginLocatorTest extends TestCase {
 	 * Tests that plugins in request parameters are not discovered if a nonce is not set.
 	 */
 	public function test_using_request_action_returns_nothing_without_nonce() {
+		$this->path_processor->expects( $this->never() )->method( 'find_directory_with_autoloader' );
+
 		$_REQUEST['action'] = 'activate';
 		$_REQUEST['plugin'] = 'dummy_current/dummy_current.php';
 
@@ -228,6 +239,8 @@ class PluginLocatorTest extends TestCase {
 	 * Tests that plugins in the request action are not found if the action is not found.
 	 */
 	public function test_using_request_action_returns_nothing_without_action() {
+		$this->path_processor->expects( $this->never() )->method( 'find_directory_with_autoloader' );
+
 		$_REQUEST['_wpnonce'] = '123abc';
 		$_REQUEST['action']   = '';
 
@@ -255,9 +268,11 @@ class PluginLocatorTest extends TestCase {
 
 		$this->path_processor->expects( $this->exactly( 2 ) )
 			->method( 'find_directory_with_autoloader' )
-			->withConsecutive(
-				array( 0 ),
-				array( 'dummy_current\\dummy_current.php' )
+			->with(
+				...with_consecutive(
+					array( 0 ),
+					array( 'dummy_current\\dummy_current.php' )
+				)
 			)
 			->willReturnOnConsecutiveCalls( false, WP_PLUGIN_DIR . '/dummy_current' );
 
@@ -278,9 +293,11 @@ class PluginLocatorTest extends TestCase {
 
 		$this->path_processor->expects( $this->exactly( 2 ) )
 			->method( 'find_directory_with_autoloader' )
-			->withConsecutive(
-				array( 0 ),
-				array( 'dummy_current\\dummy_current.php' )
+			->with(
+				...with_consecutive(
+					array( 0 ),
+					array( 'dummy_current\\dummy_current.php' )
+				)
 			)
 			->willReturnOnConsecutiveCalls( false, WP_PLUGIN_DIR . '/dummy_current' );
 

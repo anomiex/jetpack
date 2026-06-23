@@ -2,6 +2,96 @@
 
 All notable changes to this project will be documented in this file.
 
+## 4.0.7 - 2026-04-10
+### Changed
+- Update package dependencies. [#46785] [#47021] [#47505]
+
+### Fixed
+- Ensure proper flags are used with `json_encode()`. [#46117]
+- Avoid fatal error when receiving an error from the VaultPress service. [#46660]
+
+## 4.0.6 - 2025-11-21
+### Fixed
+- Phan: Address PhanPossiblyUndeclaredVariable violations. [#45911]
+
+## 4.0.4 - 2025-11-12
+### Added
+- Tested up to WordPress 6.9. [#45571]
+
+### Changed
+- Update package dependencies. [#45478]
+
+## 4.0.3 - 2025-09-09
+### Changed
+- Update package dependencies. [#44206] [#44725] [#45096]
+
+## 4.0.2 - 2025-06-09
+### Changed
+- Update package dependencies. [#43425] [#43839]
+
+### Fixed
+- Code: Update stylesheets to use hex instead of named colors. [#42920]
+- Code: Update stylesheets to use WordPress font styles. [#42928]
+- Linting: Clean up various Stylelint violations. [#43166]
+- Linting: Do additional stylesheet cleanup. [#43247]
+- Linting: Fix more Stylelint violations. [#43213]
+- Linting: Remove outdated vendor prefixes in stylesheets. [#43219]
+- Linting: Use double colon notation for pseudo-element selectors. [#43019]
+
+## 4.0.1 - 2025-04-07
+### Changed
+- Code: First pass of style coding standards. [#42734]
+- Code: Use function-style `exit()` and `die()` with a default status code of 0. [#41167]
+- General: Indicate compatibility with WordPress 6.8. [#42701]
+- Update package dependencies. [#40980] [#41659] [#42180] [#42815]
+
+### Fixed
+- Code: Prevent dynamic class properties. [#41857]
+- Code: Remove extra params on function calls. [#41263]
+
+## 4.0.0 - 2025-01-10
+### Added
+- Enable test coverage. [#39961]
+- Hook into red bubble notification when bad installation is detected. [#36449]
+
+### Changed
+- General: Indicate compatibility with the upcoming version of WordPress - 6.6. [#37962]
+- General: Indicate compatibility with the upcoming version of WordPress - 6.7. [#39786]
+- General: Use wp_admin_notice function introduced in WP 6.4 to display notices. [#37051]
+- Only show installation errors on plugins page. [#36390]
+- Updated package dependencies. [#36309] [#36775] [#37348] [#37767] [#38228] [#38822] [#39004] [#39288] [#39653] [#40116] [#40515]
+
+### Removed
+- Cleaned up legacy code. [#40200]
+- General: Update minimum PHP version to 7.2. [#40147]
+
+### Fixed
+- Lossless image optimization for images (should improve performance with no visible changes). [#38750] [#38981]
+
+## 3.0.0 - 2024-02-21
+### Changed
+- General: indicate compatibility with the upcoming version of WordPress, 6.5. [#35820]
+- General: updated PHP requirement to PHP 7.0+
+- Updated package dependencies. [#35591]
+
+## 2.2.5 - 2024-02-07
+### Changed
+- General: indicate full compatibility with the latest version of WordPress, 6.4. [#33776]
+- General: updated PHP requirement to PHP 7.0+
+- Updated package dependencies.
+
+## 2.2.4 - 2023-07-06
+### Changed
+- General: indicate full compatibility with the latest version of WordPress, 6.2. [#29341]
+- Updated package dependencies.
+
+## 2.2.3 - 2023-03-08
+### Changed
+- Add a note to README (visible in wordpress.org) that Jetpack VaultPress is deprecated. [#27465]
+- Compatibility: WordPress 6.1 compatibility [#27084]
+- Updated package dependencies.
+- Update README references from VaultPress to Jetpack VaultPress [#27412]
+
 ## 2.2.2 - 2022-07-06
 ### Changed
 - Build: do not ship PHPCS configuration file. [#22604]

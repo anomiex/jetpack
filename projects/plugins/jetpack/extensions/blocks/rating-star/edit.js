@@ -3,15 +3,17 @@ import {
 	BlockControls,
 	InspectorControls,
 	PanelColorSettings,
+	useBlockProps,
 } from '@wordpress/block-editor';
 import { PanelBody, RangeControl } from '@wordpress/components';
 import { __ } from '@wordpress/i18n';
-import { range } from 'lodash';
 
 export const Rating = ( { id, setRating, children } ) => {
 	const setNewRating = newRating => () => setRating( newRating );
-	const maybeSetNewRating = newRating => ( { code } ) =>
-		code === 'Enter' ? setRating( newRating ) : null;
+	const maybeSetNewRating =
+		newRating =>
+		( { code } ) =>
+			code === 'Enter' ? setRating( newRating ) : null;
 
 	return (
 		<span
@@ -27,7 +29,9 @@ export const Rating = ( { id, setRating, children } ) => {
 };
 
 export default Symbol =>
-	function ( { className, setAttributes, attributes: { align, color, rating, maxRating } } ) {
+	function ( { setAttributes, attributes: { align, color, rating, maxRating } } ) {
+		const blockProps = useBlockProps();
+
 		const setNewMaxRating = newMaxRating => setAttributes( { maxRating: newMaxRating } );
 		const setNewColor = newColor => setAttributes( { color: newColor } );
 		const setNewRating = newRating => {
@@ -47,15 +51,15 @@ export default Symbol =>
 		};
 
 		return (
-			<>
+			<div { ...blockProps }>
 				<BlockControls>
 					<AlignmentToolbar
 						value={ align }
 						onChange={ nextAlign => setAttributes( { align: nextAlign } ) }
 					/>
 				</BlockControls>
-				<div className={ className } style={ { textAlign: align } }>
-					{ range( 1, maxRating + 1 ).map( position => (
+				<div style={ { textAlign: align } }>
+					{ Array.from( Array( Math.ceil( maxRating ) ), ( _, i ) => i + 1 ).map( position => (
 						<Rating key={ position } id={ position } setRating={ setNewRating }>
 							<span>
 								<Symbol
@@ -80,20 +84,22 @@ export default Symbol =>
 							onChange={ setNewMaxRating }
 							min={ 2 }
 							max={ 10 }
-						/>
-						<PanelColorSettings
-							title={ __( 'Color Settings', 'jetpack' ) }
-							initialOpen
-							colorSettings={ [
-								{
-									value: color,
-									onChange: setNewColor,
-									label: __( 'Color', 'jetpack' ),
-								},
-							] }
+							__nextHasNoMarginBottom={ true }
+							__next40pxDefaultSize={ true }
 						/>
 					</PanelBody>
+					<PanelColorSettings
+						title={ __( 'Color', 'jetpack' ) }
+						initialOpen
+						colorSettings={ [
+							{
+								value: color,
+								onChange: setNewColor,
+								label: __( 'Color', 'jetpack' ),
+							},
+						] }
+					/>
 				</InspectorControls>
-			</>
+			</div>
 		);
 	};

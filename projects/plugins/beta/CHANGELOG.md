@@ -1,5 +1,113 @@
 # Changelog
 
+## 4.2.0 - 2026-04-13
+### Changed
+- Dependencies: Update lock file to keep root requirements in sync. [#47418]
+- Replace 'Jetpack' text with logo icon in the admin bar to reduce horizontal space. [#46602]
+- Update design of the sidebar upsell. [#47909]
+- Update package dependencies. [#47021] [#47505]
+
+### Fixed
+- Include missing `v` in documentation link to `docs/mu-plugin-info.md` on GitHub. [#46956]
+- Move menu position to bottom. [#47977]
+
+## 4.1.7 - 2026-02-04
+### Changed
+- Check `error_get_last()` if the `WP_Filesystem` doesn't report any error on mu-plugin install failure. [#46115]
+- Update package dependencies. [#46785]
+
+### Fixed
+- Fix branch search not working for uppercase branch names. [#46338]
+
+## 4.1.6 - 2025-11-12
+### Changed
+- Update package dependencies. [#45478]
+
+## 4.1.5 - 2025-09-09
+### Changed
+- Update package dependencies. [#44206] [#44725] [#45096]
+
+## 4.1.4 - 2025-07-04
+### Changed
+- Update package dependencies. [#43425] [#43839]
+
+### Fixed
+- Autoloader: Prevent double slash in autoloader path. [#44030]
+- Linting: Fix more Stylelint violations. [#43213]
+- Linting: Remove outdated vendor prefixes in stylesheets. [#43219]
+
+## 4.1.3 - 2025-04-17
+### Changed
+- Code: First pass of style coding standards. [#42734]
+
+### Fixed
+- Code: Update stylesheets to use hex instead of named colors. [#42920]
+- Code: Update stylesheets to use WordPress font styles. [#42928]
+- Ensure wpcomsh doesn't reactivate `jetpack/jetpack.php` when we've deactivated it in favor of `jetpack-dev/jetpack.php`. [#43135]
+- Linting: Use double colon notation for pseudo-element selectors. [#43019]
+
+## 4.1.2 - 2025-04-03
+### Changed
+- Code: Use function-style `exit()` and `die()` with a default status code of 0. [#41167]
+- Update package dependencies. [#40515] [#40799] [#42180] [#42815]
+
+## 4.1.1 - 2024-12-04
+### Changed
+- Admin menu: change order of Jetpack sub-menu items [#39095]
+- Update dependencies. [#40286]
+- Update package dependencies. [#38228] [#38822] [#39288] [#39653] [#40116]
+- Use site url in email subject if the site title exists and is equale to "Site Title" [#38908]
+
+### Fixed
+- Fix an undefined variable reference. [#38247]
+- Lossless image optimization of images in projects/plugins [subdirectories from a* through social] [#38573]
+
+## 4.1.0 - 2024-07-02
+### Added
+- Hook into red bubble notification when bad installation is detected [#36449]
+- Support testing mu-plugins (i.e. wpcomsh). [#37955]
+
+### Changed
+- General: use wp_admin_notice function introduced in WP 6.4 to display notices. [#37051]
+- Only show installation errors on plugins page [#36390]
+- Updated package dependencies. [#35591] [#36309] [#36775] [#37348] [#37767]
+
+### Fixed
+- Strip comments in markdown. [#38140]
+
+## 4.0.0 - 2024-02-07
+### Changed
+- Code Modernization: Replace usage of substr() with str_starts_with() and str_ends_with(). [#34207]
+- General: updated PHP requirement to PHP 7.0+ [#34126]
+- Updated package dependencies.
+
+## 3.1.6 - 2023-10-02
+### Changed
+- General: remove backwards-compatibility function checks now that the package supports WP 6.2. [#32772]
+- Updated Jetpack submenu sort order so individual features are alpha-sorted. [#32958]
+- Updated package dependencies. [#31308], [#32966], [#32307]
+
+### Fixed
+- Avoid deprecation warning in PHP 8.1 when viewing Beta settings screen. [#31295]
+- If another PHP error handler was set, chain to it insead of calling PHP's default handler. [#32834]
+- Use WordPress core's `Plugin_Upgrader` to install plugins, as it handles edge cases better. [#33216]
+
+## 3.1.5 - 2023-04-27
+### Security
+- Disable HTML-style tags in the markdown renderer, the library used doesn't always handle them properly. [#30339]
+
+### Changed
+- Updated package dependencies. [#28910]
+
+## 3.1.4 - 2023-01-11
+### Changed
+- Admin menu: ensure that the Jetpack Beta menu always lives under the main Jetpack menu.
+
+## 3.1.3 - 2022-09-20
+### Changed
+- Renaming `master` references to `trunk` [#24712]
+- Updated package dependencies.
+
 ## 3.1.2 - 2022-06-08
 ### Added
 - Adding trunk branch cases in preparation for monorepo branch renaming

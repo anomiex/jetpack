@@ -1,4 +1,4 @@
-<?php // phpcs:disable WordPress.PHP.DevelopmentFunctions.error_log_print_r
+<?php
 /**
  * Plugin Name: IDC Simulator
  * Description: Cause an IDC on your site without having to clone it.
@@ -11,6 +11,8 @@
 
 /**
  * Class Broken_Token
+ *
+ * @phan-constructor-used-for-side-effects
  */
 class IDC_Simulator {
 	/**
@@ -57,6 +59,7 @@ class IDC_Simulator {
 		add_action( 'admin_post_store_current_options', array( $this, 'admin_post_store_current_options' ) );
 
 		add_action( 'admin_post_idc_send_remote_request', array( $this, 'admin_post_idc_send_remote_request' ) );
+		add_action( 'admin_post_idc_clear_options', array( $this, 'admin_post_idc_clear_options' ) );
 
 		if ( isset( $_GET['idc_notice'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 			add_action( 'admin_notices', array( $this, 'display_notice' ) );
@@ -75,7 +78,7 @@ class IDC_Simulator {
 	 * @param string $url the siteurl value.
 	 */
 	public static function spoof_url( $url ) {
-		if ( defined( 'XMLRPC_REQUEST' ) && XMLRPC_REQUEST ) {
+		if ( ( defined( 'XMLRPC_REQUEST' ) && XMLRPC_REQUEST ) || ( defined( 'REST_REQUEST' ) && REST_REQUEST ) ) {
 			return $url;
 		}
 
@@ -115,8 +118,8 @@ class IDC_Simulator {
 	 * @param string $hook Called hook.
 	 */
 	public function enqueue_scripts( $hook ) {
-		if ( strpos( $hook, 'jetpack_page_broken-token' ) === 0 ) {
-			wp_enqueue_style( 'broken_token_style', plugin_dir_url( __FILE__ ) . '/css/style.css', array(), JETPACK_DEBUG_HELPER_VERSION );
+		if ( str_starts_with( $hook, 'jetpack-debug_page_idc-simulator' ) ) {
+			wp_enqueue_style( 'broken_token_style', plugin_dir_url( __FILE__ ) . 'inc/css/idc-simulator.css', array(), JETPACK_DEBUG_HELPER_VERSION );
 		}
 	}
 
@@ -230,6 +233,11 @@ class IDC_Simulator {
 		<h4>jetpack_safe_mode_confirmed</h4>
 		<pre><?php var_dump( get_option( 'jetpack_safe_mode_confirmed' ) ); //phpcs:ignore ?></pre>
 
+		<form action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" method="post">
+			<input type="hidden" name="action" value="idc_clear_options">
+			<?php wp_nonce_field( 'idc-clear-options' ); ?>
+			<input type="submit" value="Clear IDC Status" class="button button-primary">
+		</form>
 		<?php
 	}
 
@@ -327,8 +335,8 @@ class IDC_Simulator {
 		$response_body = json_decode( wp_remote_retrieve_body( $response ), true );
 		$response      = array(
 			'url'              => $response['http_response']->get_response_object()->url,
-			'idc_detected'     => isset( $response_body['idc_detected'] ) ? $response_body['idc_detected'] : false,
-			'migrated_for_idc' => isset( $response_body['migrated_for_idc'] ) ? $response_body['migrated_for_idc'] : false,
+			'idc_detected'     => $response_body['idc_detected'] ?? false,
+			'migrated_for_idc' => $response_body['migrated_for_idc'] ?? false,
 		);
 
 		array_unshift( $request_option, $response );
@@ -350,8 +358,8 @@ class IDC_Simulator {
 			array(
 				'idc_siteurl'       => isset( $_POST['idc_siteurl'] ) ? filter_var( wp_unslash( $_POST['idc_siteurl'] ) ) : null,
 				'idc_simulation'    => isset( $_POST['idc_simulation'] ) ? filter_var( wp_unslash( $_POST['idc_simulation'] ) ) : null,
-				'idc_spoof_siteurl' => isset( $_POST['idc_spoof_siteurl'] ) ? true : false,
-				'idc_spoof_home'    => isset( $_POST['idc_spoof_home'] ) ? true : false,
+				'idc_spoof_siteurl' => isset( $_POST['idc_spoof_siteurl'] ),
+				'idc_spoof_home'    => isset( $_POST['idc_spoof_home'] ),
 				'idc_sync_status'   => isset( $_POST['idc_sync_status'] ) ? filter_var( wp_unslash( $_POST['idc_sync_status'] ) ) : null,
 			)
 		);
@@ -396,43 +404,62 @@ class IDC_Simulator {
 	}
 
 	/**
+	 * Clear the stored IDC options.
+	 */
+	public function admin_post_idc_clear_options() {
+		check_admin_referer( 'idc-clear-options' );
+
+		delete_option( 'jetpack_sync_error_idc' );
+		delete_option( 'jetpack_migrate_for_idc' );
+		delete_option( 'jetpack_safe_mode_confirmed' );
+
+		$this->admin_post_redirect_referrer();
+	}
+
+	/**
 	 * Shows a simple success notice.
 	 */
 	public function admin_notice__stored_success() {
-		?>
-		<div class="notice notice-success is-dismissible">
-			<p>IDC simulation settings have been saved!</p>
-		</div>
-		<?php
+		wp_admin_notice(
+			'IDC simulation settings have been saved!',
+			array(
+				'type'        => 'success',
+				'dismissible' => true,
+			)
+		);
 	}
 
 	/**
 	 * Shows a simple success notice.
 	 */
 	public function admin_notice__request_success() {
-		?>
-		<div class="notice notice-success is-dismissible">
-			<p>The remote request was successfully sent!</p>
-		</div>
-		<?php
+		wp_admin_notice(
+			'The remote request was successfully sent!',
+			array(
+				'type'        => 'success',
+				'dismissible' => true,
+			)
+		);
 	}
 
 	/**
 	 * Shows a simple error notice.
 	 */
 	public function admin_notice__unknown_error() {
-		?>
-		<div class="notice notice-error is-dismissible">
-			<p>Something went wrong.</p>
-		</div>
-		<?php
+		wp_admin_notice(
+			'Something went wrong.',
+			array(
+				'type'        => 'error',
+				'dismissible' => true,
+			)
+		);
 	}
 
 	/**
 	 * Display a notice if necessary.
 	 */
 	public function display_notice() {
-		switch ( isset( $_GET['idc_notice'] ) ? $_GET['idc_notice'] : null ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		switch ( $_GET['idc_notice'] ?? null ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 			case self::STORED_SUCCESS_NOTICE_TYPE:
 				return $this->admin_notice__stored_success();
 
@@ -451,8 +478,12 @@ class IDC_Simulator {
 	 * Display a notice when Sync is disabled by this module.
 	 */
 	public function display_sync_disabled_notice() {
-		echo '<div class="notice notice-warning"><p>Sync has been disabled by the Jetpack Debug Helper plugin\'s IDC Simulator module.</p></div>';
-
+		wp_admin_notice(
+			'Sync has been disabled by the Jetpack Debug Helper plugin\'s IDC Simulator module.',
+			array(
+				'type' => 'warning',
+			)
+		);
 	}
 
 	/**
@@ -515,6 +546,8 @@ class IDC_Simulator {
 	}
 }
 
+// phpcs:disable Universal.Files.SeparateFunctionsFromOO.Mixed -- TODO: Move these functions to some other file.
+
 add_action( 'plugins_loaded', 'register_idc_simulator', 1000 );
 
 /**
@@ -532,7 +565,12 @@ function register_idc_simulator() {
  * Notice for if Jetpack is not active.
  */
 function idc_simulator_jetpack_not_active() {
-	echo '<div class="notice info"><p>Jetpack Debug tools: Jetpack_Options package must be present for the IDC Simulator to work.</p></div>';
+	wp_admin_notice(
+		'Jetpack Debug tools: Jetpack_Options package must be present for the IDC Simulator to work.',
+		array(
+			'type' => 'info',
+		)
+	);
 }
 
 IDC_Simulator::early_init();

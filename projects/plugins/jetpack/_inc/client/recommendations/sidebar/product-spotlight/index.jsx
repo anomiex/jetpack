@@ -1,11 +1,10 @@
-import { imagePath } from 'constants/urls';
-import { ExternalLink } from '@wordpress/components';
-import analytics from 'lib/analytics';
+import { Link } from '@wordpress/ui';
 import PropTypes from 'prop-types';
-import React, { useCallback } from 'react';
+import { useCallback } from 'react';
 import { connect } from 'react-redux';
+import { imagePath } from 'constants/urls';
+import analytics from 'lib/analytics';
 import { getProductCardData, getProductCardDataStepOverrides } from 'recommendations/feature-utils';
-
 // Styles for this component are the same as the discount card
 import '../discount-card/style.scss';
 
@@ -16,6 +15,7 @@ const ProductSpotlightComponent = props => {
 		productCardCtaText,
 		productCardList,
 		productCardIcon,
+		productCardDisclaimer,
 		stepSlug,
 	} = props;
 
@@ -30,29 +30,40 @@ const ProductSpotlightComponent = props => {
 			<div className="jp-recommendations-discount-card__container">
 				<div className="jp-recommendations-discount-card__card">
 					<div className="jp-recommendations-discount-card__card-header">
-						<img
-							className="jp-recommendations-discount-card__header-icon"
-							src={ imagePath + productCardIcon }
-							alt=""
-						/>
+						{ productCardIcon && (
+							<img
+								className="jp-recommendations-discount-card__header-icon"
+								src={ imagePath + productCardIcon }
+								alt=""
+							/>
+						) }
 					</div>
 					<div className="jp-recommendations-discount-card__card-body">
 						<h3 className="jp-recommendations-discount-card__heading">{ productCardTitle }</h3>
 						{ productCardList && (
 							<ul className="jp-recommendations-discount-card__feature-list">
-								{ productCardList.map( listItem => {
-									return <li>{ listItem }</li>;
+								{ productCardList.map( ( listItem, index ) => {
+									return <li key={ `feature-${ index }` }>{ listItem }</li>;
 								} ) }
 							</ul>
 						) }
-						<ExternalLink
+						{ productCardDisclaimer && (
+							<p className="jp-recommendations-discount-card__disclaimer">
+								{ productCardDisclaimer.text }{ ' ' }
+								<Link openInNewTab href={ productCardDisclaimer.url }>
+									{ productCardDisclaimer.link_text }
+								</Link>
+							</p>
+						) }
+						<Link
+							openInNewTab
 							type="button"
 							className="dops-button is-rna jp-recommendations-discount-card__button"
 							href={ productCardCtaLink }
 							onClick={ onProductCtaClick }
 						>
 							{ productCardCtaText }
-						</ExternalLink>
+						</Link>
 					</div>
 				</div>
 			</div>
@@ -60,7 +71,7 @@ const ProductSpotlightComponent = props => {
 	);
 };
 
-ProductSpotlightComponent.PropTypes = {
+ProductSpotlightComponent.propTypes = {
 	productSlug: PropTypes.string.isRequired,
 };
 

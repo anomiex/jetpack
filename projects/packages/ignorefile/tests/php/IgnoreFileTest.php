@@ -12,26 +12,25 @@ use Automattic\IgnoreFile;
 use Automattic\IgnoreFile\InvalidPatternException;
 use Exception;
 use InvalidArgumentException;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\ExpectationFailedException;
 use PHPUnit\Framework\TestCase;
-use PHPUnit_Framework_ExpectationFailedException;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 use RuntimeException;
 use SplFileInfo;
-use function Wikimedia\quietCall;
 
 /** Tests for IgnoreFile. */
 class IgnoreFileTest extends TestCase {
-	use \Yoast\PHPUnitPolyfills\Polyfills\ExpectException;
 
 	/**
 	 * Run test cases from IgnoreFileTestData.jsonc.
 	 *
 	 * @dataProvider provideCases
-	 * @param string|string[] $patterns Patterns to test.
-	 * @param string[]        $pathmap Paths to test.
+	 * @param string|string[]                                  $patterns Patterns to test.
+	 * @param array<string,array{ignored:bool,unignored:bool}> $pathmap Paths to test.
 	 */
+	#[DataProvider( 'provideCases' )]
 	public function testCases( $patterns, $pathmap ) {
 		$ignore = new IgnoreFile();
 		$ignore->add( $patterns );
@@ -58,7 +57,7 @@ class IgnoreFileTest extends TestCase {
 	}
 
 	/** Data provider for testCases(). */
-	public function provideCases() {
+	public static function provideCases() {
 		$map = array(
 			'nomatch'              => array(
 				'ignored'   => false,
@@ -105,7 +104,8 @@ class IgnoreFileTest extends TestCase {
 		$mask = rand( 0, 0xffffff );
 		for ( $i = 0; $i < 0xffffff; $i++ ) {
 			$tmpdir = $base . sprintf( '%06x', $i ^ $mask );
-			if ( quietCall( 'mkdir', $tmpdir, 0700 ) ) {
+			// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+			if ( @mkdir( $tmpdir, 0700 ) ) {
 				return $tmpdir;
 			}
 		}
@@ -118,9 +118,9 @@ class IgnoreFileTest extends TestCase {
 	 * @param string $dir Directory to remove.
 	 */
 	private function rmrf( $dir ) {
-		$iter = new \RecursiveIteratorIterator(
-			new \RecursiveDirectoryIterator( $dir, \FilesystemIterator::CURRENT_AS_PATHNAME | \FilesystemIterator::SKIP_DOTS ),
-			\RecursiveIteratorIterator::CHILD_FIRST
+		$iter = new RecursiveIteratorIterator(
+			new RecursiveDirectoryIterator( $dir, \FilesystemIterator::CURRENT_AS_PATHNAME | \FilesystemIterator::SKIP_DOTS ),
+			RecursiveIteratorIterator::CHILD_FIRST
 		);
 		foreach ( $iter as $path ) {
 			if ( is_dir( $path ) ) {
@@ -142,6 +142,7 @@ class IgnoreFileTest extends TestCase {
 	 * @throws RuntimeException If subprocess spawning fails.
 	 * @throws Exception If a PHPUnit exception fails 🙄 .
 	 */
+	#[DataProvider( 'provideCasesGit' )]
 	public function testCasesGit( $patterns, $pathmap, $skip = false ) {
 		$tmpdir = $this->mktempdir();
 		try {
@@ -183,10 +184,10 @@ class IgnoreFileTest extends TestCase {
 				$this->assertEquals( $expect, $actual, "Testing $path" );
 			}
 			if ( $skip ) {
-				$this->addWarning( 'This test is marked as "nogit" but passes. Maybe the "nogit" can be removed?' );
+				trigger_error( 'This test is marked as "nogit" but passes. Maybe the "nogit" can be removed?', E_USER_WARNING );
 			}
 		} catch ( Exception $ex ) {
-			if ( $skip && ( $ex instanceof PHPUnit_Framework_ExpectationFailedException || $ex instanceof ExpectationFailedException ) ) {
+			if ( $skip && $ex instanceof ExpectationFailedException ) {
 				$this->markTestSkipped( 'Git doesn\'t match its own docs' );
 			} else {
 				throw $ex;
@@ -197,10 +198,10 @@ class IgnoreFileTest extends TestCase {
 	}
 
 	/** Data provider for testCasesGit(). */
-	public function provideCasesGit() {
+	public static function provideCasesGit() {
 		$git = shell_exec( 'command -v git 2>/dev/null' );
 		if ( ! $git ) {
-			$this->markTestSkipped( 'Git (or a POSIX shell) is unavailable' );
+			self::markTestSkipped( 'Git (or a POSIX shell) is unavailable' );
 		}
 
 		$map = array(
@@ -248,9 +249,21 @@ class IgnoreFileTest extends TestCase {
 		$ignore->add( array(), '.' );
 	}
 
-	/** Test add() with a prefix containing newlines. */
+	/** Test add() with a pattern containing newlines. */
 	public function testAdd_badNewlines() {
 		$ignore = new IgnoreFile();
+		$ignore->add( array( 'foo', "bar\nbaz", 'xxx' ) );
+		$this->assertTrue( $ignore->ignores( 'foo' ) );
+		$this->assertTrue( $ignore->ignores( 'xxx' ) );
+		$this->assertFalse( $ignore->ignores( 'bar' ) );
+		$this->assertFalse( $ignore->ignores( 'baz' ) );
+		$this->assertFalse( $ignore->ignores( "bar\nbaz" ) );
+	}
+
+	/** Test add() with a pattern containing newlines, strict mode. */
+	public function testAdd_badNewlines_strictMode() {
+		$ignore             = new IgnoreFile();
+		$ignore->strictMode = true;
 
 		$this->expectException( InvalidPatternException::class );
 		$this->expectExceptionMessage( 'Pattern at index 1 may not contain newlines' );
@@ -260,6 +273,15 @@ class IgnoreFileTest extends TestCase {
 	/** Test add() with an empty pattern. */
 	public function testAdd_emptyPattern() {
 		$ignore = new IgnoreFile();
+		$ignore->add( array( '', '!bar', '\\!', '!', 'xxx' ) );
+		$this->assertTrue( $ignore->ignores( '!' ) );
+		$this->assertTrue( $ignore->ignores( 'xxx' ) );
+	}
+
+	/** Test add() with an empty pattern, strict mode. */
+	public function testAdd_emptyPattern_strictMode() {
+		$ignore             = new IgnoreFile();
+		$ignore->strictMode = true;
 
 		$this->expectException( InvalidPatternException::class );
 		$this->expectExceptionMessage( 'Pattern at index 3 consists of only `!`' );
@@ -388,21 +410,39 @@ class IgnoreFileTest extends TestCase {
 	}
 
 	/**
-	 * Test handling of bad patterns.
+	 * Test handling of bad patterns in non-strict mode.
+	 *
+	 * @dataProvider provideBadPattern
+	 * @param string $pattern Pattern.
+	 * @param string $msg Exception message. Unused in this method.
+	 */
+	#[DataProvider( 'provideBadPattern' )]
+	// phpcs:ignore VariableAnalysis.CodeAnalysis.VariableAnalysis.UnusedVariable -- PHPUnit 12.2 requires methods with data providers to have an exact param count match
+	public function testBadPattern( $pattern, $msg ) {
+		$ignore = new IgnoreFile();
+		$ignore->add( array( 'aaa', $pattern, 'bbb' ) );
+		$this->assertTrue( $ignore->ignores( 'aaa' ) );
+		$this->assertTrue( $ignore->ignores( 'bbb' ) );
+	}
+
+	/**
+	 * Test handling of bad patterns in strict mode.
 	 *
 	 * @dataProvider provideBadPattern
 	 * @param string $pattern Pattern.
 	 * @param string $msg Exception message.
 	 */
-	public function testBadPattern( $pattern, $msg ) {
-		$ignore = new IgnoreFile();
+	#[DataProvider( 'provideBadPattern' )]
+	public function testBadPattern_strictMode( $pattern, $msg ) {
+		$ignore             = new IgnoreFile();
+		$ignore->strictMode = true;
 		$this->expectException( InvalidPatternException::class );
 		$this->expectExceptionMessage( $msg );
 		$ignore->add( array( $pattern ) );
 	}
 
 	/** Data provider for testBadPattern(). */
-	public function provideBadPattern() {
+	public static function provideBadPattern() {
 		return array(
 			'Collating symbol'             => array( 'foo[[.-.]]bar', 'Collating symbols (`[.` inside a bracket expression) are not supported (in pattern at index 0)' ),
 			'Collating symbol (2)'         => array( 'foo[x[.-.]y]bar', 'Collating symbols (`[.` inside a bracket expression) are not supported (in pattern at index 0)' ),
@@ -415,5 +455,4 @@ class IgnoreFileTest extends TestCase {
 			'Trailing backslash in something looking like a character class range' => array( 'foo[a-\\', 'Unexpected trailing backslash in pattern `foo[a-\\` at index 0' ),
 		);
 	}
-
 }

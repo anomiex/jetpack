@@ -1,14 +1,18 @@
 import { getRedirectUrl } from '@automattic/jetpack-components';
+import { getAdminUrl } from '@automattic/jetpack-script-data';
 import { __, _x } from '@wordpress/i18n';
+import { Component } from 'react';
 import Card from 'components/card';
-import ConnectUserBar from 'components/connect-user-bar';
 import { withModuleSettingsFormHelpers } from 'components/module-settings/with-module-settings-form-helpers';
 import { ModuleToggle } from 'components/module-toggle';
 import SettingsCard from 'components/settings-card';
 import SettingsGroup from 'components/settings-group';
 import analytics from 'lib/analytics';
-import React, { Component } from 'react';
+import { FEATURE_JETPACK_SOCIAL } from '../lib/plans/constants';
 
+/**
+ * Publicize module settings.
+ */
 export const Publicize = withModuleSettingsFormHelpers(
 	class extends Component {
 		trackClickConfigure() {
@@ -19,85 +23,70 @@ export const Publicize = withModuleSettingsFormHelpers(
 		}
 
 		render() {
-			const unavailableInOfflineMode = this.props.isUnavailableInOfflineMode( 'publicize' ),
-				isLinked = this.props.isLinked,
-				isOfflineMode = this.props.isOfflineMode,
-				siteRawUrl = this.props.siteRawUrl,
-				isActive = this.props.getOptionValue( 'publicize' ),
+			const isActive = this.props.getOptionValue( 'publicize' ),
 				userCanManageModules = this.props.userCanManageModules;
-
-			const configCard = () => {
-				if ( unavailableInOfflineMode ) {
-					return;
-				}
-
-				return (
-					isLinked && (
-						<Card
-							compact
-							className="jp-settings-card__configure-link"
-							onClick={ this.trackClickConfigure }
-							target="_blank"
-							rel="noopener noreferrer"
-							href={ getRedirectUrl( 'calypso-marketing-connections', { site: siteRawUrl } ) }
-						>
-							{ __( 'Connect your social media accounts', 'jetpack' ) }
-						</Card>
-					)
-				);
-			};
 
 			if ( ! userCanManageModules && ! isActive ) {
 				return null;
 			}
 
+			const isLinked = this.props.isLinked,
+				isOfflineMode = this.props.isOfflineMode;
+
 			return (
 				<SettingsCard
 					{ ...this.props }
-					header={ _x( 'Publicize connections', 'Settings header', 'jetpack' ) }
+					header={ _x( 'Jetpack Social', 'Settings header', 'jetpack' ) }
 					module="publicize"
 					hideButton
+					feature={ FEATURE_JETPACK_SOCIAL }
+					isDisabled={ isOfflineMode || ! isLinked }
 				>
-					{ userCanManageModules && (
-						<SettingsGroup
-							disableInOfflineMode
-							disableInSiteConnectionMode
-							module={ { module: 'publicize' } }
-							support={ {
-								text: __(
-									'Allows you to automatically share your newest content on social media sites, including Facebook and Twitter.',
-									'jetpack'
-								),
-								link: getRedirectUrl( 'jetpack-support-publicize' ),
-							} }
+					<SettingsGroup
+						hasChild
+						disableInOfflineMode
+						disableInSiteConnectionMode
+						module={ { module: 'publicize' } }
+						support={ {
+							text: __(
+								'Allows you to automatically share your newest content on social media sites, including Facebook and LinkedIn.',
+								'jetpack'
+							),
+							link: getRedirectUrl( 'jetpack-support-publicize' ),
+						} }
+					>
+						<p>
+							{ __(
+								'Enable Jetpack Social and connect your social accounts to automatically share your content with your followers with a single click. When you publish a post, you will be able to share it on all connected accounts.',
+								'jetpack'
+							) }
+						</p>
+
+						<ModuleToggle
+							slug="publicize"
+							disabled={
+								isOfflineMode ||
+								! isLinked ||
+								! userCanManageModules ||
+								this.props.isSavingAnyOption( 'publicize' )
+							}
+							activated={ isActive }
+							toggleModule={ this.props.toggleModuleNow }
 						>
-							<p>
-								{ __(
-									'Connect your website to the social media networks you use and share your content across all your social accounts with a single click. When you publish a post, it will appear on all connected accounts.',
-									'jetpack'
-								) }
-							</p>
-							<ModuleToggle
-								slug="publicize"
-								disabled={ unavailableInOfflineMode || ! this.props.isLinked }
-								activated={ isActive }
-								toggling={ this.props.isSavingAnyOption( 'publicize' ) }
-								toggleModule={ this.props.toggleModuleNow }
-							>
+							<span className="jp-form-toggle-explanation">
 								{ __( 'Automatically share your posts to social networks', 'jetpack' ) }
-							</ModuleToggle>
-						</SettingsGroup>
+							</span>
+						</ModuleToggle>
+					</SettingsGroup>
+					{ isActive && (
+						<Card
+							compact
+							onClick={ this.trackClickConfigure }
+							href={ getAdminUrl( 'admin.php?page=jetpack-social' ) }
+						>
+							{ __( 'Connect accounts and configure Social sharing', 'jetpack' ) }
+						</Card>
 					) }
-
-					{ ! isLinked && ! isOfflineMode && (
-						<ConnectUserBar
-							feature="publicize"
-							featureLabel={ __( 'Publicize', 'jetpack' ) }
-							text={ __( 'Connect to add your social media accounts.', 'jetpack' ) }
-						/>
-					) }
-
-					{ isActive && configCard() }
 				</SettingsCard>
 			);
 		}

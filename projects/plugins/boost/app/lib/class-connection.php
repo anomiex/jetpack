@@ -9,7 +9,6 @@
 
 namespace Automattic\Jetpack_Boost\Lib;
 
-use Automattic\Jetpack\Config as Jetpack_Config;
 use Automattic\Jetpack\Connection\Manager;
 use Automattic\Jetpack\Terms_Of_Service;
 
@@ -27,28 +26,14 @@ class Connection {
 	 */
 	private $manager;
 
-	/**
-	 * Constructor.
-	 */
 	public function __construct() {
 		$this->manager = new Manager( 'jetpack-boost' );
-
-		add_action( 'rest_api_init', array( $this, 'register_rest_routes' ) );
-
-		add_filter( 'jetpack_boost_js_constants', array( $this, 'add_connection_config_data' ) );
-
-		$this->initialize_deactivate_disconnect();
 	}
 
-	/**
-	 * Add connection data to the array of constants
-	 *
-	 * @param array $constants The associative array of constants.
-	 */
-	public function add_connection_config_data( $constants ) {
-		$constants['connection'] = $this->get_connection_api_response();
+	public function init() {
+		add_action( 'rest_api_init', array( $this, 'register_rest_routes' ) );
 
-		return $constants;
+		$this->initialize_deactivate_disconnect();
 	}
 
 	/**
@@ -80,7 +65,7 @@ class Connection {
 		}
 
 		foreach ( get_sites() as $s ) {
-			switch_to_blog( $s->blog_id );
+			switch_to_blog( (int) $s->blog_id );
 
 			$active_plugins = get_option( 'active_plugins' );
 
@@ -106,7 +91,7 @@ class Connection {
 	 * Get the WordPress.com blog ID of this site, if it's connected
 	 */
 	public static function wpcom_blog_id() {
-		return defined( 'IS_WPCOM' ) && IS_WPCOM ? get_current_blog_id() : \Jetpack_Options::get_option( 'id' );
+		return defined( 'IS_WPCOM' ) && IS_WPCOM ? get_current_blog_id() : (int) \Jetpack_Options::get_option( 'id' );
 	}
 
 	/**
@@ -115,18 +100,18 @@ class Connection {
 	 * @return boolean
 	 */
 	public function is_connected() {
+		/**
+		 * Filter that fakes the connection to WordPress.com. Useful for testing.
+		 *
+		 * @param bool $connection Return true to fake the connection.
+		 *
+		 * @since   1.0.0
+		 */
 		if ( true === apply_filters( 'jetpack_boost_connection_bypass', false ) ) {
 			return true;
 		}
 
-		// Temporary hack for Jetpack < 9.2 compatibility without notices.
-		if ( method_exists( $this->manager, 'is_connected' ) ) {
-			$is_connected = $this->manager->is_connected();
-		} else {
-			$is_connected = $this->manager->is_registered();
-		}
-
-		return $is_connected;
+		return $this->manager->is_connected();
 	}
 
 	/**
@@ -136,15 +121,15 @@ class Connection {
 	 */
 	public function register() {
 		if ( $this->is_connected() ) {
-			Analytics::record_user_event( 'connect_site' );
-
+			Analytics::record_user_event( 'using_existing_connection' );
 			return true;
 		}
 
 		$result = $this->manager->register();
 
 		if ( ! is_wp_error( $result ) ) {
-			Analytics::record_user_event( 'connect_site' );
+			Analytics::record_user_event( 'established_connection' );
+			Premium_Features::clear_cache();
 		}
 
 		return $result;
@@ -202,9 +187,14 @@ class Connection {
 
 		$response = $this->register();
 
+		// Clear premium features cache to force a refresh.
+		Premium_Features::clear_cache();
+
 		if ( is_wp_error( $response ) ) {
 			return $response;
 		}
+
+		do_action( 'jetpack_boost_connection_established' );
 
 		return rest_ensure_response( $this->get_connection_api_response() );
 	}
@@ -226,12 +216,22 @@ class Connection {
 	 * @return array
 	 */
 	public function get_connection_api_response() {
+		/**
+		 * Filter that fakes the connection to WordPress.com. Useful for testing.
+		 *
+		 * @param bool $connection Return true to fake the connection.
+		 *
+		 * @since   1.0.0
+		 */
 		$force_connected = apply_filters( 'jetpack_boost_connection_bypass', false );
 
-		return array(
-			'connected'   => $force_connected || $this->is_connected(),
-			'wpcomBlogId' => ( $force_connected || $this->is_connected() ) ? self::wpcom_blog_id() : null,
+		$response = array(
+			'connected'     => $force_connected || $this->is_connected(),
+			'wpcomBlogId'   => ( $force_connected || $this->is_connected() ) ? self::wpcom_blog_id() : null,
+			'userConnected' => $this->manager->is_user_connected(),
 		);
+
+		return $response;
 	}
 
 	/**
@@ -270,19 +270,5 @@ class Connection {
 	 */
 	public static function rest_authorization_required_code() {
 		return is_user_logged_in() ? 403 : 401;
-	}
-
-	public function ensure_connection() {
-		if ( ! apply_filters( 'jetpack_boost_connection_bypass', false ) ) {
-			$jetpack_config = new Jetpack_Config();
-			$jetpack_config->ensure(
-				'connection',
-				array(
-					'slug'     => 'jetpack-boost',
-					'name'     => 'Jetpack Boost',
-					'url_info' => '', // Optional, URL of the plugin.
-				)
-			);
-		}
 	}
 }

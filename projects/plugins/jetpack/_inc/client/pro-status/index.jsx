@@ -1,15 +1,15 @@
 import { getRedirectUrl } from '@automattic/jetpack-components';
 import { __, _n, _x } from '@wordpress/i18n';
+import { Text } from '@wordpress/ui';
+import clsx from 'clsx';
+import PropTypes from 'prop-types';
+import { Component } from 'react';
+import { connect } from 'react-redux';
 import Button from 'components/button';
 import QueryAkismetKeyCheck from 'components/data/query-akismet-key-check';
 import QuerySitePlugins from 'components/data/query-site-plugins';
 import QueryVaultPressData from 'components/data/query-vaultpress-data';
-import SimpleNotice from 'components/notice';
 import analytics from 'lib/analytics';
-import { get } from 'lodash';
-import PropTypes from 'prop-types';
-import React from 'react';
-import { connect } from 'react-redux';
 import {
 	getVaultPressScanThreatCount,
 	getVaultPressData,
@@ -24,14 +24,37 @@ import { getRewindStatus } from 'state/rewind';
 import { getScanStatus } from 'state/scan';
 import { getSitePlan, siteHasFeature, isFetchingSiteData } from 'state/site';
 import { isFetchingPluginsData, isPluginActive, isPluginInstalled } from 'state/site/plugins';
+import styles from './style.module.scss';
+
+/**
+ * Render a small status indicator with a coloured dot and label.
+ *
+ * @param {object}          props        - Component props.
+ * @param {string}          props.status - Status key.
+ * @param {React.ReactNode} props.label  - Label content.
+ * @return {import('react').ReactElement} The status indicator.
+ */
+const StatusIndicator = ( { status, label } ) => (
+	<Text variant="body-sm" className={ clsx( styles.status, styles[ `is-${ status }` ] ) }>
+		<span className={ styles.indicator } />
+		<span>{ label }</span>
+	</Text>
+);
+
+const DEFAULT_LABELS = {
+	active: __( 'Active', 'jetpack' ),
+	error: __( 'Error', 'jetpack' ),
+	action: __( 'Action needed', 'jetpack' ),
+	inactive: __( 'Inactive', 'jetpack' ),
+	initializing: __( 'Setting up', 'jetpack' ),
+};
 
 /**
  * Track click on Pro status badge.
  *
- * @param {string} type    Status of a certain feature.
- * @param {string} feature Slug of plugin or service.
- *
- * @returns {undefined}
+ * @param {string} type    - Status of a certain feature.
+ * @param {string} feature - Slug of plugin or service.
+ * @return {undefined}
  */
 const trackProStatusClick = ( type, feature ) =>
 	analytics.tracks.recordJetpackClick( {
@@ -43,14 +66,13 @@ const trackProStatusClick = ( type, feature ) =>
 /**
  * Build function to pass as onClick property.
  *
- * @param {string} type    Status of a certain feature.
- * @param {string} feature Slug of plugin or service.
- *
- * @returns {function} Function to track a click.
+ * @param {string} type    - Status of a certain feature.
+ * @param {string} feature - Slug of plugin or service.
+ * @return {Function} Function to track a click.
  */
 const handleClickForTracking = ( type, feature ) => () => trackProStatusClick( type, feature );
 
-class ProStatus extends React.Component {
+class ProStatus extends Component {
 	static propTypes = {
 		isCompact: PropTypes.bool,
 		proFeature: PropTypes.string,
@@ -68,17 +90,17 @@ class ProStatus extends React.Component {
 		switch ( this.props.rewindStatus.state ) {
 			case 'provisioning':
 				return {
-					status: 'is-info',
+					status: 'initializing',
 					text: __( 'Setting up', 'jetpack' ),
 				};
 			case 'awaiting_credentials':
 				return {
-					status: 'is-warning',
+					status: 'action',
 					text: __( 'Action needed', 'jetpack' ),
 				};
 			case 'active':
 				return {
-					status: 'is-success',
+					status: 'active',
 					text: __( 'Connected', 'jetpack' ),
 				};
 			default:
@@ -93,24 +115,17 @@ class ProStatus extends React.Component {
 			actionUrl = '';
 		switch ( type ) {
 			case 'threats':
-				status = 'is-error';
-				if ( this.props.isCompact ) {
-					action = _x(
-						'Threats',
-						'A caption for a small button to fix security issues.',
-						'jetpack'
-					);
-				} else {
-					action = _x(
-						'See threats',
-						'A caption for a small button to fix security issues.',
-						'jetpack'
-					);
-				}
+				status = 'error';
+				action = _x(
+					'Threats detected',
+					'A caption for a small button to fix security issues.',
+					'jetpack'
+				);
+
 				actionUrl = getRedirectUrl( 'vaultpress-dashboard' );
 				break;
 			case 'secure':
-				status = 'is-success';
+				status = 'active';
 				message = _x(
 					'Secure',
 					'Short message informing user that the site is secure.',
@@ -119,18 +134,21 @@ class ProStatus extends React.Component {
 				break;
 			case 'invalid_key':
 				return;
-			case 'rewind_connected':
+			case 'rewind_connected': {
 				const rewindMessage = this.getRewindMessage();
 				return (
-					<SimpleNotice showDismiss={ false } status={ rewindMessage.status } isCompact>
-						{ rewindMessage.text }
-					</SimpleNotice>
+					<StatusIndicator
+						status={ rewindMessage.status }
+						label={ DEFAULT_LABELS[ rewindMessage.status ] }
+					/>
 				);
+			}
 			case 'active':
-				return <span className="jp-dash-item__active-label">{ __( 'ACTIVE', 'jetpack' ) }</span>;
+				return <StatusIndicator status="active" label={ DEFAULT_LABELS.active } />;
 		}
-		return (
-			<SimpleNotice showDismiss={ false } status={ status } isCompact={ true }>
+
+		const label = (
+			<>
 				{ message }
 				{ action && (
 					<a
@@ -141,16 +159,17 @@ class ProStatus extends React.Component {
 						{ action }
 					</a>
 				) }
-			</SimpleNotice>
+			</>
 		);
+
+		return <StatusIndicator status={ status } label={ label } />;
 	};
 
 	/**
 	 * Return a button to Set Up a feature.
 	 *
-	 * @param {string} feature Slug of the feature to set up.
-	 *
-	 * @return {component} A Button component.
+	 * @param {string} feature - Slug of the feature to set up.
+	 * @return {import('react').ReactElement} A Button component.
 	 */
 	getSetUpButton = feature => {
 		return (
@@ -185,8 +204,8 @@ class ProStatus extends React.Component {
 		}
 
 		const hasFree = /jetpack_free*/.test( sitePlan.product_slug ),
-			usingVPBackups = get( vpData, [ 'data', 'features', 'backups' ], false ),
-			usingVPScan = get( vpData, [ 'data', 'features', 'security' ], false );
+			usingVPBackups = vpData?.data?.features?.backups ?? false,
+			usingVPScan = vpData?.data?.features?.security ?? false;
 
 		const getStatus = ( feature, active, installed ) => {
 			switch ( feature ) {
@@ -221,20 +240,17 @@ class ProStatus extends React.Component {
 					} else if ( scanStatus && scanStatus.state !== 'unavailable' ) {
 						if ( Array.isArray( scanStatus.threats ) && scanStatus.threats.length > 0 ) {
 							return (
-								<SimpleNotice showDismiss={ false } status="is-error" isCompact>
-									{ _n( 'Threat', 'Threats', scanStatus.threats.length, 'jetpack' ) }
-								</SimpleNotice>
+								<StatusIndicator
+									status="error"
+									label={ _n( 'Threat', 'Threats', scanStatus.threats.length, 'jetpack' ) }
+								/>
 							);
 						}
 						if ( ! scanStatus.credentials ) {
 							return '';
 						}
 						if ( scanStatus.credentials.length === 0 ) {
-							return (
-								<SimpleNotice showDismiss={ false } status="is-warning" isCompact>
-									{ __( 'Action needed', 'jetpack' ) }
-								</SimpleNotice>
-							);
+							return <StatusIndicator status="action" label={ DEFAULT_LABELS.action } />;
 						}
 						return this.getProActions( 'secure', 'scan' );
 					}

@@ -1,13 +1,11 @@
 import { __ } from '@wordpress/i18n';
+import { Component } from 'react';
+import { connect } from 'react-redux';
 import Banner from 'components/banner';
 import ConnectUserBar from 'components/connect-user-bar';
 import { withModuleSettingsFormHelpers } from 'components/module-settings/with-module-settings-form-helpers';
 import SettingsCard from 'components/settings-card';
 import SettingsGroup from 'components/settings-group';
-import { includes, forEach } from 'lodash';
-import PropTypes from 'prop-types';
-import React, { Component } from 'react';
-import { connect } from 'react-redux';
 import {
 	isOfflineMode,
 	isUnavailableInOfflineMode,
@@ -19,6 +17,22 @@ import { isModuleFound } from 'state/search';
 
 export const SearchableModules = withModuleSettingsFormHelpers(
 	class extends Component {
+		componentDidMount() {
+			document.addEventListener( 'click', this.handleAnchorClick );
+		}
+
+		componentWillUnmount() {
+			document.removeEventListener( 'click', this.handleAnchorClick );
+		}
+
+		handleAnchorClick = event => {
+			const anchor = event.target.closest( '.jp-searchable-banner a.dops-button[href="#"]' );
+
+			if ( anchor ) {
+				event.preventDefault();
+			}
+		};
+
 		handleBannerClick = module => {
 			return () => this.props.updateOptions( { [ module ]: true } );
 		};
@@ -30,18 +44,18 @@ export const SearchableModules = withModuleSettingsFormHelpers(
 			}
 
 			// Only render if search terms present
-			const searchTerms = this.props.searchTerm;
+			const searchTerms = this.props.searchTerm || '';
 			if ( searchTerms.length < 3 ) {
 				return null;
 			}
 
 			// Only should be features that don't already have a UI, and we want to reveal in search.
-			const safelist = [ 'contact-form', 'enhanced-distribution', 'json-api', 'notes' ];
+			const safelist = [ 'contact-form', 'json-api', 'notes' ];
 
 			const allModules = this.props.modules,
 				results = [];
-			forEach( allModules, ( moduleData, slug ) => {
-				if ( this.props.isModuleFound( slug ) && includes( safelist, slug ) ) {
+			for ( const [ slug, moduleData ] of Object.entries( allModules ) ) {
+				if ( this.props.isModuleFound( slug ) && safelist.includes( slug ) ) {
 					const isModuleUnavailableInOfflineMode =
 						this.props.isOfflineMode && this.props.isUnavailableInOfflineMode( moduleData.module );
 					const isModuleUnavailableInSiteConnectionMode =
@@ -50,7 +64,7 @@ export const SearchableModules = withModuleSettingsFormHelpers(
 
 					// Not available in offline or SiteConnection mode.
 					if ( isModuleUnavailableInOfflineMode || isModuleUnavailableInSiteConnectionMode ) {
-						return results.push(
+						results.push(
 							<ActiveCard
 								key={ slug }
 								moduleData={ moduleData }
@@ -58,6 +72,7 @@ export const SearchableModules = withModuleSettingsFormHelpers(
 								siteConnectionMode={ isModuleUnavailableInSiteConnectionMode }
 							/>
 						);
+						continue;
 					}
 
 					if ( this.props.getOptionValue( moduleData.module ) ) {
@@ -69,7 +84,7 @@ export const SearchableModules = withModuleSettingsFormHelpers(
 								key={ slug }
 								callToAction={ __( 'Activate', 'jetpack' ) }
 								description={ moduleData.description }
-								href="javascript:void( 0 )"
+								href="#"
 								icon="cog"
 								onClick={ this.handleBannerClick( moduleData.module ) }
 								title={ moduleData.name }
@@ -77,20 +92,12 @@ export const SearchableModules = withModuleSettingsFormHelpers(
 						);
 					}
 				}
-			} );
+			}
 
 			return <div>{ results }</div>;
 		}
 	}
 );
-
-SearchableModules.propTypes = {
-	searchTerm: PropTypes.string,
-};
-
-SearchableModules.defaultProps = {
-	searchTerm: '',
-};
 
 class ActiveCard extends Component {
 	render() {

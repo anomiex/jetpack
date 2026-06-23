@@ -2,31 +2,36 @@
 
 ## Table of contents
 
-* [Setting up your environment](#setting-up-your-environment)
-   * [Overview](#overview)
-   * [Running Jetpack locally](#running-jetpack-locally)
-      * [Docker (Recommended)](#docker-supported-recommended)
-      * [VVV](#vvv)
-      * [Local web and database servers](#local-web-and-database-servers)
-      * [Developing and contributing code to Jetpack from a Windows machine](#developing-and-contributing-code-to-jetpack-from-a-windows-machine)
-   * [Get started with development](#get-started-with-development)
-      * [Clone the repository](#clone-the-repository)
-      * [Install development tools](#install-development-tools)
-        * [NodeJS](#nodejs)
-        * [Pnpm package manager](#pnpm)
-        * [PHP](#php)
-        * [Composer](#composer)
-        * [jetpack CLI](#jetpack-cli)
-      * [Check if your environment is ready for Jetpack development](#check-if-your-environment-is-ready-for-jetpack-development)
-* [Start development](#development-workflow)
-   * [Run a development build](#development-build)
-* [Unit Testing](#unit-testing)
-   * [PHP unit testing](#php-unit-tests)
-   * [JavaScript unit testing](#javascript-unit-tests)
-* [Good code - linting, standards, compatibility, etc.](#good-code---linting-standards-compatibility-etc)
-	* [Coding standards](#coding-standards)
-	* [Linting](#linting)
-* [Standard development & debugging tools](#standard-development--debugging-tools)
+- [Setting up your environment](#setting-up-your-environment)
+	- [Overview](#overview)
+	- [Running Jetpack locally](#running-jetpack-locally)
+		- [Docker (Supported Recommended)](#docker-supported-recommended)
+		- [VVV](#vvv)
+		- [Local web and database servers](#local-web-and-database-servers)
+		- [Developing and contributing code to Jetpack from a Windows machine](#developing-and-contributing-code-to-jetpack-from-a-windows-machine)
+	- [Get started with development](#get-started-with-development)
+		- [Clone the repository](#clone-the-repository)
+		- [Install development tools](#install-development-tools)
+			- [Node.js](#nodejs)
+			- [Pnpm](#pnpm)
+			- [PHP](#php)
+			- [Composer](#composer)
+			- [jetpack CLI](#jetpack-cli)
+		- [Check if your environment is ready for Jetpack development](#check-if-your-environment-is-ready-for-jetpack-development)
+		- [Testing Jetpack cloud features](#testing-jetpack-cloud-features)
+- [Development workflow](#development-workflow)
+	- [Building your project](#building-your-project)
+		- [Syncing local changes with Unison](#syncing-local-changes-with-unison)
+			- [Installing Unison](#installing-unison)
+			- [Configuring Unison](#configuring-unison)
+			- [Running Unison](#running-unison)
+- [Unit-testing](#unit-testing)
+	- [PHP unit tests](#php-unit-tests)
+	- [JavaScript unit tests](#javascript-unit-tests)
+- [Good code - linting, standards, compatibility, etc.](#good-code---linting-standards-compatibility-etc)
+	- [Coding standards](#coding-standards)
+	- [Linting](#linting)
+- [Standard development \& debugging tools](#standard-development--debugging-tools)
 
 # Setting up your environment
 
@@ -82,7 +87,11 @@ Before you get started, we recommend that you set up a public SSH key setup with
 
 Fork this repository to your own GitHub account and clone it to your local machine, as explained [in this guide](https://guides.github.com/activities/forking/). **If you are an Automattician, you can clone the repository directly.**
 
-If you use [our Docker setup](../tools/docker/README.md), you can now move on to the next step. If you use a different setup, you'll first need to create symlinks from the plugin directory in your local installation of WordPress to each of the plugins' directories in the monorepo (under `projects/plugins/`).
+If you use [our Docker setup](../tools/docker/README.md), you can now move on to the next step. 
+
+If you are not using a Docker setup, you'll first need to create symlinks from the plugin directory in your local installation of WordPress to each of the plugins' directories in the monorepo (under `projects/plugins/`).
+
+Note that the Monorepo should not be cloned into the WordPress plugins directory (you will see a warning on your plugins page in that case saying that the Jetpack Monorepo is not a plugin and shouldn't be installed as one). 
 
 ### Install development tools
 
@@ -92,7 +101,7 @@ You'll need all the tools below to work in the Jetpack monorepo.
 
 	Node.js is used in the build process of some of our tools. If it's not already installed on your system, you can [visit the Node.js website and install the latest Long Term Support (LTS) version](https://nodejs.org/).
 
-	You'll find the minimum required version in the engines section of package.json.
+	You'll find the minimum required version in the [engines section](https://github.com/Automattic/jetpack/blob/trunk/package.json#L36) of package.json.
 
 	We recommend usage of [nvm](https://github.com/nvm-sh/nvm/) for managing different Node versions on the same environment.
 
@@ -100,7 +109,7 @@ You'll need all the tools below to work in the Jetpack monorepo.
 
 	Pnpm is a Node.js package manager and it's used to install packages that are required to run development tools and build projects. To install it, either run `npm install -g pnpm` or you can [visit the Installation page of the project](https://pnpm.io/installation) for other methods.
 
-	You'll find the minimum required version in the engines section of package.json.
+	You'll find the minimum required version in the [engines section](https://github.com/Automattic/jetpack/blob/trunk/package.json#L36) of package.json.
 
 * #### PHP
 
@@ -114,14 +123,14 @@ You'll need all the tools below to work in the Jetpack monorepo.
 
 	Composer is a PHP package manager and it's used to install packages that are required to run development tools and build projects.
 
-	The monorepo requires version 2.3.x.
+	The monorepo requires Composer 2.9.x. The canonical source for required versions is [`.github/versions.sh`](../.github/versions.sh).
 
 	 * ##### Installing Composer on macOS
 
 		Composer can be installed using [Homebrew](https://brew.sh/). If you don't have Homebrew, install it with
 
 		```sh
-		/usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
+		bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 		```
 
 		And then install Composer:
@@ -151,7 +160,19 @@ tools/check-development-environment.sh
 
 Running the script will tell you if you have your environment already set up and what you need to do in order to get it ready for Jetpack development.
 
-If you're ready to start, you should see all green `SUCCESS` messages. If the script detect issues, you will see a a red `FAILED` note and a link that will help you figure out what you need to change/fix to address the issue.
+If you're ready to start, you should see all green `ok` or `yes` messages. If the script detects issues, you will see a red message indicating whether you are missing a requirement or have a version outside of the expected range, along with a link to help you address the issue.
+
+Once you're all set here, you can continue developing. If you're setting up a local environment and want to start testing immediately, please ensure you build the projects you need.
+
+`jetpack build` will provide prompts to determine the project you need or you can pass it a complete command, like `jetpack build plugins/jetpack --deps`
+
+### Testing Jetpack cloud features
+
+In order to test features that require a WordPress.com connection and other network related Jetpack features, you'll need a test site that can create local HTTP tunnels.
+
+If you're an Automattician, we recommend using [Jurassic Tube](./quick-start.md#setting-up-jurassic-tube).
+
+For other methods, check out [ngrok](../tools/docker/README.md#using-ngrok-with-jetpack) or [another similar service](https://alternativeto.net/software/ngrok/).
 
 # Development workflow
 
@@ -188,6 +209,43 @@ There are different types of builds:
 
 	Are pre-commit and pre-push hooks slowing down a major refactor or draft PR? Run `jetpack draft enable` to make them less aggressive (they will still run, but won't block for warnings), and `jetpack draft disable` when you're ready for them again.
 
+### Syncing local changes with Unison
+  
+  In some cases, you may need to test Jetpack (jetpack-mu-wpcom, in particular) changes by syncing your changes to another machine (rather than using Docker). This outlines a strategy for syncing changes in real-time using the [Unison](https://github.com/bcpierce00/unison) file sync tool combined with the [unison-fsmonitor](https://github.com/benesch/unison-fsmonitor) (Note that unison-fsmonitor is OSX-only).
+
+  This approach may be especially useful for Automatticians who are testing changes on their WordPress.com sandbox. Using Unison can be more continuous than rsync (or `jetpack rsync`).
+
+  #### Installing Unison
+
+  Please see the respective [Unison](https://github.com/bcpierce00/unison) and [unison-fsmonitor](https://github.com/benesch/unison-fsmonitor) repositories for full installation instructions. 
+
+  On OSX, you can use [Homebrew](https://brew.sh/) to quickly install both tools:
+
+  - `brew install unison autozimu/formulas/unison-fsmonitor`
+
+  #### Configuring Unison
+
+  Once Unison is installed, you'll want to create a preferences file. On OSX/Linux, that preferences file would be placed in `~/.unison` and could be called something like `jetpack-plugin-sync.prf`. See the Unison documentation for instructions for other platforms.
+
+  The built-in Unison help documentation may be useful:
+
+  - unison -doc tutorial | less
+  - unison -doc basics | less
+  - unison -doc running | less
+  
+  Here is a [sample preferences file](examples/unison-sample.prf). Please note that this example preferences file is set to _always_ prefer local changes over remote changes. You'll need to adjust the file if you require a two-way sync instead. See the Unison documentation (or run `unison -doc running | less`) for full configuration details.
+
+  #### Running Unison
+
+  Once your preference file is configured, you can simply run something like the following in a terminal:
+
+  ```
+  unison -ui text -repeat watch jetpack-plugin-sync
+  ```
+
+  Unison will watch for any local changes to the Jetpack files and sync them to your remote host.
+  
+  * For more advanced configuration when working on WordPress.com, see the [advanced unison configuration](unison-wordpress-com.md).
 ---
 
 # Unit-testing
@@ -201,31 +259,44 @@ To get started, there are several ways to run the unit tests, depending on how y
 
 ## PHP unit tests
 
-⚠️ This section is in need of update! Changes to how WordPress sets up its tests mean that a global version of phpunit is no longer provided.
-
 * ### Docker
 
 	To run the PHP unit tests for Jetpack if you're running Docker, you can run the following:
 
 	```sh
-	jetpack docker phpunit
+	jetpack docker phpunit jetpack
 	```
 
 	This will run unit tests for Jetpack. You can pass arguments to phpunit like so:
 
 	```sh
-	jetpack docker phpunit -- --filter=Protect
+	jetpack docker phpunit jetpack -- --filter=Protect
 	```
 
 	This command runs the tests as a multi site install
 
 	```sh
-	jetpack docker phpunit-multisite -- --filter=Protect
+	jetpack docker phpunit jp-multisite -- --filter=Protect
 	```
 
-	To run tests for specific packages, you can run the tests locally, from within the package's directory:
+	To run tests for specific packages, you can run the tests locally. The most straightforward way is to use `jetpack test`, for example
+	```sh
+	jetpack test -v php packages/assets
+	```
+	or you can usually run them manually like
 	```sh
 	cd projects/packages/assets
+	composer phpunit
+	```
+
+	If you want to run a package's tests inside the Docker environment, you can get a shell inside the Docker environment with `jetpack docker sh` and then
+	```sh
+	cd /usr/local/src/jetpack-monorepo/
+	pnpm jetpack test -v php packages/assets
+	```
+	or
+	```sh
+	cd /usr/local/src/jetpack-monorepo/projects/packages/assets
 	composer phpunit
 	```
 
@@ -254,7 +325,7 @@ To get started, there are several ways to run the unit tests, depending on how y
 	To run multisite tests, run:
 
 	```sh
-	phpunit -c tests/php.multisite.xml
+	phpunit -c tests/php.multisite.${PHPUNIT_MAJOR_VERSION}.xml
 	```
 
 	To filter and run just a particular test, you can run:
@@ -265,39 +336,57 @@ To get started, there are several ways to run the unit tests, depending on how y
 
 ## JavaScript unit tests
 
-Jetpack includes also several [Jest](https://jestjs.io/) based unit tests.
-To execute them in your local environment, you can use the following commands.
+The `jetpack test` command can be used from the monorepo's root to run a specific project's tests.
 
-* ### Admin Page unit tests
+This may be of limited benefit locally during development since it isn't possible to use watch mode or run tests only for an individual file.
 
-	Standing on your jetpack directory, run
+Each project within the monorepo may also have its own test commands, so an alternative is to `cd` into the project's root, and run the test commands from there.
 
-	```sh
-	pnpm install
-	pnpm test-client
-	pnpm test-gui
-	```
+### Packages
 
-* ### Jetpack modules unit tests
+Packages may have a package.json in the root that has a `scripts` entry, and this details the different types of test commands that can be run, `pnpm test` is the usual command for JavaScript unit tests.
 
-	Standing on your jetpack directory, run
+For example, to run an individual test file in watch mode:
+```sh
+cd projects/packages/forms
+pnpm test --watch -- path/to/test/file.js
+```
 
-	```sh
-	pnpm install
-	pnpm test-modules
-	```
+### Jetpack Plugin
 
-	You can also only run tests matching a specific pattern. To do that, use the argument `-g, --grep <pattern>`:
+The Jetpack plugin project also has some additional test commands that can be run from its root.
 
-	```sh
-	pnpm test-gui -g 'my custom pattern to filter tests'
-	```
+#### Admin Page unit tests
 
-	To use a custom reporter, pass the argument `-R, --reporter <name>`:
+Tests for the Jetpack dashboard and settings pages can be run using the following command:
 
-	```sh
-	pnpm test-client -R 'my_reporter'
-	```
+```sh
+cd projects/plugins/jetpack
+pnpm test-adminpage
+```
+
+This runs both the `client` (stores and other business logic) and `gui` (react component) tests, but they can also be run individually using `pnpm test-client` or `pnpm test-gui`.
+
+You can also run only tests that match a specific pattern. To do that, use the argument `-g, --grep <pattern>`:
+
+```sh
+pnpm test-gui -g 'my custom pattern to filter tests'
+```
+
+To use a custom reporter, pass the argument `-R, --reporter <name>`:
+
+```sh
+pnpm test-client -R 'my_reporter'
+```
+
+#### Extension unit tests
+
+Tests for editor extensions (including blocks, sidebars and more) can be run using the following command:
+
+```sh
+cd projects/plugins/jetpack
+pnpm test-extensions
+```
 
 # Good code - linting, standards, compatibility, etc.
 
@@ -305,8 +394,8 @@ To execute them in your local environment, you can use the following commands.
 
 We strongly recommend that you install tools to review your code in your IDE. It will make it easier for you to notice any missing documentation or coding standards you should respect. Most IDEs display warnings and notices inside the editor, making it even easier.
 
-- Jetpack's custom Code Sniffer ruleset is located at `./projects/packages/codesniffer/Jetpack/ruleset.xml`. Depending on your IDE, you can use this path or you may need to use `.phpcs.xml.dist` in the monorepo root. 
-- For JavaScript, we recommend installing ESLint. Most IDEs come with an ESLint plugin that you can use. Jetpack includes a `.eslintrc.js` file that defines our coding standards.
+- Jetpack's custom Code Sniffer ruleset is located at `./projects/packages/codesniffer/Jetpack/ruleset.xml`. Depending on your IDE, you can use this path or you may need to use `.phpcs.xml.dist` in the monorepo root.
+- For JavaScript, we recommend installing ESLint. Most IDEs come with an ESLint plugin that you can use. Jetpack includes a `eslint.config.mjs` file that defines our coding standards.
 
 ## Linting
 
@@ -326,9 +415,9 @@ We strongly recommend that you install tools to review your code in your IDE. It
 	composer phpcs:lint
 	```
 
-* ### Checking Jetpack's PHP for compatibility with different versions of PHP since 5.6
+* ### Checking Jetpack's PHP for compatibility with different versions of PHP
 
-	We have a handy `composer` script that will just run the PHP CodeSniffer `PHPCompatibilityWP` ruleset checking for code not compatible with PHP 5.6
+	We have a handy `composer` script that will just run the PHP CodeSniffer `PHPCompatibilityWP` ruleset checking for code not compatible with supported PHP versions:
 
 	```sh
 	composer phpcs:compatibility
@@ -386,9 +475,29 @@ We strongly recommend that you install tools to review your code in your IDE. It
 
 	`add_filter( 'jetpack_offline_mode', '__return_true' );`
 
-	While in Offline Mode, some features will not be available at all as they require WordPress.com for all functionality—Related Posts and Publicize, for example. Other features will have reduced functionality to give developers a good-faith representation of the feature. For example, Tiled Galleries requires the WordPress.com Photon CDN; however, in Offline Mode, Jetpack provides a fallback so developers can have a similar experience during development and testing. Find out more in [our support documentation](https://jetpack.com/support/jetpack-for-developers/).
+	See the [Custom code snippets](#custom-code-snippets-mu-plugins) section for more information on how to add custom code snippets.
+
+	While in Offline Mode, some features will not be available at all as they require WordPress.com for all functionality—Related Posts and Jetpack Social, for example. Other features will have reduced functionality to give developers a good-faith representation of the feature. For example, Tiled Galleries requires the WordPress.com Photon CDN; however, in Offline Mode, Jetpack provides a fallback so developers can have a similar experience during development and testing. Find out more in [our support documentation](https://jetpack.com/support/jetpack-for-developers/).
 
 * ### JETPACK__SANDBOX_DOMAIN
 
 	External contributors do not need this constant.
 	If you’re working on changes to the WordPress.com/server side of Jetpack, you’ll need to instruct your Jetpack installation to talk to your development server. Refer to internal documentation for detailed instructions.
+
+## Custom code snippets (mu-plugins)
+
+You can add [mu-plugins](https://developer.wordpress.org/advanced-administration/plugins/mu-plugins/) inside `tools/docker/mu-plugins` like `0-snippets.php` to add custom code snippets to your test site. Those files are gitignored. This is useful for testing specific features or debugging issues.
+
+For example, you can add the following code to the `0-snippets.php` file to use local Calypso URLs instead of the production ones for connecting a site.
+
+```php
+add_filter(
+	'jetpack_build_authorize_url',
+	function ( $url ) {
+		// Comment out this line when not using local Calypso development URL.
+		$url = str_replace( 'https://wordpress.com', 'http://calypso.localhost:3000', $url );
+
+		return $url;
+	}
+);
+```

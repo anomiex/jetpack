@@ -1,9 +1,6 @@
-import React, { Component } from 'react';
-import {
-	MULTISITE_NO_GROUP_VALUE,
-	RESULT_FORMAT_EXPANDED,
-	RESULT_FORMAT_PRODUCT,
-} from '../lib/constants';
+import * as React from 'react';
+import { Component } from 'react';
+import { RESULT_FORMAT_EXPANDED, RESULT_FORMAT_PRODUCT } from '../lib/constants';
 import { recordTrainTracksRender, recordTrainTracksInteract } from '../lib/tracks';
 import SearchResultExpanded from './search-result-expanded';
 import SearchResultMinimal from './search-result-minimal';
@@ -22,6 +19,17 @@ class SearchResult extends Component {
 	}
 
 	getCommonTrainTracksProps() {
+		let uiAlgo = 'jetpack-instant-search-ui/v1';
+		if ( this.props.resultFormat === RESULT_FORMAT_PRODUCT ) {
+			uiAlgo = uiAlgo + '-product';
+		} else if ( this.props.resultFormat === RESULT_FORMAT_EXPANDED ) {
+			uiAlgo = uiAlgo + '-expanded';
+		} else {
+			uiAlgo = uiAlgo + '-minimal';
+		}
+		if ( this.props.result.custom ) {
+			uiAlgo = uiAlgo + '-custom';
+		}
 		return {
 			fetch_algo: this.props.railcar.fetch_algo,
 			fetch_position: this.props.railcar.fetch_position,
@@ -30,8 +38,7 @@ class SearchResult extends Component {
 			rec_blog_id: this.props.railcar.rec_blog_id,
 			rec_post_id: this.props.railcar.rec_post_id,
 			session_id: this.props.railcar.session_id,
-			// TODO: Add a way to differentiate between different result formats
-			ui_algo: 'jetpack-instant-search-ui/v1',
+			ui_algo: uiAlgo,
 			ui_position: this.props.index,
 		};
 	}
@@ -46,17 +53,7 @@ class SearchResult extends Component {
 		if ( this.props.resultFormat === RESULT_FORMAT_PRODUCT ) {
 			return <SearchResultProduct onClick={ this.onClick } { ...this.props } />;
 		} else if ( this.props.resultFormat === RESULT_FORMAT_EXPANDED ) {
-			const isMultiSite =
-				this.props.staticFilters &&
-				this.props.staticFilters.group_id &&
-				this.props.staticFilters.group_id !== MULTISITE_NO_GROUP_VALUE;
-			return (
-				<SearchResultExpanded
-					onClick={ this.onClick }
-					{ ...this.props }
-					isMultiSite={ isMultiSite }
-				/>
-			);
+			return <SearchResultExpanded onClick={ this.onClick } { ...this.props } />;
 		}
 
 		return <SearchResultMinimal onClick={ this.onClick } { ...this.props } />;

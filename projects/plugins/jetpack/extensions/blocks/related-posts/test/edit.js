@@ -1,74 +1,157 @@
+import { useModuleStatus } from '@automattic/jetpack-shared-extension-utils';
 import { render, screen } from '@testing-library/react';
-import { RelatedPostsEdit } from '../edit';
+import { useSelect } from '@wordpress/data';
+import { getEditorType, SITE_EDITOR } from '../../../shared/get-editor-type';
+import RelatedPostsEdit from '../edit';
+import { useRelatedPostsStatus } from '../hooks/use-status-toggle';
 
-const posts = [
-	{
-		classes: [],
-		context: "In 'test one'",
-		date: 'February 15, 2020',
-		excerpt: 'This is the first post!',
-		format: false,
-		id: 10,
-		img: {
-			alt_text: '',
-			height: 200,
-			width: 350,
-			src: 'https://i0.wp.com/test/wp-content/uploads/2021/03/IMG_001.jpg?resize=350%2C200',
+const currentPost = {
+	'jetpack-related-posts': [
+		{
+			block_context: {
+				link: 'https://test.com',
+				text: 'Some text',
+			},
+			classes: [],
+			context: "In 'test one'",
+			date: 'February 15, 2020',
+			excerpt: 'This is the first post!',
+			format: false,
+			id: 10,
+			img: {
+				alt_text: '',
+				height: 200,
+				width: 350,
+				src: 'https://i0.wp.com/test/wp-content/uploads/2021/03/IMG_001.jpg?resize=350%2C200',
+			},
+			rel: '',
+			title: 'Test Post One',
+			url: 'http://test.com/?p=10',
+			url_meta: {
+				origin: 153,
+				positon: 0,
+			},
 		},
-		rel: '',
-		title: 'Test Post One',
-		url: 'http://test.com/?p=10',
-		url_meta: {
-			origin: 153,
-			positon: 0,
+		{
+			block_context: {
+				link: 'https://test.com',
+				text: 'Some text',
+			},
+			classes: [],
+			context: "In 'test two'",
+			date: 'February 14, 2020',
+			excerpt: 'This is the second post!',
+			format: false,
+			id: 9,
+			img: {
+				alt_text: '',
+				height: 200,
+				width: 350,
+				src: 'https://i0.wp.com/test/wp-content/uploads/2021/03/IMG_002.jpg?resize=350%2C200',
+			},
+			rel: '',
+			title: 'Test Post Two',
+			url: 'http://test.com/?p=9',
+			url_meta: {
+				origin: 153,
+				positon: 0,
+			},
 		},
-	},
-	{
-		classes: [],
-		context: "In 'test two'",
-		date: 'February 14, 2020',
-		excerpt: 'This is the second post!',
-		format: false,
-		id: 9,
-		img: {
-			alt_text: '',
-			height: 200,
-			width: 350,
-			src: 'https://i0.wp.com/test/wp-content/uploads/2021/03/IMG_002.jpg?resize=350%2C200',
-		},
-		rel: '',
-		title: 'Test Post Two',
-		url: 'http://test.com/?p=9',
-		url_meta: {
-			origin: 153,
-			positon: 0,
-		},
-	},
-];
+	],
+};
 
-describe( 'RelatedPostsEdit', () => {
-	const defaultAttributes = {
-		displayContext: false,
-		displayDate: false,
-		displayThumbnails: false,
-		postLayout: 'grid',
-		postsToShow: '2',
+jest.mock( '@automattic/jetpack-shared-extension-utils', () => ( {
+	__esModule: true,
+	...jest.requireActual( '@automattic/jetpack-shared-extension-utils' ),
+	useModuleStatus: jest.fn().mockReturnValue( {
+		isModuleActive: true,
+		isLoadingModules: false,
+		isChangingStatus: false,
+		changeStatus: jest.fn(),
+	} ),
+} ) );
+
+jest.mock( '../hooks/use-status-toggle' );
+
+jest.mock( '@wordpress/data', () => {
+	const actual = jest.requireActual( '@wordpress/data' );
+	const mocks = {
+		useSelect: jest.fn(),
 	};
+	return new Proxy( actual, {
+		get( target, property ) {
+			return mocks[ property ] ?? target[ property ];
+		},
+	} );
+} );
 
-	const setAttributes = jest.fn();
-	const defaultProps = {
-		attributes: defaultAttributes,
-		setAttributes,
-		clientId: 1,
-		posts: posts,
-		className: 'className',
+useSelect.mockImplementation( cb => {
+	return cb( () => ( {
+		getCurrentPost: jest.fn().mockReturnValueOnce( currentPost ),
+		isFirstMultiSelectedBlock: jest.fn().mockReturnValueOnce( true ),
+		getMultiSelectedBlockClientIds: () => [],
+	} ) );
+} );
+
+jest.mock( '../../../shared/get-editor-type', () => {
+	// eslint-disable-next-line no-shadow
+	const SITE_EDITOR = 'site-editor';
+	return {
+		__esModule: true,
+		SITE_EDITOR,
+		getEditorType: jest.fn( () => 'post-editor' ),
+	};
+} );
+
+jest.mock( '@wordpress/block-editor', () => ( {
+	...jest.requireActual( '@wordpress/block-editor' ),
+	useBlockProps: jest.fn(),
+	InnerBlocks: jest.fn(),
+} ) );
+
+jest.mock( '@wordpress/compose', () => ( {
+	...jest.requireActual( '@wordpress/compose' ),
+	useInstanceId: () => ( {
 		instanceId: 2,
-	};
+	} ),
+} ) );
 
-	beforeEach( () => {
-		setAttributes.mockClear();
+const setAttributes = jest.fn();
+const defaultAttributes = {
+	displayContext: false,
+	displayDate: false,
+	displayThumbnails: false,
+	postLayout: 'grid',
+	postsToShow: '2',
+};
+
+const defaultProps = {
+	attributes: defaultAttributes,
+	setAttributes,
+	clientId: 1,
+	className: 'className',
+	instanceId: 2,
+};
+
+beforeEach( () => {
+	setAttributes.mockClear();
+
+	useModuleStatus.mockReturnValue( {
+		isModuleActive: true,
+		changeStatus: jest.fn(),
 	} );
 
+	useRelatedPostsStatus.mockReturnValue( {
+		isEnabled: true,
+		enable: jest.fn(),
+		isFetchingStatus: false,
+		isUpdatingStatus: false,
+	} );
+
+	getEditorType.mockReturnValue( 'post-editor' );
+} );
+
+describe( 'RelatedPostsEdit', () => {
 	/**
 	 * Render related posts.
 	 *
@@ -112,6 +195,18 @@ describe( 'RelatedPostsEdit', () => {
 				)
 			).toBeInTheDocument();
 		} );
+		test( 'loads and displays placeholder when there are not enough related posts within Site Editor context', () => {
+			getEditorType.mockReturnValue( SITE_EDITOR );
+			renderRelatedPosts( { postsToShow: 3 } );
+
+			expect( screen.getByText( 'Test Post One' ) ).toBeInTheDocument();
+			expect( screen.getByText( 'Test Post Two' ) ).toBeInTheDocument();
+			expect(
+				screen.getByText(
+					'Preview unavailable in site editor. The post title will appear normally on your site.'
+				)
+			).toBeInTheDocument();
+		} );
 	} );
 
 	describe( 'optional settings', () => {
@@ -144,12 +239,6 @@ describe( 'RelatedPostsEdit', () => {
 			renderRelatedPosts();
 
 			expect( screen.queryByText( "In 'test'" ) ).not.toBeInTheDocument();
-		} );
-
-		test( 'displays post context when context setting is enabled', () => {
-			renderRelatedPosts( { displayContext: true } );
-
-			expect( screen.getByText( "In 'test one'" ) ).toBeInTheDocument();
 		} );
 
 		test( 'post title links to the post', () => {

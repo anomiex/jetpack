@@ -1,20 +1,23 @@
-import { RichText } from '@wordpress/block-editor';
+import { getBlockIconComponent } from '@automattic/jetpack-shared-extension-utils';
+import { RichText, useBlockProps } from '@wordpress/block-editor';
 import { Placeholder } from '@wordpress/components';
 import { createRef, useState, useEffect } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
-import classNames from 'classnames';
+import clsx from 'clsx';
+import metadata from './block.json';
 import SearchForm from './components/search-form';
 import Controls from './controls';
 import useFetchGiphyData from './hooks/use-fetch-giphy-data';
 import { getUrl, getSelectedGiphyAttributes } from './utils';
-import { icon, title } from './';
 
-function GifEdit( { attributes, setAttributes, className, isSelected } ) {
+const icon = getBlockIconComponent( metadata );
+
+function GifEdit( { attributes, setAttributes, isSelected } ) {
 	const { align, caption, giphyUrl, searchText, paddingTop } = attributes;
-	const classes = classNames( className, `align${ align }` );
 	const [ captionFocus, setCaptionFocus ] = useState( false );
 	const searchFormInputRef = createRef();
 	const { isFetching, giphyData, fetchGiphyData } = useFetchGiphyData();
+	const blockProps = useBlockProps();
 
 	const setSearchInputFocus = () => {
 		searchFormInputRef.current.focus();
@@ -22,32 +25,36 @@ function GifEdit( { attributes, setAttributes, className, isSelected } ) {
 	};
 
 	useEffect( () => {
-		if ( giphyData && giphyData[ 0 ] ) {
+		if ( ! giphyUrl && giphyData && giphyData[ 0 ] ) {
 			setAttributes( getSelectedGiphyAttributes( giphyData[ 0 ] ) );
 		}
-	}, [ giphyData, setAttributes ] );
+	}, [ giphyUrl, giphyData, setAttributes ] );
 
-	const onSubmit = event => {
+	const onSubmit = async event => {
 		event.preventDefault();
 
 		if ( ! attributes.searchText || isFetching ) {
 			return;
 		}
 
-		fetchGiphyData( getUrl( attributes.searchText ) );
+		const url = await getUrl( attributes.searchText );
+
+		if ( url ) {
+			fetchGiphyData( url );
+		}
 	};
 
 	const onChange = event => setAttributes( { searchText: event.target.value } );
 	const onSelectThumbnail = thumbnail => setAttributes( getSelectedGiphyAttributes( thumbnail ) );
 
 	return (
-		<div className={ classes }>
+		<div { ...blockProps } className={ clsx( blockProps.className, `align${ align }` ) }>
 			<Controls />
 			{ ! giphyUrl ? (
 				<Placeholder
 					className="wp-block-jetpack-gif_placeholder"
 					icon={ icon }
-					label={ title }
+					label={ metadata.title }
 					instructions={ __( 'Search for a term or paste a Giphy URL', 'jetpack' ) }
 				>
 					<SearchForm
@@ -102,7 +109,7 @@ function GifEdit( { attributes, setAttributes, className, isSelected } ) {
 							className="wp-block-jetpack-gif-caption gallery-caption"
 							inlineToolbar
 							isSelected={ captionFocus }
-							unstableOnFocus={ () => setCaptionFocus( false ) }
+							onFocus={ () => setCaptionFocus( false ) }
 							onChange={ value => setAttributes( { caption: value } ) }
 							placeholder={ __( 'Write caption…', 'jetpack' ) }
 							tagName="figcaption"

@@ -1,11 +1,9 @@
+import * as WPElement from '@wordpress/element';
 import { _x } from '@wordpress/i18n';
-import accessibleFocus from 'lib/accessible-focus';
-import { assign } from 'lodash';
-import Main from 'main';
-import React from 'react';
-import ReactDOM from 'react-dom';
 import { Provider } from 'react-redux';
-import { HashRouter, Route, Switch } from 'react-router-dom';
+import { HashRouter, Route, Routes } from 'react-router';
+import accessibleFocus from 'lib/accessible-focus';
+import Main from 'main';
 import * as actionTypes from 'state/action-types';
 import store from 'state/redux-store';
 
@@ -13,8 +11,9 @@ import store from 'state/redux-store';
 accessibleFocus();
 
 // Add dispatch and actionTypes to the window object so we can use it from the browser's console
+// eslint-disable-next-line no-undef -- webpack sets process.env.NODE_ENV
 if ( 'undefined' !== typeof window && process.env.NODE_ENV === 'development' ) {
-	assign( window, {
+	Object.assign( window, {
 		actionTypes: actionTypes,
 		dispatch: store.dispatch,
 	} );
@@ -23,7 +22,7 @@ if ( 'undefined' !== typeof window && process.env.NODE_ENV === 'development' ) {
 render();
 
 /**
- *
+ * Initial render function.
  */
 function render() {
 	const container = document.getElementById( 'jp-plugin-container' );
@@ -32,75 +31,76 @@ function render() {
 		return;
 	}
 
-	ReactDOM.render(
+	const component = (
 		<div>
 			<Provider store={ store }>
 				<HashRouter>
-					<Switch>
-						<Route path="/dashboard">
-							<Main routeName={ getRouteName( '/dashboard' ) } />
-						</Route>
-						<Route path="/reconnect">
-							<Main routeName={ getRouteName( '/reconnect' ) } />
-						</Route>
-						<Route path="/setup">
-							<Main routeName={ getRouteName( '/setup' ) } />
-						</Route>
-						<Route path="/my-plan">
-							<Main routeName={ getRouteName( '/my-plan' ) } />
-						</Route>
-						<Route path="/plans">
-							<Main routeName={ getRouteName( '/plans' ) } />
-						</Route>
-						<Route path="/recommendations">
-							<Main routeName={ getRouteName( '/recommendations' ) } />
-						</Route>
-						<Route path="/plans-prompt">
-							<Main routeName={ getRouteName( '/plans-prompt' ) } />
-						</Route>
-						<Route path="/settings">
-							<Main routeName={ getRouteName( '/settings' ) } />
-						</Route>
-						<Route path="/discussion">
-							<Main routeName={ getRouteName( '/discussion' ) } />
-						</Route>
-						<Route path="/security">
-							<Main routeName={ getRouteName( '/security' ) } />
-						</Route>
-						<Route path="/performance">
-							<Main routeName={ getRouteName( '/performance' ) } />
-						</Route>
-						<Route path="/traffic">
-							<Main routeName={ getRouteName( '/traffic' ) } />
-						</Route>
-						<Route path="/writing">
-							<Main routeName={ getRouteName( '/writing' ) } />
-						</Route>
-						<Route path="/sharing">
-							<Main routeName={ getRouteName( '/sharing' ) } />
-						</Route>
-						<Route path="/license/activation">
-							<Main routeName={ getRouteName( '/license/activation' ) } />
-						</Route>
-						<Route path="/wpbody-content" component={ Main } />
-						<Route path="/wp-toolbar" component={ Main } />
-						<Route path="/privacy" component={ Main } />
-						<Route path="/*">
-							<Main routeName={ getRouteName( '/*' ) } />
-						</Route>
-					</Switch>
+					<Routes>
+						<Route
+							path="/dashboard"
+							element={ <Main routeName={ getRouteName( '/dashboard' ) } /> }
+						/>
+						<Route
+							path="/reconnect"
+							element={ <Main routeName={ getRouteName( '/reconnect' ) } /> }
+						/>
+						<Route path="/setup" element={ <Main routeName={ getRouteName( '/setup' ) } /> } />
+						<Route path="/my-plan" element={ <Main routeName={ getRouteName( '/my-plan' ) } /> } />
+						<Route path="/plans" element={ <Main routeName={ getRouteName( '/plans' ) } /> } />
+						<Route
+							path="/recommendations/*"
+							element={ <Main routeName={ getRouteName( '/recommendations' ) } /> }
+						/>
+						<Route
+							path="/plans-prompt"
+							element={ <Main routeName={ getRouteName( '/plans-prompt' ) } /> }
+						/>
+						<Route
+							path="/settings"
+							element={ <Main routeName={ getRouteName( '/settings' ) } /> }
+						/>
+						<Route
+							path="/discussion"
+							element={ <Main routeName={ getRouteName( '/discussion' ) } /> }
+						/>
+						<Route path="/earn" element={ <Main routeName={ getRouteName( '/earn' ) } /> } />
+						<Route
+							path="/newsletter"
+							element={ <Main routeName={ getRouteName( '/newsletter' ) } /> }
+						/>
+						<Route path="/reader" element={ <Main routeName={ getRouteName( '/reader' ) } /> } />
+						<Route
+							path="/security"
+							element={ <Main routeName={ getRouteName( '/security' ) } /> }
+						/>
+						<Route
+							path="/performance"
+							element={ <Main routeName={ getRouteName( '/performance' ) } /> }
+						/>
+						<Route path="/traffic" element={ <Main routeName={ getRouteName( '/traffic' ) } /> } />
+						<Route path="/writing" element={ <Main routeName={ getRouteName( '/writing' ) } /> } />
+						<Route path="/sharing" element={ <Main routeName={ getRouteName( '/sharing' ) } /> } />
+						<Route
+							path="/license/activation"
+							element={ <Main routeName={ getRouteName( '/license/activation' ) } /> }
+						/>
+						<Route path="/wpbody-content" element={ <Main /> } />
+						<Route path="/wp-toolbar" element={ <Main /> } />
+						<Route path="/privacy" element={ <Main /> } />
+						<Route path="/*" element={ <Main routeName={ getRouteName( '/*' ) } /> } />
+					</Routes>
 				</HashRouter>
 			</Provider>
-		</div>,
-		container
+		</div>
 	);
+	WPElement.createRoot( container ).render( component );
 }
 
 /**
  * Get translated route name according to route path
  *
  * @param {string} path - route path
- * @returns {string} translated route name
+ * @return {string} translated route name
  */
 export function getRouteName( path ) {
 	switch ( path ) {
@@ -120,6 +120,12 @@ export function getRouteName( path ) {
 			return _x( 'Settings', 'Navigation item.', 'jetpack' );
 		case '/discussion':
 			return _x( 'Discussion', 'Navigation item.', 'jetpack' );
+		case '/earn':
+			return _x( 'Monetize', 'Navigation item.', 'jetpack' );
+		case '/newsletter':
+			return _x( 'Newsletter', 'Navigation item.', 'jetpack' );
+		case '/reader':
+			return _x( 'Reader', 'Navigation item.', 'jetpack' );
 		case '/security':
 			return _x( 'Security', 'Navigation item.', 'jetpack' );
 		case '/performance':

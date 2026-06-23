@@ -1,12 +1,14 @@
 import { getRedirectUrl } from '@automattic/jetpack-components';
+import { isJetpackSelfHostedSite } from '@automattic/jetpack-script-data';
 import { createInterpolateElement } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
+import { Link } from '@wordpress/ui';
+import { Component } from 'react';
+import { connect } from 'react-redux';
 import SimpleNotice from 'components/notice';
 import NoticeAction from 'components/notice/notice-action.jsx';
 import UpgradeNoticeContent from 'components/upgrade-notice-content';
-import React from 'react';
-import { connect } from 'react-redux';
-import { getCurrentVersion, getSiteAdminUrl, isAtomicPlatform } from 'state/initial-state';
+import { getCurrentVersion, getSiteAdminUrl } from 'state/initial-state';
 import {
 	getJetpackStateNoticesErrorCode,
 	getJetpackStateNoticesMessageCode,
@@ -14,7 +16,7 @@ import {
 	getJetpackStateNoticesMessageContent,
 } from 'state/jetpack-notices';
 
-class JetpackStateNotices extends React.Component {
+class JetpackStateNotices extends Component {
 	static displayName = 'JetpackStateNotices';
 	state = { showNotice: true };
 
@@ -27,7 +29,7 @@ class JetpackStateNotices extends React.Component {
 
 	getErrorFromKey = key => {
 		const errorDesc = this.props.jetpackStateNoticesErrorDescription || false;
-		let message = '';
+		let message;
 
 		switch ( key ) {
 			case 'cheatin':
@@ -72,21 +74,19 @@ class JetpackStateNotices extends React.Component {
 			case 'site_inaccessible':
 			case 'site_requires_authorization':
 				message = sprintf(
-					/* translators: placeholder is an error code and message. */
+					/* translators: %s: an error code and message. */
 					__( 'Your website needs to be publicly accessible to use Jetpack: %s', 'jetpack' ),
 					key
 				);
 				break;
-			case 'site_blacklisted':
+			case 'connection_disabled':
 				message = createInterpolateElement(
 					__(
 						"This site can't be connected to WordPress.com because it violates our <a>Terms of Service</a>.",
 						'jetpack'
 					),
 					{
-						a: (
-							<a href={ getRedirectUrl( 'wpcom-tos' ) } rel="noopener noreferrer" target="_blank" />
-						),
+						a: <Link openInNewTab href={ getRedirectUrl( 'wpcom-tos' ) } />,
 					}
 				);
 				break;
@@ -113,7 +113,7 @@ class JetpackStateNotices extends React.Component {
 			case 'register_http_request_failed':
 			case 'token_http_request_failed':
 				message = sprintf(
-					/* translators: placeholder is an error code and message. */
+					/* translators: %s: an error code and message. */
 					__(
 						'Jetpack could not contact WordPress.com: %s. This usually means something is incorrectly configured on your web host.',
 						'jetpack'
@@ -154,7 +154,7 @@ class JetpackStateNotices extends React.Component {
 			case 'verify_secrets_mismatch':
 				message = createInterpolateElement(
 					sprintf(
-						/* translators: placeholder is an error code and message. */
+						/* translators: %s: an error code and message. */
 						__(
 							'<s>Your Jetpack has a glitch.</s> We’re sorry for the inconvenience. Please try again later, if the issue continues please contact support with this message: %s',
 							'jetpack'
@@ -191,10 +191,10 @@ class JetpackStateNotices extends React.Component {
 		switch ( key ) {
 			// This is the message that is shown on first page load after a Jetpack plugin update.
 			case 'modules_activated':
-				if ( ! this.props.isAtomicPlatform ) {
+				if ( isJetpackSelfHostedSite() ) {
 					message = createInterpolateElement(
 						sprintf(
-							/* translators: placeholder is a version number, like 8.8. */
+							/* translators: %s: a version number, like 8.8. */
 							__( 'Welcome to <s>Jetpack %s</s>!', 'jetpack' ),
 							this.props.currentVersion
 						),
@@ -218,7 +218,7 @@ class JetpackStateNotices extends React.Component {
 				break;
 			case 'protect_misconfigured_ip':
 				message = __(
-					'Your server is misconfigured, which means that Jetpack Protect is unable to effectively protect your site.',
+					'Your server is misconfigured, which means that Jetpack Brute Force Protection is unable to effectively protect your site.',
 					'jetpack'
 				);
 				status = 'is-info';
@@ -269,7 +269,7 @@ class JetpackStateNotices extends React.Component {
 		}
 
 		// Show custom message for updated Jetpack.
-		if ( messageContent && messageContent.release_post_content && ! this.props.isAtomicPlatform ) {
+		if ( messageContent && messageContent.release_post_content && isJetpackSelfHostedSite() ) {
 			return (
 				<UpgradeNoticeContent
 					dismiss={ this.dismissJetpackStateNotice }
@@ -311,7 +311,6 @@ class JetpackStateNotices extends React.Component {
 export default connect( state => {
 	return {
 		currentVersion: getCurrentVersion( state ),
-		isAtomicPlatform: isAtomicPlatform( state ),
 		jetpackStateNoticesErrorCode: getJetpackStateNoticesErrorCode( state ),
 		jetpackStateNoticesMessageCode: getJetpackStateNoticesMessageCode( state ),
 		jetpackStateNoticesErrorDescription: getJetpackStateNoticesErrorDescription( state ),

@@ -32,6 +32,13 @@
 	line-height: 32px;
 }
 
+/* Emerald Typography/Title Medium Semi Bold */
+.title-medium-semi-bold {
+	font-size: var(--font-title-medium);
+	font-weight: 600;
+	line-height: 32px;
+}
+
 /* Emerald Typography/Title Small */
 .title-small {
 	font-size: var(--font-title-small);
@@ -60,6 +67,13 @@
 	line-height: 20px;
 }
 
+/* Emerald Typography/Body Extra Small Bold */
+.body-extra-small-bold {
+	font-size: var(--font-body-extra-small);
+	font-weight: 700;
+	line-height: 20px;
+}
+
 /* Emerald Typography/Body Extra Small Label */
 .label {
 	font-size: var(--font-body-extra-small);
@@ -84,27 +98,29 @@ $sides: (
 	$sizes: ( 0, 1, 2, 3, 4, 5, 6, 7, 8 );
 
 	@each $size in $sizes {
+
 		/* m, p */
 		.#{$p}-#{$size} {
-			#{$prop}: calc( var( --spacing-base ) * #{$size} );
+			#{$prop}: calc(var(--spacing-base) * #{$size});
 		}
 
 		/* mx, px */
 		.#{$p}x-#{$size} {
-			#{$prop}-left: calc( var( --spacing-base ) * #{$size} );
-			#{$prop}-right: calc( var( --spacing-base ) * #{$size} );
+			#{$prop}-left: calc(var(--spacing-base) * #{$size});
+			#{$prop}-right: calc(var(--spacing-base) * #{$size});
 		}
 
 		.#{$p}y-#{$size} {
-			#{$prop}-top: calc( var( --spacing-base ) * #{$size} );
-			#{$prop}-bottom: calc( var( --spacing-base ) * #{$size} );
+			#{$prop}-top: calc(var(--spacing-base) * #{$size});
+			#{$prop}-bottom: calc(var(--spacing-base) * #{$size});
 		}
 
 		/* mt, mr, mb, ml */
+
 		/* pt, pr, pb, pl */
 		@each $side, $s in $sides {
 			.#{$p}#{$s}-#{$size} {
-				#{$prop}-#{$side}: calc( var( --spacing-base ) * #{$size} );
+				#{$prop}-#{$side}: calc(var(--spacing-base) * #{$size});
 			}
 		}
 	}

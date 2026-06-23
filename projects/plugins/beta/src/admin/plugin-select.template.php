@@ -1,22 +1,25 @@
-<?php
+<?php // phpcs:ignore WordPress.Files.FileName.NotHyphenatedLowercase
 /**
  * Jetpack Beta wp-admin page to select a plugin to manage.
  *
+ * @html-template \Automattic\JetpackBeta\Admin::render
  * @package automattic/jetpack-beta
  */
+
+// phpcs:disable WordPress.WP.GlobalVariablesOverride.Prohibited -- This is an HTML template, not actually global.
 
 use Automattic\JetpackBeta\Plugin;
 use Automattic\JetpackBeta\Utils;
 
 // Check that the file is not accessed directly.
 if ( ! defined( 'ABSPATH' ) ) {
-	exit;
+	exit( 0 );
 }
 
-// -------------
-
-// phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited
 $plugins = Plugin::get_all_plugins( true );
+
+// This needs to be defined for show-needed-updates.template.php.
+$plugin = null;
 
 ?>
 
@@ -32,17 +35,16 @@ $plugins = Plugin::get_all_plugins( true );
 
 	<div class="jetpack-beta__wrap">
 	<?php
-	// phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited
 	foreach ( $plugins as $slug => $plugin ) {
 		$classes = array( 'dops-foldable-card', 'has-expanded-summary', 'dops-card' );
-		if ( is_plugin_active( $plugin->plugin_file() ) ) {
+		if ( $plugin->is_active( 'stable' ) ) {
 			$classes[] = 'plugin-stable';
 			$verslug   = $plugin->plugin_slug();
-			$version   = $plugin->stable_pretty_version();
-		} elseif ( is_plugin_active( $plugin->dev_plugin_file() ) ) {
+			$version   = $plugin->stable_pretty_version() ?? '';
+		} elseif ( $plugin->is_active( 'dev' ) ) {
 			$classes[] = 'plugin-dev';
 			$verslug   = $plugin->dev_plugin_slug();
-			$version   = $plugin->dev_pretty_version();
+			$version   = $plugin->dev_pretty_version() ?? '';
 		} else {
 			$classes[] = 'plugin-inactive';
 			$verslug   = '';
@@ -57,7 +59,7 @@ $plugins = Plugin::get_all_plugins( true );
 		);
 
 		?>
-		<div data-plugin="<?php echo esc_attr( $slug ); ?>" class="<?php echo esc_attr( join( ' ', $classes ) ); ?>">
+		<div data-plugin="<?php echo esc_attr( $slug ); ?>" class="<?php echo esc_attr( implode( ' ', $classes ) ); ?>">
 			<div class="dops-foldable-card__header has-border" >
 				<span class="dops-foldable-card__main">
 					<div class="dops-foldable-card__header-text">

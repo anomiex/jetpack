@@ -4,7 +4,8 @@ const { definePaletteColorsAsStaticVariables } = require( './webpack.helpers' );
 
 module.exports = {
 	mode: jetpackWebpackConfig.mode,
-	devtool: jetpackWebpackConfig.isDevelopment ? 'source-map' : false,
+	devtool: jetpackWebpackConfig.devtool,
+	cache: jetpackWebpackConfig.cache( __filename ),
 	entry: {
 		index: {
 			import: path.join( __dirname, '../modules/widget-visibility/editor/index.jsx' ),
@@ -30,13 +31,13 @@ module.exports = {
 			fs: false,
 		},
 	},
-	plugins: [
-		...jetpackWebpackConfig.StandardPlugins( {
-			DependencyExtractionPlugin: { injectPolyfill: true },
-			I18nLoaderPlugin: { textdomain: 'jetpack' },
+	plugins: [ ...jetpackWebpackConfig.StandardPlugins(), definePaletteColorsAsStaticVariables() ],
+	externals: {
+		...jetpackWebpackConfig.externals,
+		jetpackConfig: JSON.stringify( {
+			consumer_slug: 'jetpack',
 		} ),
-		definePaletteColorsAsStaticVariables(),
-	],
+	},
 	module: {
 		strictExportPresence: true,
 		rules: [
@@ -60,7 +61,7 @@ module.exports = {
 							postcssOptions: { config: path.join( __dirname, 'postcss.config.js' ) },
 						},
 					},
-					'sass-loader',
+					{ loader: 'sass-loader', options: { api: 'modern-compiler' } },
 				],
 			} ),
 

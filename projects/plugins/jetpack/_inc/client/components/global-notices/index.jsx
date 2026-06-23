@@ -1,18 +1,18 @@
-import SimpleNotice from 'components/notice/index.jsx';
-import NoticeAction from 'components/notice/notice-action';
 import debugModule from 'debug';
-import notices from 'notices';
 import PropTypes from 'prop-types';
-import React from 'react';
+import { Component } from 'react';
 import { connect } from 'react-redux';
 import { bindActionCreators } from 'redux';
+import SimpleNotice from 'components/notice/index.jsx';
+import NoticeAction from 'components/notice/notice-action';
+import notices from 'notices';
 import { removeNotice } from './state/notices/actions';
 
 const debug = debugModule( 'calypso:notices' );
 
 import './style.scss';
 
-class NoticesList extends React.Component {
+class NoticesList extends Component {
 	static displayName = 'NoticesList';
 
 	static propTypes = {

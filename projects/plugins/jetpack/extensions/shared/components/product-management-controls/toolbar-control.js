@@ -1,9 +1,10 @@
-import formatCurrency from '@automattic/format-currency';
+import { formatCurrency } from '@automattic/number-formatters';
 import { BlockControls } from '@wordpress/block-editor';
-import { ExternalLink, MenuGroup, MenuItem, ToolbarDropdownMenu } from '@wordpress/components';
+import { MenuGroup, MenuItem, ToolbarDropdownMenu } from '@wordpress/components';
 import { useSelect } from '@wordpress/data';
 import { __, sprintf } from '@wordpress/i18n';
-import { check, update, warning } from '@wordpress/icons';
+import { check, update, cautionFilled as warning } from '@wordpress/icons';
+import { Link } from '@wordpress/ui';
 import { store as membershipProductsStore } from '../../../store/membership-products';
 import { CUSTOMIZER_EDITOR, getEditorType } from '../../get-editor-type';
 import { useProductManagementContext } from './context';
@@ -30,7 +31,7 @@ function getProductDescription( product ) {
 			return amount;
 	}
 	return sprintf(
-		// translators: %s: amount, plan interval
+		// translators: %1$s: formatted price, %2$s: plan interval
 		__( '%1$s / %2$s', 'jetpack' ),
 		amount,
 		interval
@@ -38,16 +39,19 @@ function getProductDescription( product ) {
 }
 
 function Product( { onClose, product } ) {
-	const { selectedProductId, setSelectedProductId } = useProductManagementContext();
+	const { selectedProductIds, setSelectedProductIds } = useProductManagementContext();
 
 	const { id, title } = product;
-	const isSelected = selectedProductId && selectedProductId === id;
+	const isSelected = selectedProductIds && selectedProductIds.includes( id );
 	const icon = isSelected ? check : undefined;
 	const productDescription = product ? ' ' + getProductDescription( product ) : null;
 
 	const handleClick = event => {
 		event.preventDefault();
-		setSelectedProductId( id );
+		const selected = isSelected
+			? selectedProductIds.filter( productId => productId !== id )
+			: [ ...selectedProductIds, id ];
+		setSelectedProductIds( selected );
 		onClose();
 	};
 
@@ -67,11 +71,12 @@ function NewProduct( { onClose } ) {
 		return (
 			<MenuItem>
 				{ siteSlug && (
-					<ExternalLink
-						href={ `https://wordpress.com/earn/payments-plans/${ siteSlug }#add-new-payment-plan` }
+					<Link
+						openInNewTab
+						href={ `https://wordpress.com/earn/payments/${ siteSlug }#add-new-payment-plan` }
 					>
 						{ getMessageByProductType( 'add a new product', productType ) }
-					</ExternalLink>
+					</Link>
 				) }
 			</MenuItem>
 		);
@@ -99,23 +104,23 @@ function NewProduct( { onClose } ) {
 }
 
 export default function ProductManagementToolbarControl() {
-	const { products, productType, selectedProductId } = useProductManagementContext();
+	const { products, productType, selectedProductIds } = useProductManagementContext();
 
-	const { selectedProduct, shouldUpgrade } = useSelect( select => {
-		const { getProduct, getShouldUpgrade } = select( membershipProductsStore );
-		return {
-			selectedProduct: getProduct( selectedProductId ),
-			shouldUpgrade: getShouldUpgrade(),
-		};
-	} );
+	const selectedProducts = useSelect(
+		select => select( membershipProductsStore ).getSelectedProducts( selectedProductIds ),
+		[ selectedProductIds ]
+	);
 
 	let productDescription = null;
 	let subscriptionIcon = update;
 
-	if ( selectedProduct ) {
-		productDescription = getProductDescription( selectedProduct );
+	if ( selectedProducts.length > 1 ) {
+		productDescription = __( 'Multiple products selected', 'jetpack' );
+	} else if ( selectedProducts.length === 1 ) {
+		productDescription = getProductDescription( selectedProducts[ 0 ] );
 	}
-	if ( selectedProductId && ! selectedProduct ) {
+
+	if ( selectedProducts.length !== selectedProducts.length ) {
 		productDescription = getMessageByProductType( 'product not found', productType );
 		subscriptionIcon = warning;
 	}
@@ -135,11 +140,11 @@ export default function ProductManagementToolbarControl() {
 								<Product key={ product.id } onClose={ onClose } product={ product } />
 							) ) }
 						</MenuGroup>
-						{ ! shouldUpgrade && (
+						{
 							<MenuGroup>
 								<NewProduct onClose={ onClose } />
 							</MenuGroup>
-						) }
+						}
 					</>
 				) }
 			</ToolbarDropdownMenu>

@@ -12,8 +12,14 @@
  * @package automattic/jetpack
  */
 
+if ( ! defined( 'ABSPATH' ) ) {
+	exit( 0 );
+}
+
 /**
  * Display Untappd data in posts and pages.
+ *
+ * @phan-constructor-used-for-side-effects
  */
 class Jetpack_Untappd {
 
@@ -74,7 +80,7 @@ class Jetpack_Untappd {
 		$html .= 'PreloadEmbedMenu( "menu-container-untappd-' . $untappd_menu . '",' . $atts['location'] . ',' . $atts['theme'] . ' )});' . PHP_EOL;
 		$html .= '</script>';
 
-		$untappd_menu++;
+		++$untappd_menu;
 
 		return $html;
 	}

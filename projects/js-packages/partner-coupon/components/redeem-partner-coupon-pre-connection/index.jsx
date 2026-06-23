@@ -1,9 +1,8 @@
-import { ActionButton } from '@automattic/jetpack-components';
 import { ConnectScreen } from '@automattic/jetpack-connection';
 import { __, sprintf } from '@wordpress/i18n';
-import classNames from 'classnames';
+import { Button } from '@wordpress/ui';
+import clsx from 'clsx';
 import PropTypes from 'prop-types';
-import React from 'react';
 import { usePartnerCouponRedemption } from '../../hooks.js';
 
 /**
@@ -32,8 +31,9 @@ const RedeemPartnerCouponPreConnection = props => {
 		analytics
 	);
 
-	const classes = classNames( 'jetpack-redeem-partner-coupon-pre-connection', {
-		'jetpack-redeem-partner-coupon-pre-connection--connected': !! connectionStatus.hasConnectedOwner,
+	const classes = clsx( 'jetpack-redeem-partner-coupon-pre-connection', {
+		'jetpack-redeem-partner-coupon-pre-connection--connected':
+			!! connectionStatus.hasConnectedOwner,
 	} );
 
 	return (
@@ -47,12 +47,12 @@ const RedeemPartnerCouponPreConnection = props => {
 				from={ 'jetpack-partner-coupon' }
 				title={ sprintf(
 					/* translators: %s: Jetpack partner name. */
-					__( 'Welcome to Jetpack %s traveler!', 'jetpack' ),
+					__( 'Welcome to Jetpack %s traveler!', 'jetpack-partner-coupon' ),
 					partnerCoupon.partner.name
 				) }
 				buttonLabel={ sprintf(
 					/* translators: %s: Name of a Jetpack product. */
-					__( 'Set up & redeem %s', 'jetpack' ),
+					__( 'Set up & redeem %s', 'jetpack-partner-coupon' ),
 					partnerCoupon.product.title
 				) }
 				redirectUri={ `admin.php?page=jetpack&partnerCoupon=${ partnerCoupon.coupon_code }` }
@@ -61,7 +61,10 @@ const RedeemPartnerCouponPreConnection = props => {
 				<p>
 					{ sprintf(
 						/* translators: %s: Name of a Jetpack product. */
-						__( 'Redeem your coupon and get started with %s for free the first year!', 'jetpack' ),
+						__(
+							'Redeem your coupon and get started with %s for free the first year!',
+							'jetpack-partner-coupon'
+						),
 						partnerCoupon.product.title
 					) }
 				</p>
@@ -71,14 +74,13 @@ const RedeemPartnerCouponPreConnection = props => {
 					) ) }
 				</ul>
 				{ connectionStatus.hasConnectedOwner && (
-					<ActionButton
-						label={ sprintf(
+					<Button onClick={ onClick }>
+						{ sprintf(
 							/* translators: %s: Name of a Jetpack product. */
-							__( 'Redeem %s', 'jetpack' ),
+							__( 'Redeem %s', 'jetpack-partner-coupon' ),
 							partnerCoupon.product.title
 						) }
-						onClick={ onClick }
-					/>
+					</Button>
 				) }
 			</ConnectScreen>
 		</div>

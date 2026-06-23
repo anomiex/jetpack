@@ -1,4 +1,4 @@
-<?php // phpcs:ignore WordPress.Files.FileName
+<?php
 /**
  * Autoloader locator test suite.
  *
@@ -20,7 +20,7 @@ class AutoloaderLocatorTest extends TestCase {
 	 * The older version of the autoloader that we want to use. Note that
 	 * the version should support PSR-4 since this one does.
 	 */
-	const OLDER_VERSION = '2.4.0.0';
+	const OLDER_VERSION = '2.6.0.0';
 
 	/**
 	 * The directory of a plugin using the autoloader.
@@ -38,19 +38,17 @@ class AutoloaderLocatorTest extends TestCase {
 
 	/**
 	 * Setup before class runs before the class.
-	 *
-	 * @beforeClass
 	 */
-	public static function set_up_before_class() {
+	public static function setUpBeforeClass(): void {
+		parent::setUpBeforeClass();
 		self::$older_plugin_dir = Test_Plugin_Factory::create_test_plugin( false, self::OLDER_VERSION )->make();
 	}
 
 	/**
 	 * Setup executes before each test.
-	 *
-	 * @before
 	 */
-	public function set_up() {
+	public function setUp(): void {
+		parent::setUp();
 		$this->autoloader_locator = new Autoloader_Locator( new Version_Selector() );
 	}
 
@@ -63,15 +61,25 @@ class AutoloaderLocatorTest extends TestCase {
 		$this->assertNull( $latest );
 		$this->assertNull( $latest_version );
 
-		$latest = $this->autoloader_locator->find_latest_autoloader(
+		$latest_version = null;
+		$latest         = $this->autoloader_locator->find_latest_autoloader(
 			array( self::$older_plugin_dir ),
 			$latest_version
 		);
 		$this->assertEquals( self::$older_plugin_dir, $latest );
 		$this->assertEquals( self::OLDER_VERSION, $latest_version );
 
-		$latest = $this->autoloader_locator->find_latest_autoloader(
+		$latest_version = null;
+		$latest         = $this->autoloader_locator->find_latest_autoloader(
 			array( TEST_PLUGIN_DIR, self::$older_plugin_dir ),
+			$latest_version
+		);
+		$this->assertEquals( TEST_PLUGIN_DIR, $latest );
+		$this->assertEquals( Test_Plugin_Factory::VERSION_CURRENT, $latest_version );
+
+		$latest_version = null;
+		$latest         = $this->autoloader_locator->find_latest_autoloader(
+			array( TEST_PLUGIN_DIR, WP_PLUGIN_DIR . DIRECTORY_SEPARATOR . 'this-does-not-exist' ),
 			$latest_version
 		);
 		$this->assertEquals( TEST_PLUGIN_DIR, $latest );

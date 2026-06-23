@@ -7,8 +7,13 @@
 
 namespace Automattic\Jetpack\Search;
 
+use Automattic\Jetpack\Status;
 use GP_Locales;
 use Jetpack; // TODO: Remove this once migrated.
+
+if ( ! defined( 'ABSPATH' ) ) {
+	exit( 0 );
+}
 
 /**
  * Various helper functions for reuse throughout the Jetpack Search code.
@@ -22,11 +27,6 @@ class Helper {
 	 * @var string
 	 */
 	const FILTER_WIDGET_BASE = 'jetpack-search-filters';
-
-	/**
-	 * The post types to hide from 'Excluded post types'.
-	 */
-	const POST_TYPES_TO_HIDE_FROM_EXCLUDED_CHECK_LIST = array( 'attachment' );
 
 	/**
 	 * Create a URL for the current search that doesn't include the "paged" parameter.
@@ -181,11 +181,55 @@ class Helper {
 					$widget_filter['name'] = self::generate_widget_filter_name( $widget_filter );
 				}
 
-				$type = ( isset( $widget_filter['type'] ) ) ? $widget_filter['type'] : '';
-				$key  = sprintf( '%s_%d', $type, count( $filters ) );
+				$type = $widget_filter['type'] ?? '';
 
-				$filters[ $key ] = $widget_filter;
+				// If this is a product_attribute filter with no specific attribute, expand it to all global attributes.
+				if ( 'product_attribute' === $type && empty( $widget_filter['attribute'] ) ) {
+					$filters = self::expand_product_attribute_filters( $widget_filter, $filters );
+				} else {
+					$key             = sprintf( '%s_%d', $type, count( $filters ) );
+					$filters[ $key ] = $widget_filter;
+				}
 			}
+		}
+
+		return $filters;
+	}
+
+	/**
+	 * Expands a product_attribute filter into individual filters for each attribute.
+	 *
+	 * @since 5.8.0
+	 *
+	 * @param array $widget_filter The filter configuration.
+	 * @param array $filters The existing filters array.
+	 * @return array The filters array with expanded product attribute filters.
+	 */
+	private static function expand_product_attribute_filters( $widget_filter, $filters ) {
+		if ( ! function_exists( 'wc_get_attribute_taxonomies' ) || ! function_exists( 'wc_attribute_taxonomy_name' ) ) {
+			return $filters;
+		}
+
+		$product_attributes  = wc_get_attribute_taxonomies();
+		$included_attributes = isset( $widget_filter['included_attributes'] ) ? (array) $widget_filter['included_attributes'] : array();
+
+		// If no attributes are explicitly included, show all attributes (backward compatibility).
+		// Also optimize by treating "all selected" the same as "none selected" to avoid O(n²) in_array() checks.
+		$show_all = empty( $included_attributes ) || count( $included_attributes ) === count( $product_attributes );
+
+		foreach ( $product_attributes as $attribute ) {
+			$attribute_name = wc_attribute_taxonomy_name( $attribute->attribute_name );
+
+			if ( ! $show_all && ! in_array( $attribute_name, $included_attributes, true ) ) {
+				continue;
+			}
+
+			$key                          = sprintf( 'product_attribute_%d', count( $filters ) );
+			$expanded_filter              = $widget_filter;
+			$expanded_filter['attribute'] = $attribute_name;
+			$expanded_filter['name']      = $attribute->attribute_label;
+			unset( $expanded_filter['included_attributes'] );
+			$filters[ $key ] = $expanded_filter;
 		}
 
 		return $filters;
@@ -240,6 +284,14 @@ class Helper {
 				$name = _x( 'Post Types', 'label for filtering posts', 'jetpack-search-pkg' );
 				break;
 
+			case 'author':
+				$name = _x( 'Authors', 'label for filtering posts', 'jetpack-search-pkg' );
+				break;
+
+			case 'blog_id':
+				$name = _x( 'Blogs', 'label for filtering posts', 'jetpack-search-pkg' );
+				break;
+
 			case 'date_histogram':
 				$modified_fields = array(
 					'post_modified',
@@ -274,6 +326,11 @@ class Helper {
 					$name = $tax->labels->name;
 				}
 				break;
+
+			case 'product_attribute':
+				$name = _x( 'Product Attributes', 'label for filtering posts', 'jetpack-search-pkg' );
+				break;
+
 		}
 
 		return $name;
@@ -360,7 +417,7 @@ class Helper {
 		} elseif ( is_array( $_GET['post_type'] ) ) {
 			$post_types_from_query = $_GET['post_type'];
 		} else {
-			$post_types_from_query = (array) explode( ',', $_GET['post_type'] );
+			$post_types_from_query = explode( ',', $_GET['post_type'] );
 		}
 		// phpcs:enable WordPress.Security.NonceVerification.Recommended, WordPress.Security.ValidatedSanitizedInput
 
@@ -434,6 +491,10 @@ class Helper {
 					}
 
 					if ( 'filters' === $k ) {
+						if ( ! is_countable( $new_instance['filters'] ) || ! is_countable( $old_instance['filters'] ) ) {
+							continue;
+						}
+
 						if ( count( $new_instance['filters'] ) !== count( $old_instance['filters'] ) ) {
 							$widget = $new_instance;
 							break;
@@ -451,7 +512,7 @@ class Helper {
 			}
 		}
 
-		if ( empty( $action ) || empty( $widget ) ) {
+		if ( empty( $widget ) ) {
 			return false;
 		}
 
@@ -517,7 +578,7 @@ class Helper {
 
 			$key = sprintf( 'widget_filter_type_%s', $filter['type'] );
 			if ( isset( $filters_properties[ $key ] ) ) {
-				$filters_properties[ $key ] ++;
+				++$filters_properties[ $key ];
 			} else {
 				$filters_properties[ $key ] = 1;
 			}
@@ -746,7 +807,7 @@ class Helper {
 	 *
 	 * @since 8.9.0
 	 *
-	 * @param any $value from the customizer form.
+	 * @param mixed $value from the customizer form.
 	 * @return string either '0' or '1'.
 	 */
 	public static function sanitize_checkbox_value( $value ) {
@@ -758,7 +819,7 @@ class Helper {
 	 *
 	 * @since 8.9.0
 	 *
-	 * @param any $value from the database.
+	 * @param mixed $value from the database.
 	 * @return boolean
 	 */
 	public static function sanitize_checkbox_value_for_js( $value ) {
@@ -814,13 +875,6 @@ class Helper {
 				'name'          => $obj->labels->name,
 			);
 		}
-		$post_type_labels = array_filter(
-			$post_type_labels,
-			function ( $key ) {
-				return ! in_array( $key, self::POST_TYPES_TO_HIDE_FROM_EXCLUDED_CHECK_LIST, true );
-			},
-			ARRAY_FILTER_USE_KEY
-		);
 
 		$prefix         = Options::OPTION_PREFIX;
 		$posts_per_page = (int) get_option( 'posts_per_page' );
@@ -839,49 +893,85 @@ class Helper {
 		);
 		$unexcluded_post_types = array_diff( $post_types, $excluded_post_types );
 		// NOTE: If all post types are being excluded, ignore the option value.
-		if ( count( $unexcluded_post_types ) === 0 ) {
+		if ( array() === $unexcluded_post_types ) {
 			$excluded_post_types = array();
 		}
 
-		$is_wpcom                  = defined( 'IS_WPCOM' ) && constant( 'IS_WPCOM' );
-		$is_private_site           = '-1' === get_option( 'blog_public' );
+		$is_wpcom                  = static::is_wpcom();
+		$is_private_site           = ( new Status() )->is_private_site();
 		$is_jetpack_photon_enabled = method_exists( 'Jetpack', 'is_module_active' ) && Jetpack::is_module_active( 'photon' );
 
 		$options = array(
-			'overlayOptions'        => array(
-				'colorTheme'        => get_option( $prefix . 'color_theme', 'light' ),
-				'enableInfScroll'   => get_option( $prefix . 'inf_scroll', '1' ) === '1',
-				'enableSort'        => get_option( $prefix . 'enable_sort', '1' ) === '1',
-				'highlightColor'    => get_option( $prefix . 'highlight_color', '#FFC' ),
-				'overlayTrigger'    => get_option( $prefix . 'overlay_trigger', 'immediate' ),
-				'resultFormat'      => get_option( $prefix . 'result_format', Options::RESULT_FORMAT_MINIMAL ),
-				'showPoweredBy'     => get_option( $prefix . 'show_powered_by', '1' ) === '1',
+			'overlayOptions'              => array(
+				'colorTheme'                  => get_option( $prefix . 'color_theme', 'light' ),
+				'enableInfScroll'             => get_option( $prefix . 'inf_scroll', '1' ) === '1',
+				'enableFilteringOpensOverlay' => get_option( $prefix . 'filtering_opens_overlay', '1' ) === '1',
+				'enablePostDate'              => get_option( $prefix . 'show_post_date', '1' ) === '1',
+				'enableProductPrice'          => get_option( $prefix . 'show_product_price', '1' ) === '1',
+				'enableSort'                  => get_option( $prefix . 'enable_sort', '1' ) === '1',
+				'highlightColor'              => get_option( $prefix . 'highlight_color', '#FFC' ),
+				'overlayTrigger'              => get_option( $prefix . 'overlay_trigger', Options::DEFAULT_OVERLAY_TRIGGER ),
+				'resultFormat'                => get_option( $prefix . 'result_format', Options::RESULT_FORMAT_MINIMAL ),
+				'showPoweredBy'               => ( new Plan() )->is_free_plan() || ( get_option( $prefix . 'show_powered_by', '1' ) === '1' ),
 
 				// These options require kicking off a new search.
-				'defaultSort'       => get_option( $prefix . 'default_sort', 'relevance' ),
-				'excludedPostTypes' => $excluded_post_types,
+				'defaultSort'                 => get_option( $prefix . 'default_sort', 'relevance' ),
+				'excludedPostTypes'           => $excluded_post_types,
+
+				// Fallback image options
+				'fallbackImageUrl'            => get_option( $prefix . 'fallback_image_url', '' ),
+				'enableFallbackImage'         => get_option( $prefix . 'enable_fallback_image', '0' ) === '1',
 			),
 
 			// core config.
-			'homeUrl'               => home_url(),
-			'locale'                => str_replace( '_', '-', self::is_valid_locale( get_locale() ) ? get_locale() : 'en_US' ),
-			'postsPerPage'          => $posts_per_page,
-			'siteId'                => self::get_wpcom_site_id(),
-			'postTypes'             => $post_type_labels,
-			'webpackPublicPath'     => plugins_url( '/build/instant-search/', __DIR__ ),
-			'isPhotonEnabled'       => ( $is_wpcom || $is_jetpack_photon_enabled ) && ! $is_private_site,
+			'homeUrl'                     => home_url(),
+			'locale'                      => str_replace( '_', '-', self::is_valid_locale( get_locale() ) ? get_locale() : 'en_US' ),
+			'postsPerPage'                => $posts_per_page,
+			'siteId'                      => self::get_wpcom_site_id(),
+			'searchSuggestionsEnabled'    => (bool) get_option( 'jetpack_search_suggestions_enabled', false ),
+			'postTypes'                   => $post_type_labels,
+			'webpackPublicPath'           => plugins_url( '/build/instant-search/', __DIR__ ),
+			'isPhotonEnabled'             => ( $is_wpcom || $is_jetpack_photon_enabled ) && ! $is_private_site,
+			'isFreePlan'                  => ( new Plan() )->is_free_plan(),
 
 			// config values related to private site support.
-			'apiRoot'               => esc_url_raw( rest_url() ),
-			'apiNonce'              => wp_create_nonce( 'wp_rest' ),
-			'isPrivateSite'         => $is_private_site,
-			'isWpcom'               => $is_wpcom,
+			'apiRoot'                     => esc_url_raw( rest_url() ),
+			'apiNonce'                    => wp_create_nonce( 'wp_rest' ),
+			'isPrivateSite'               => $is_private_site,
+			'isWpcom'                     => $is_wpcom,
 
 			// widget info.
-			'hasOverlayWidgets'     => count( $overlay_widget_ids ) > 0,
-			'widgets'               => array_values( $widgets ),
-			'widgetsOutsideOverlay' => array_values( $widgets_outside_overlay ),
-			'hasNonSearchWidgets'   => $has_non_search_widgets,
+			'hasOverlayWidgets'           => is_countable( $overlay_widget_ids ) && count( $overlay_widget_ids ) > 0,
+			'widgets'                     => array_values( $widgets ),
+			'widgetsOutsideOverlay'       => array_values( $widgets_outside_overlay ),
+			'hasNonSearchWidgets'         => $has_non_search_widgets,
+			/**
+			 * Whether to prevent tracking cookie reset. More information `pbmxuV-39H-p2`.
+			 *
+			 * @module search
+			 *
+			 * @since 0.41.0
+			 *
+			 * @param bool Prevent cookie reset for automattic sites as default value.
+			 */
+			'preventTrackingCookiesReset' => apply_filters( 'jetpack_instant_search_prevent_tracking_cookies_reset', function_exists( 'is_automattic' ) && is_automattic() ),
+
+			/**
+			 * Whether to disable Tracks and TrainTracks analytics.
+			 *
+			 * This can be enabled via URL parameter (?disable_tracking=1) for testing,
+			 * or via the filter for permanent configuration. Useful for debugging issues
+			 * where tracking may interfere with search functionality, such as Safari's
+			 * advanced tracking protection.
+			 *
+			 * @module search
+			 *
+			 * @since 0.56.0
+			 *
+			 * @param bool $disable_tracking Whether to disable tracking. Default false.
+			 */
+			'disableTracking'             => self::is_tracking_disabled() || apply_filters( 'jetpack_instant_search_disable_tracking', false ),
+			'aiAnswersEnabled'            => AI_Answers::is_enabled(),
 		);
 
 		/**
@@ -894,6 +984,13 @@ class Helper {
 		 * @param array $options Array of parameters used in Instant Search queries.
 		 */
 		return apply_filters( 'jetpack_instant_search_options', $options );
+	}
+
+	/**
+	 * Returns true if the site is a WordPress.com simple site, i.e. the code runs on WPCOM.
+	 */
+	public static function is_wpcom() {
+		return defined( 'IS_WPCOM' ) && constant( 'IS_WPCOM' );
 	}
 
 	/**
@@ -944,5 +1041,44 @@ class Helper {
 
 		// Returns cache site ID.
 		return \Jetpack_Options::get_option( 'id' );
+	}
+
+	/**
+	 * Returns true if the free_plan is set to not empty in URL, which is used for testing purpose.
+	 */
+	public static function is_forced_free_plan() {
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized, WordPress.Security.ValidatedSanitizedInput.MissingUnslash
+		return isset( $_GET['free_plan'] ) && $_GET['free_plan'];
+	}
+
+	/**
+	 * Returns true if the new_pricing_202210 is set to not empty in URL for testing purpose.
+	 */
+	public static function is_forced_new_pricing_202208() {
+		$referrer = wp_get_referer();
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized, WordPress.Security.ValidatedSanitizedInput.MissingUnslash
+		return ( isset( $_GET['new_pricing_202208'] ) && $_GET['new_pricing_202208'] ) || $referrer && strpos( $referrer, 'new_pricing_202208=1' ) !== false;
+	}
+
+	/**
+	 * Returns true if tracking should be disabled via URL parameter, which is used for testing purposes.
+	 *
+	 * @since 0.56.0
+	 *
+	 * @return bool
+	 */
+	public static function is_tracking_disabled() {
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized, WordPress.Security.ValidatedSanitizedInput.MissingUnslash
+		return isset( $_GET['disable_tracking'] ) && $_GET['disable_tracking'];
+	}
+
+	/**
+	 * Enqueue the WordPress.com Tracks library that drains `window._tkq` and
+	 * sends the queued events. Shared by Instant Search and the Search blocks so
+	 * the handle, src, and cache-busting version live in one place. Callers own
+	 * the decision of whether to load it (e.g. the `is_tracking_disabled()` gate).
+	 */
+	public static function enqueue_tracks_script() {
+		wp_enqueue_script( 'jp-tracks', '//stats.wp.com/w.js', array(), gmdate( 'YW' ), true );
 	}
 }

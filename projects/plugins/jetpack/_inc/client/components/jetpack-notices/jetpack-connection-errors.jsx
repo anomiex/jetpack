@@ -1,14 +1,19 @@
-import { JETPACK_CONTACT_SUPPORT, JETPACK_CONTACT_BETA_SUPPORT } from 'constants/urls';
 import { __ } from '@wordpress/i18n';
+import PropTypes from 'prop-types';
+import { Component, Fragment } from 'react';
 import SimpleNotice from 'components/notice';
 import NoticeAction from 'components/notice/notice-action.jsx';
-import PropTypes from 'prop-types';
-import React from 'react';
+import { JETPACK_CONTACT_SUPPORT, JETPACK_CONTACT_BETA_SUPPORT } from 'constants/urls';
 import ErrorNoticeCycleConnection from './error-notice-cycle-connection';
 
-export default class JetpackConnectionErrors extends React.Component {
+export default class JetpackConnectionErrors extends Component {
 	static propTypes = {
 		errors: PropTypes.array.isRequired,
+		display: PropTypes.bool,
+	};
+
+	static defaultProps = {
+		display: true,
 	};
 
 	getAction( action, message, code, errorData, link ) {
@@ -20,6 +25,7 @@ export default class JetpackConnectionErrors extends React.Component {
 						errorCode={ code }
 						errorData={ errorData }
 						action={ action }
+						display={ this.props.display }
 					/>
 				);
 			case 'support':
@@ -29,15 +35,59 @@ export default class JetpackConnectionErrors extends React.Component {
 						status={ 'is-error' }
 						icon={ 'link-break' }
 						showDismiss={ false }
+						display={ this.props.display }
 					>
 						<NoticeAction href={ link } external={ true }>
 							{ __( 'Contact support', 'jetpack' ) }
 						</NoticeAction>
 					</SimpleNotice>
 				);
-		}
+			default:
+				// Check for URL action (navigation)
+				if ( errorData.action_url && errorData.action_label ) {
+					const actions = [
+						<NoticeAction key="primary" href={ errorData.action_url }>
+							{ errorData.action_label }
+						</NoticeAction>,
+					];
 
-		return null;
+					// Add secondary action if available
+					if ( errorData.secondary_action_url && errorData.secondary_action_label ) {
+						actions.push(
+							<NoticeAction
+								key="secondary"
+								href={ errorData.secondary_action_url }
+								variant="secondary"
+							>
+								{ errorData.secondary_action_label }
+							</NoticeAction>
+						);
+					}
+
+					return (
+						<SimpleNotice
+							text={ message }
+							status={ 'is-error' }
+							icon={ 'link-break' }
+							showDismiss={ false }
+							display={ this.props.display }
+						>
+							{ actions }
+						</SimpleNotice>
+					);
+				}
+
+				// If no custom action available, fall back to default reconnect behavior
+				return (
+					<ErrorNoticeCycleConnection
+						text={ message }
+						errorCode={ code }
+						errorData={ errorData }
+						action={ 'reconnect' }
+						display={ this.props.display }
+					/>
+				);
+		}
 	}
 
 	renderOne( error ) {
@@ -49,21 +99,19 @@ export default class JetpackConnectionErrors extends React.Component {
 			error.action,
 			error.message,
 			error.code,
-			error.hasOwnProperty( 'data' ) ? error.data : {},
+			Object.hasOwn( error, 'data' ) ? error.data : {},
 			supportURl
 		);
 
-		return null === action ? null : (
-			<React.Fragment key={ error.action }>{ action }</React.Fragment>
-		);
+		return null === action ? null : <Fragment key={ error.action }>{ action }</Fragment>;
 	}
 
 	render() {
 		const errorsToDisplay = {};
-		const errors = this.props.errors.filter( error => error.hasOwnProperty( 'action' ) );
+		const errors = this.props.errors.filter( error => Object.hasOwn( error, 'action' ) );
 
 		for ( const error of errors ) {
-			if ( ! errorsToDisplay.hasOwnProperty( error.action ) ) {
+			if ( ! Object.hasOwn( errorsToDisplay, error.action ) ) {
 				errorsToDisplay[ error.action ] = error;
 			}
 		}

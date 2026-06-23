@@ -1,12 +1,12 @@
-import SimpleNotice from 'components/notice';
-import React from 'react';
+import { Component } from 'react';
 import { connect } from 'react-redux';
+import SimpleNotice from 'components/notice';
 import {
 	getJetpackNotices as _getJetpackNotices,
 	isNoticeDismissed as _isNoticeDismissed,
 } from 'state/jetpack-notices';
 
-export class StaticWarning extends React.Component {
+export class StaticWarning extends Component {
 	static displayName = 'StaticWarning';
 
 	render() {

@@ -1,11 +1,10 @@
 import {
 	getColorClassName,
-	__experimentalGetGradientClass as getGradientClass, // eslint-disable-line wpcalypso/no-unsafe-wp-apis
+	__experimentalGetGradientClass as getGradientClass, // eslint-disable-line @wordpress/no-unsafe-wp-apis
 	getFontSizeClass,
 } from '@wordpress/block-editor';
 import { RawHTML } from '@wordpress/element';
-import classnames from 'classnames';
-import { reduce } from 'lodash';
+import clsx from 'clsx';
 import definedAttributes from '../v3/attributes';
 
 export const DEFAULT_BORDER_RADIUS_VALUE = 0;
@@ -56,13 +55,13 @@ export default function Save( { className, attributes } ) {
 		? getGradientClass( emailFieldGradient )
 		: undefined;
 
-	const sharedClasses = classnames(
+	const sharedClasses = clsx(
 		borderRadius === 0 ? 'no-border-radius' : undefined,
 		fontSizeClass,
 		borderClass
 	);
 
-	const submitButtonClasses = classnames(
+	const submitButtonClasses = clsx(
 		sharedClasses,
 		textColor ? 'has-text-color' : undefined,
 		textColorClass,
@@ -71,7 +70,7 @@ export default function Save( { className, attributes } ) {
 		buttonGradientClass
 	);
 
-	const emailFieldClasses = classnames(
+	const emailFieldClasses = clsx(
 		sharedClasses,
 		emailFieldBackgroundClass,
 		emailFieldGradientClass
@@ -88,7 +87,7 @@ export default function Save( { className, attributes } ) {
 			: customButtonBackgroundColor;
 
 	const getBlockClassName = () => {
-		return classnames(
+		return clsx(
 			className,
 			'wp-block-jetpack-subscriptions__supports-newline',
 			buttonOnNewLine ? 'wp-block-jetpack-subscriptions__use-newline' : undefined,
@@ -121,9 +120,8 @@ export default function Save( { className, attributes } ) {
 		show_only_email_and_button: true,
 	};
 
-	const shortcodeAttributesStringified = reduce(
-		shortcodeAttributes,
-		( stringifiedAttributes, value, key ) => {
+	const shortcodeAttributesStringified = Object.entries( shortcodeAttributes ).reduce(
+		( stringifiedAttributes, [ key, value ] ) => {
 			if ( undefined === value ) {
 				return stringifiedAttributes;
 			}

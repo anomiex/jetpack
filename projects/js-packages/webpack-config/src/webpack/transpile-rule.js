@@ -5,7 +5,7 @@ const path = require( 'path' );
  * Make the condition to include certain node_modules prefixes.
  *
  * @param {string[]} modules - Module prefixes to include.
- * @returns {Function} Condition function.
+ * @return {Function} Condition function.
  */
 function makeIncludeNodeModulesCondition( modules ) {
 	return file => {
@@ -19,6 +19,10 @@ const TranspileRule = ( options = {} ) => {
 		babelrc: false,
 		cacheDirectory: path.resolve( '.cache/babel' ),
 		cacheCompression: true,
+		// Include WEBPACK_SERVE in cache key to avoid stale cache when switching between dev server and watch mode
+		cacheIdentifier: `babel-cache-${ process.env.NODE_ENV || 'development' }-${
+			process.env.WEBPACK_SERVE || 'false'
+		}`,
 	};
 
 	const configFile = path.resolve( 'babel.config.js' );

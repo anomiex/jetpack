@@ -4,11 +4,18 @@ import { withSelect } from '@wordpress/data';
 import { Component, createRef, Fragment } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 import { BACKSPACE, DELETE } from '@wordpress/keycodes';
-import classnames from 'classnames';
+import clsx from 'clsx';
 import { close, downChevron, leftChevron, rightChevron, upChevron } from '../icons';
 
 class GalleryImageEdit extends Component {
+	/**
+	 * @type {import('react').RefObject<HTMLImageElement>}
+	 */
 	img = createRef();
+
+	state = {
+		isLoading: false,
+	};
 
 	onImageClick = () => {
 		if ( ! this.props.isSelected ) {
@@ -17,17 +24,73 @@ class GalleryImageEdit extends Component {
 	};
 
 	onImageKeyDown = event => {
-		if (
-			this.img.current === document.activeElement &&
-			this.props.isSelected &&
-			[ BACKSPACE, DELETE ].includes( event.keyCode )
-		) {
-			this.props.onRemove();
+		const { isSelected, onRemove } = this.props;
+
+		// Check for BACKSPACE or DELETE key presses
+		if ( isSelected && [ BACKSPACE, DELETE ].includes( event.keyCode ) ) {
+			event.preventDefault();
+			onRemove();
 		}
 	};
 
-	componentDidUpdate() {
-		const { alt, height, image, link, url, width } = this.props;
+	onImageLoadComplete = () => {
+		this.setState( { isLoading: false } );
+		this.removeImageEventListeners();
+	};
+
+	addImageEventListeners = () => {
+		this.removeImageEventListeners();
+
+		if ( this.img.current && ! isBlobURL( this.props.origUrl ) ) {
+			const isComplete = this.img.current.complete;
+			this.setState( { isLoading: ! isComplete } );
+
+			// Only add event listeners if image is not complete
+			if ( ! isComplete ) {
+				this.img.current.addEventListener( 'load', this.onImageLoadComplete, {
+					once: true,
+				} );
+				this.img.current.addEventListener( 'error', this.onImageLoadComplete, {
+					once: true,
+				} );
+			}
+		}
+	};
+
+	removeImageEventListeners = () => {
+		if ( this.img.current ) {
+			this.img.current.removeEventListener( 'load', this.onImageLoadComplete );
+			this.img.current.removeEventListener( 'error', this.onImageLoadComplete );
+		}
+	};
+
+	componentDidMount() {
+		if ( ! isBlobURL( this.props.origUrl ) && ! this.img.current?.complete ) {
+			this.setState( { isLoading: true } );
+			this.addImageEventListeners();
+		}
+	}
+
+	componentWillUnmount() {
+		this.removeImageEventListeners();
+	}
+
+	componentDidUpdate( prevProps ) {
+		const { alt, height, image, link, url, width, origUrl } = this.props;
+
+		// Handle URL transitions
+		const wasTransient = isBlobURL( prevProps.origUrl );
+		const isTransient = isBlobURL( origUrl );
+
+		if (
+			! isTransient &&
+			! this.img.current?.complete &&
+			( wasTransient || // transitioned from blob to regular URL
+				prevProps.url !== url ) // URL updated
+		) {
+			this.setState( { isLoading: true } );
+			this.addImageEventListeners();
+		}
 
 		if ( image ) {
 			const nextAtts = {};
@@ -67,6 +130,7 @@ class GalleryImageEdit extends Component {
 			isSelected,
 			link,
 			linkTo,
+			customLink,
 			onMoveBackward,
 			onMoveForward,
 			onRemove,
@@ -77,53 +141,58 @@ class GalleryImageEdit extends Component {
 			width,
 		} = this.props;
 
+		const { isLoading } = this.state;
+
 		let href;
 
 		switch ( linkTo ) {
 			case 'media':
-				href = url;
+				href = origUrl;
 				break;
 			case 'attachment':
 				href = link;
 				break;
+			case 'custom':
+				href = customLink || '';
+				break;
+			default:
+				href = '';
 		}
 
 		const isTransient = isBlobURL( origUrl );
 
 		const img = (
-			// Disable reason: Image itself is not meant to be interactive, but should
-			// direct image selection and unfocus caption fields.
-			/* eslint-disable jsx-a11y/no-noninteractive-element-interactions, jsx-a11y/no-noninteractive-tabindex */
 			<Fragment>
 				<img
 					alt={ alt }
-					aria-label={ ariaLabel }
 					data-height={ height }
 					data-id={ id }
 					data-link={ link }
 					data-url={ origUrl }
 					data-width={ width }
-					onClick={ this.onImageClick }
-					onKeyDown={ this.onImageKeyDown }
 					ref={ this.img }
 					src={ isTransient ? undefined : url }
 					srcSet={ isTransient ? undefined : srcSet }
-					tabIndex="0"
 					style={ isTransient ? { backgroundImage: `url(${ origUrl })` } : undefined }
 				/>
 				{ isTransient && <Spinner /> }
 			</Fragment>
-			/* eslint-enable jsx-a11y/no-noninteractive-element-interactions, jsx-a11y/no-noninteractive-tabindex */
 		);
 
-		// Disable reason: Each block can be selected by clicking on it and we should keep the same saved markup
 		return (
-			<figure
-				className={ classnames( 'tiled-gallery__item', {
+			// The image itself is not meant to be interactive, but the enclosing element should be.
+			<div
+				className={ clsx( 'tiled-gallery__item', {
 					'is-selected': isSelected,
 					'is-transient': isTransient,
+					'is-loading': ! isTransient && isLoading,
 					[ `filter__${ imageFilter }` ]: !! imageFilter,
 				} ) }
+				tabIndex="0"
+				role="button"
+				onClick={ this.onImageClick }
+				onKeyDown={ this.onImageKeyDown }
+				aria-label={ ariaLabel }
 			>
 				{ showMovers && (
 					<div className="tiled-gallery__item__move-menu">
@@ -154,19 +223,18 @@ class GalleryImageEdit extends Component {
 						disabled={ ! isSelected }
 					/>
 				</div>
-				{ /* Keep the <a> HTML structure, but ensure there is no navigation from edit */
-				/* eslint-disable-next-line jsx-a11y/anchor-is-valid */ }
-				{ href ? <a>{ img }</a> : img }
-			</figure>
+				{ /* Keep the <a> HTML structure, but ensure there is no navigation from edit */ }
+				{ href ? <a aria-hidden="true">{ img }</a> : img }
+			</div>
 		);
 	}
 }
 
 export default withSelect( ( select, ownProps ) => {
-	const { getMedia } = select( 'core' );
+	const { getEntityRecord } = select( 'core' );
 	const { id } = ownProps;
 
 	return {
-		image: id ? getMedia( id ) : null,
+		image: id ? getEntityRecord( 'postType', 'attachment', id ) : null,
 	};
 } )( GalleryImageEdit );

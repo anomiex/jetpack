@@ -1,15 +1,17 @@
 import { throttle } from 'lodash';
 import PropTypes from 'prop-types';
-import React from 'react';
+import { createRef, Component } from 'react';
 import Label from './label';
 
-export default class ModuleChartXAxis extends React.Component {
+export default class ModuleChartXAxis extends Component {
 	static displayName = 'ModuleChartXAxis';
 
 	static propTypes = {
 		labelWidth: PropTypes.number.isRequired,
 		data: PropTypes.array.isRequired,
 	};
+
+	axisRef = createRef();
 
 	state = {
 		divisor: 1,
@@ -38,7 +40,7 @@ export default class ModuleChartXAxis extends React.Component {
 	resize = nextProps => {
 		let props = this.props;
 
-		const node = this.refs.axis;
+		const node = this.axisRef.current;
 
 		if ( nextProps && ! ( nextProps instanceof Event ) ) {
 			props = nextProps;
@@ -82,7 +84,7 @@ export default class ModuleChartXAxis extends React.Component {
 		}, this );
 
 		return (
-			<div ref="axis" className="dops-chart__x-axis">
+			<div ref={ this.axisRef } className="dops-chart__x-axis">
 				{ labels }
 			</div>
 		);

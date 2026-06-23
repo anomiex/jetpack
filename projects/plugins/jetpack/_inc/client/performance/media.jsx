@@ -1,7 +1,9 @@
-import ProgressBar from '@automattic/components/dist/esm/progress-bar';
 import { getRedirectUrl } from '@automattic/jetpack-components';
-import { __ } from '@wordpress/i18n';
-import CompactFormToggle from 'components/form/form-toggle/compact';
+import { ProgressBar, ToggleControl } from '@wordpress/components';
+import { createInterpolateElement } from '@wordpress/element';
+import { __, _x, sprintf } from '@wordpress/i18n';
+import { Component } from 'react';
+import { connect } from 'react-redux';
 import { FormLegend, FormFieldset } from 'components/forms';
 import JetpackBanner from 'components/jetpack-banner';
 import { withModuleSettingsFormHelpers } from 'components/module-settings/with-module-settings-form-helpers';
@@ -14,8 +16,6 @@ import {
 	FEATURE_VIDEO_HOSTING_JETPACK,
 } from 'lib/plans/constants';
 import { getProductDescriptionUrl } from 'product-descriptions/utils';
-import React from 'react';
-import { connect } from 'react-redux';
 import { hasConnectedOwner as hasConnectedOwnerSelector, isOfflineMode } from 'state/connection';
 import { getModule, getModuleOverride } from 'state/modules';
 import { isModuleFound as _isModuleFound } from 'state/search';
@@ -26,7 +26,7 @@ import {
 	isFetchingSitePurchases,
 } from 'state/site';
 
-class Media extends React.Component {
+class Media extends Component {
 	togglePrivacySetting = () => {
 		this.props.updateOptions( {
 			videopress_private_enabled_for_site: ! this.props.getOptionValue(
@@ -87,17 +87,28 @@ class Media extends React.Component {
 				</p>
 				{ shouldDisplayStorage && (
 					<div className="media__videopress-storage">
-						<span>{ __( 'Video storage used out of 1TB:', 'jetpack' ) }</span>
-						<ProgressBar value={ videoPressStorageUsed / 10000 } />
+						<ProgressBar value={ Math.min( ( videoPressStorageUsed / 1000000 ) * 100, 100 ) } />
+						<span>
+							{ createInterpolateElement(
+								sprintf(
+									/* translators: %d is a number (disk space used) */
+									__( 'Using <strong>%dGB</strong> of 1TB', 'jetpack' ),
+									Math.round( videoPressStorageUsed / 1024 )
+								),
+								{ strong: <strong /> }
+							) }
+						</span>
 					</div>
 				) }
 				{ hasConnectedOwner && (
 					<>
 						<ModuleToggle
 							slug="videopress"
-							disabled={ this.props.isUnavailableInOfflineMode( 'videopress' ) }
+							disabled={
+								this.props.isUnavailableInOfflineMode( 'videopress' ) ||
+								this.props.isSavingAnyOption( 'videopress' )
+							}
 							activated={ this.props.getOptionValue( 'videopress' ) }
-							toggling={ this.props.isSavingAnyOption( 'videopress' ) }
 							toggleModule={ this.props.toggleModuleNow }
 						>
 							<span className="jp-form-toggle-explanation">
@@ -105,16 +116,21 @@ class Media extends React.Component {
 							</span>
 						</ModuleToggle>
 						<FormFieldset>
-							<CompactFormToggle
+							<ToggleControl
+								__nextHasNoMarginBottom
 								id="videopress-site-privacy"
-								disabled={ ! this.props.getOptionValue( 'videopress' ) }
+								disabled={
+									! this.props.getOptionValue( 'videopress' ) ||
+									this.props.isSavingAnyOption( 'videopress_private_enabled_for_site' )
+								}
 								checked={ this.props.getOptionValue( 'videopress_private_enabled_for_site' ) }
 								onChange={ this.togglePrivacySetting }
-							>
-								<span className="jp-form-toggle-explanation">
-									{ __( 'Video Privacy: Restrict views to members of this site', 'jetpack' ) }
-								</span>
-							</CompactFormToggle>
+								label={
+									<span className="jp-form-toggle-explanation">
+										{ __( 'Video Privacy: Restrict views to members of this site', 'jetpack' ) }
+									</span>
+								}
+							/>
 						</FormFieldset>
 					</>
 				) }
@@ -136,13 +152,14 @@ class Media extends React.Component {
 				{ shouldDisplayBanner && (
 					<JetpackBanner
 						className="media__videopress-upgrade"
-						callToAction={ __( 'Upgrade', 'jetpack' ) }
+						callToAction={ _x( 'Upgrade', 'Call to action to buy a new plan', 'jetpack' ) }
 						title={ bannerText }
 						eventFeature="videopress"
 						icon="video"
 						plan={ getJetpackProductUpsellByFeature( FEATURE_VIDEOPRESS ) }
 						feature="jetpack_videopress"
 						href={ upgradeUrl }
+						rna
 					/>
 				) }
 			</SettingsCard>
@@ -157,7 +174,8 @@ export default connect( state => {
 		sitePlan: getSitePlan( state ),
 		hasVideoPressFeature:
 			siteHasFeature( state, 'videopress-1tb-storage' ) ||
-			siteHasFeature( state, 'videopress-unlimited-storage' ),
+			siteHasFeature( state, 'videopress-unlimited-storage' ) ||
+			siteHasFeature( state, 'videopress' ),
 		hasVideoPressUnlimitedStorage: siteHasFeature( state, 'videopress-unlimited-storage' ),
 		hasConnectedOwner: hasConnectedOwnerSelector( state ),
 		isOffline: isOfflineMode( state ),

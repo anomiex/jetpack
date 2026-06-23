@@ -1,11 +1,11 @@
 import { getRedirectUrl } from '@automattic/jetpack-components';
+import { ToggleControl } from '@wordpress/components';
 import { createInterpolateElement } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
-import CompactFormToggle from 'components/form/form-toggle/compact';
-import analytics from 'lib/analytics';
 import PropTypes from 'prop-types';
-import React, { Component } from 'react';
+import { Component } from 'react';
 import { connect } from 'react-redux';
+import analytics from 'lib/analytics';
 import { getModuleOverride } from 'state/modules';
 
 class ModuleToggleComponent extends Component {
@@ -19,16 +19,20 @@ class ModuleToggleComponent extends Component {
 		compact: PropTypes.bool,
 		id: PropTypes.string,
 		overrideCondition: PropTypes.string,
+		trackToggle: PropTypes.bool,
 	};
 
 	static defaultProps = {
 		activated: false,
 		disabled: false,
 		overrideCondition: '',
+		trackToggle: true,
 	};
 
 	toggleModule = () => {
-		this.trackModuleToggle( this.props.slug, this.props.activated );
+		if ( this.props.trackToggle ) {
+			this.trackModuleToggle( this.props.slug, this.props.activated );
+		}
 		return this.props.toggleModule( this.props.slug, this.props.activated );
 	};
 
@@ -96,18 +100,15 @@ class ModuleToggleComponent extends Component {
 
 	render() {
 		return (
-			<CompactFormToggle
-				checked={ this.props.activated || this.props.isModuleActivated }
-				toggling={ this.props.toggling }
+			<ToggleControl
+				__nextHasNoMarginBottom={ true }
+				checked={ this.props.activated }
 				className={ this.props.className }
 				disabled={ this.props.disabled || this.isDisabledByOverride() }
-				id={ this.props.id }
 				onChange={ this.toggleModule }
-				disabledReason={ this.getDisabledReason() }
-				aria-label={ this.props[ 'aria-label' ] }
-			>
-				{ this.props.children }
-			</CompactFormToggle>
+				help={ this.getDisabledReason() }
+				label={ this.props.children }
+			/>
 		);
 	}
 }

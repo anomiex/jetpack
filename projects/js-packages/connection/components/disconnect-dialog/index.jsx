@@ -4,7 +4,7 @@ import { jetpackConfigHas, jetpackConfigGet } from '@automattic/jetpack-config';
 import { Modal } from '@wordpress/components';
 import { __ } from '@wordpress/i18n';
 import PropTypes from 'prop-types';
-import React, { useMemo, useEffect, useCallback, useState } from 'react';
+import { useMemo, useEffect, useCallback, useState } from 'react';
 import './style.scss';
 import StepDisconnect from './steps/step-disconnect';
 import StepDisconnectConfirm from './steps/step-disconnect-confirm';
@@ -15,7 +15,7 @@ import StepThankYou from './steps/step-thank-you';
  * The RNA Disconnect Dialog component.
  *
  * @param {object} props -- The properties.
- * @returns {React.Component} The `DisconnectDialog` component.
+ * @return {import('react').Component} The `DisconnectDialog` component.
  */
 const DisconnectDialog = props => {
 	const [ isDisconnecting, setIsDisconnecting ] = useState( false );
@@ -29,13 +29,13 @@ const DisconnectDialog = props => {
 		apiRoot,
 		apiNonce,
 		connectedPlugins,
-		title,
+		title = __( 'Are you sure you want to disconnect?', 'jetpack-connection-js' ),
 		pluginScreenDisconnectCallback,
 		onDisconnected,
 		onError,
 		disconnectStepComponent,
-		context,
-		connectedUser,
+		context = 'jetpack-dashboard',
+		connectedUser = {}, // Pass empty object to avoid undefined errors.
 		connectedSiteId,
 		isOpen,
 		onClose,
@@ -223,7 +223,7 @@ const DisconnectDialog = props => {
 	 * Need to have the ID of the connected user and the ID of the connected site.
 	 */
 	const canProvideFeedback = useCallback( () => {
-		return connectedUser.ID && connectedSiteId;
+		return !! ( connectedUser.ID && connectedSiteId );
 	}, [ connectedUser, connectedSiteId ] );
 
 	/**
@@ -302,7 +302,7 @@ const DisconnectDialog = props => {
 	/**
 	 * Determine what step to show based on the current state
 	 *
-	 * @returns { React.Component } - component for current step
+	 * @return { import('react').Component|undefined } - component for current step
 	 */
 	const getCurrentStep = () => {
 		if ( ! isDisconnected ) {
@@ -342,6 +342,8 @@ const DisconnectDialog = props => {
 		} else if ( isFeedbackProvided ) {
 			return <StepThankYou onExit={ backToWordpress } />;
 		}
+
+		return undefined;
 	};
 
 	return (
@@ -396,12 +398,6 @@ DisconnectDialog.propTypes = {
 	isOpen: PropTypes.bool,
 	/** Callback function for when the modal closes. */
 	onClose: PropTypes.func,
-};
-
-DisconnectDialog.defaultProps = {
-	title: __( 'Are you sure you want to disconnect?', 'jetpack' ),
-	context: 'jetpack-dashboard',
-	connectedUser: {}, // Pass empty object to avoid undefined errors.
 };
 
 export default DisconnectDialog;

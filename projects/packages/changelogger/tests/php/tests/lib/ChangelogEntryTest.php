@@ -11,6 +11,8 @@ use Automattic\Jetpack\Changelog\ChangeEntry;
 use Automattic\Jetpack\Changelog\ChangelogEntry;
 use DateTime;
 use InvalidArgumentException;
+use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -18,8 +20,8 @@ use PHPUnit\Framework\TestCase;
  *
  * @covers \Automattic\Jetpack\Changelog\ChangelogEntry
  */
+#[CoversClass( ChangelogEntry::class )]
 class ChangelogEntryTest extends TestCase {
-	use \Yoast\PHPUnitPolyfills\Polyfills\ExpectException;
 
 	/**
 	 * Test general getters.
@@ -42,6 +44,7 @@ class ChangelogEntryTest extends TestCase {
 		$this->assertSame( 'Bar', $entry->getEpilogue() );
 		$this->assertNull( $entry->getTimestamp() );
 
+		// @phan-suppress-next-line PhanTypeMismatchArgument -- This is testing the type casting.
 		$this->assertSame( $entry, $entry->setVersion( 111 )->setPrologue( 222 )->setEpilogue( 333 )->setLink( '' ) );
 		$this->assertSame( '111', $entry->getVersion() );
 		$this->assertSame( null, $entry->getLink() );
@@ -95,7 +98,15 @@ class ChangelogEntryTest extends TestCase {
 
 		$this->assertSame( array(), $entry->getChanges() );
 		$this->assertSame( array(), $entry->getChangesBySubheading() );
-		$this->assertSame( array(), $entry->getChangesBySubheading( 'B' ) );
+
+		try {
+			$entry->getChangesBySubheading( 'B' );
+		} catch ( \InvalidArgumentException $e ) {
+			$this->assertSame(
+				'Passing a value for $subheading is deprecated. Do `->getChangesBySubheading()[ $subheading ]` instead.',
+				$e->getMessage()
+			);
+		}
 
 		$this->assertSame( $entry, $entry->setChanges( $changes ) );
 		$this->assertSame( $changes, $entry->getChanges() );
@@ -107,7 +118,6 @@ class ChangelogEntryTest extends TestCase {
 			),
 			$entry->getChangesBySubheading()
 		);
-		$this->assertSame( array( $changes[1], $changes[2] ), $entry->getChangesBySubheading( 'B' ) );
 
 		$c1 = new ChangeEntry(
 			array(
@@ -140,7 +150,6 @@ class ChangelogEntryTest extends TestCase {
 			),
 			$entry->getChangesBySubheading()
 		);
-		$this->assertSame( array( $c2, $changes[1], $c1, $changes[2] ), $entry->getChangesBySubheading( 'B' ) );
 
 		$entry = new ChangelogEntry( '1.0' );
 		$this->assertSame( $entry, $entry->appendChange( $c1 )->appendChange( $c2 )->appendChange( $c3 ) );
@@ -153,6 +162,7 @@ class ChangelogEntryTest extends TestCase {
 	public function testConstructor_error() {
 		$this->expectException( InvalidArgumentException::class );
 		$this->expectExceptionMessage( 'Automattic\\Jetpack\\Changelog\\ChangelogEntry::__construct: Unrecognized data item "foo"' );
+		// @phan-suppress-next-line PhanNoopNew -- Expecting it to throw.
 		new ChangelogEntry( '1.0', array( 'foo' => 'bar' ) );
 	}
 
@@ -193,6 +203,7 @@ class ChangelogEntryTest extends TestCase {
 		$entry = new ChangelogEntry( '1.0' );
 		$this->expectException( InvalidArgumentException::class );
 		$this->expectExceptionMessage( 'Automattic\\Jetpack\\Changelog\\ChangelogEntry::setChanges: Expected a ChangeEntry, got NULL at index 0' );
+		// @phan-suppress-next-line PhanTypeMismatchArgument -- This is testing the error case.
 		$entry->setChanges( array( null ) );
 	}
 
@@ -203,6 +214,7 @@ class ChangelogEntryTest extends TestCase {
 		$entry = new ChangelogEntry( '1.0' );
 		$this->expectException( InvalidArgumentException::class );
 		$this->expectExceptionMessage( 'Automattic\\Jetpack\\Changelog\\ChangelogEntry::setChanges: Expected a ChangeEntry, got Automattic\\Jetpack\\Changelog\\ChangelogEntry at index 0' );
+		// @phan-suppress-next-line PhanTypeMismatchArgument -- This is testing the error case.
 		$entry->setChanges( array( $entry ) );
 	}
 
@@ -213,13 +225,14 @@ class ChangelogEntryTest extends TestCase {
 	 * @param string                $json JSON data.
 	 * @param ChangelogEntry|string $entry Changelog entry, or error message if decoding should fail.
 	 */
+	#[DataProvider( 'provideJson' )]
 	public function testJson( $json, $entry ) {
 		if ( is_string( $entry ) ) {
 			$this->expectException( InvalidArgumentException::class );
 			$this->expectExceptionMessage( $entry );
 			ChangelogEntry::jsonUnserialize( json_decode( $json ) );
 		} else {
-			$this->assertSame( $json, json_encode( $entry ) );
+			$this->assertSame( $json, json_encode( $entry, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
 			$this->assertEquals( $entry, ChangelogEntry::jsonUnserialize( json_decode( $json ) ) );
 		}
 	}
@@ -227,14 +240,14 @@ class ChangelogEntryTest extends TestCase {
 	/**
 	 * Data provider for testJson.
 	 */
-	public function provideJson() {
+	public static function provideJson() {
 		return array(
 			'Basic serialization'               => array(
 				'{"__class__":"Automattic\\\\Jetpack\\\\Changelog\\\\ChangelogEntry","version":"1.0","link":null,"timestamp":"2021-02-18T00:00:00+0000","prologue":"","epilogue":"","changes":[]}',
 				( new ChangelogEntry( '1.0' ) )->setTimestamp( '2021-02-18' ),
 			),
 			'Serialization with data'           => array(
-				'{"__class__":"Automattic\\\\Jetpack\\\\Changelog\\\\ChangelogEntry","version":"1.0","link":"https:\\/\\/example.org","timestamp":"2021-02-18T12:07:16-0500","prologue":"Foo","epilogue":"Bar","changes":[{"__class__":"Automattic\\\\Jetpack\\\\Changelog\\\\ChangeEntry","significance":null,"timestamp":"2021-02-17T00:00:00+0000","subheading":"","author":"","content":""},{"__class__":"Automattic\\\\Jetpack\\\\Changelog\\\\ChangeEntry","significance":null,"timestamp":"2021-02-18T00:00:00+0000","subheading":"","author":"","content":""}]}',
+				'{"__class__":"Automattic\\\\Jetpack\\\\Changelog\\\\ChangelogEntry","version":"1.0","link":"https://example.org","timestamp":"2021-02-18T12:07:16-0500","prologue":"Foo","epilogue":"Bar","changes":[{"__class__":"Automattic\\\\Jetpack\\\\Changelog\\\\ChangeEntry","significance":null,"timestamp":"2021-02-17T00:00:00+0000","subheading":"","author":"","content":""},{"__class__":"Automattic\\\\Jetpack\\\\Changelog\\\\ChangeEntry","significance":null,"timestamp":"2021-02-18T00:00:00+0000","subheading":"","author":"","content":""}]}',
 				( new ChangelogEntry( '1.0' ) )->setTimestamp( '2021-02-18T12:07:16-0500' )->setPrologue( 'Foo' )->setEpilogue( 'Bar' )->setLink( 'https://example.org' )->setChanges(
 					array(
 						new ChangeEntry( array( 'timestamp' => '2021-02-17' ) ),
@@ -260,5 +273,4 @@ class ChangelogEntryTest extends TestCase {
 			),
 		);
 	}
-
 }

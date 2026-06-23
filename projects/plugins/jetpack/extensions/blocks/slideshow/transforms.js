@@ -1,14 +1,13 @@
 import { createBlock } from '@wordpress/blocks';
-import { filter } from 'lodash';
 
 /**
  * Filter valid images
  *
- * @param {array} images Array of image objects
- * @return {array} Array of image objects which have id and url
+ * @param {Array} images - Array of image objects
+ * @return {Array} Array of image objects which have id and url
  */
 function getValidImages( images ) {
-	return filter( images, ( { id, url } ) => id && url );
+	return images.filter( ( { id, url } ) => id && url );
 }
 
 const transforms = {

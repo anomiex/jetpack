@@ -1,17 +1,20 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -e
 
 # This file is run for the Docker image defined in Dockerfile.
-# These commands will be run each time the container is run.
+# These commands will be run each time the container is created.
 #
 # If you modify anything here, remember to build the image again by running:
 # jetpack docker build-image
 
-user="${APACHE_RUN_USER:-www-data}"
-group="${APACHE_RUN_GROUP:-www-data}"
+source /etc/docker-args.sh
 
 # Download WordPress
-[ -f /var/www/html/xmlrpc.php ] || wp --allow-root core download
+# Sometimes it fails, and a retry would be nice:
+#   https://github.com/wp-cli/core-command/pull/258
+#   https://github.com/wp-cli/wp-cli/pull/6140
+# For now this should work well enough
+[ -f /var/www/html/xmlrpc.php ] || wp core download || { sleep $(( 30 + RANDOM % 8 )) && wp core download; }
 
 # Configure WordPress
 if [ ! -f /var/www/html/wp-config.php ]; then
@@ -24,7 +27,7 @@ if [ ! -f /var/www/html/wp-config.php ]; then
 	i=1
 	while [ "$i" -le "$times" ]; do
 		sleep 3
-		wp --allow-root config create \
+		wp config create \
 			--dbhost=${MYSQL_HOST} \
 			--dbname=${MYSQL_DATABASE} \
 			--dbuser=${MYSQL_USER} \
@@ -36,27 +39,27 @@ if [ ! -f /var/www/html/wp-config.php ]; then
 	done
 
 	echo "Setting other wp-config.php constants..."
-	wp --allow-root config set WP_DEBUG true --raw --type=constant
-	wp --allow-root config set WP_DEBUG_LOG true --raw --type=constant
-	wp --allow-root config set WP_DEBUG_DISPLAY false --raw --type=constant
-	wp --allow-root config set SCRIPT_DEBUG true --raw --type=constant
+	wp config set WP_DEBUG true --raw --type=constant
+	wp config set WP_DEBUG_LOG true --raw --type=constant
+	wp config set WP_DEBUG_DISPLAY false --raw --type=constant
+	wp config set SCRIPT_DEBUG true --raw --type=constant
 
 	# Respecting Dockerfile-forwarded environment variables
 	# Allow to be reverse-proxied from https
-	wp --allow-root config set "_SERVER['HTTPS']" "isset( \$_SERVER['HTTP_X_FORWARDED_PROTO'] ) && \$_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https' ? 'on' : NULL" \
+	wp config set "_SERVER['HTTPS']" "isset( \$_SERVER['HTTP_X_FORWARDED_PROTO'] ) && \$_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https' ? 'on' : NULL" \
 		--raw \
 		--type=variable
 
 	# Allow this installation to run on http or https.
-	wp --allow-root config set DOCKER_REQUEST_URL \
+	wp config set DOCKER_REQUEST_URL \
 		"( ! empty( \$_SERVER['HTTPS'] ) ? 'https://' : 'http://' ) . ( ! empty( \$_SERVER['HTTP_HOST'] ) ? \$_SERVER['HTTP_HOST'] : 'localhost' )" \
 		--raw \
 		--type=constant
-	wp --allow-root config set WP_SITEURL "DOCKER_REQUEST_URL" --raw --type=constant
-	wp --allow-root config set WP_HOME "DOCKER_REQUEST_URL" --raw --type=constant
+	wp config set WP_SITEURL "DOCKER_REQUEST_URL" --raw --type=constant
+	wp config set WP_HOME "DOCKER_REQUEST_URL" --raw --type=constant
 
 	# Tell WP-CONFIG we're in a docker instance.
-	wp --allow-root config set JETPACK_DOCKER_ENV true --raw --type=constant
+	wp config set JETPACK_DOCKER_ENV true --raw --type=constant
 fi
 
 # Copy single site htaccess if none is present
@@ -76,15 +79,16 @@ fi
 
 if [ "$COMPOSE_PROJECT_NAME" == "jetpack_dev" ] ; then
 	# If we don't have the wordpress test helpers, download them
-	if [ ! -d /tmp/wordpress-develop/tests ]; then
+	if [[ ! -d /tmp/wordpress-develop/tests/phpunit/data || ! -d /tmp/wordpress-develop/tests/phpunit/includes ]]; then
+		CUR_WP_VERSION=$(wp core version);
 		# Get latest WordPress unit-test helper files
 		svn co \
-			https://develop.svn.wordpress.org/trunk/tests/phpunit/data \
+			"https://develop.svn.wordpress.org/tags/$CUR_WP_VERSION/tests/phpunit/data" \
 			/tmp/wordpress-develop/tests/phpunit/data \
 			--trust-server-cert \
 			--non-interactive
 		svn co \
-			https://develop.svn.wordpress.org/trunk/tests/phpunit/includes \
+			"https://develop.svn.wordpress.org/tags/$CUR_WP_VERSION/tests/phpunit/includes" \
 			/tmp/wordpress-develop/tests/phpunit/includes \
 			--trust-server-cert \
 			--non-interactive
@@ -98,21 +102,32 @@ if [ "$COMPOSE_PROJECT_NAME" == "jetpack_dev" ] ; then
 	# Symlink jetpack into wordpress-develop for WP >= 5.6-beta1
 	WP_TESTS_JP_DIR="/tmp/wordpress-develop/tests/phpunit/data/plugins/jetpack"
 	if [ ! -L $WP_TESTS_JP_DIR ] || [ ! -e $WP_TESTS_JP_DIR ]; then
-		ln -s /var/www/html/wp-content/plugins/jetpack $WP_TESTS_JP_DIR
+		mkdir -p "$(dirname "$WP_TESTS_JP_DIR")" || true
+		ln -s /var/www/html/wp-content/plugins/jetpack $WP_TESTS_JP_DIR || {
+			echo "Warning: Failed to create symlink for test environment. This is non-fatal."
+			echo "Jetpack plugin PHPUnit tests will not run until this is resolved."
+		}
 	fi
 fi
 
+PLUGINS_TO_NOT_SYMLINK=('wpcloud-sso')
 for DIR in /usr/local/src/jetpack-monorepo/projects/plugins/*; do
-	[ -d "$DIR" ] || continue # We are only interested in directories, e.g. different plugins.
-	PLUGIN="$(basename $DIR)"
+	[[ -d "$DIR" ]] || continue # We are only interested in directories, e.g. different plugins.
+	[[ -f "$DIR/composer.json" ]] || continue # If there's no composer.json in the folder, it's probably not a plugin.
+	PLUGIN="$(basename "$DIR")"
+
+	# Some plugins should not be symlinked
+	printf '%s\n' "${PLUGINS_TO_NOT_SYMLINK[@]}" | grep -qxF "$PLUGIN" && continue
+
+	# Read plugin slug from composer.json, with fallback to beta-plugin-slug
+	PLUGIN_SLUG=$(jq -r '.extra["wp-plugin-slug"] // .extra["beta-plugin-slug"]' "$DIR/composer.json")
+
 	# Symlink plugins into the wp-content dir.
-	if [ ! -e /var/www/html/wp-content/plugins/"$PLUGIN" ]; then
-		echo "Linking the $PLUGIN plugin."
-		ln -s "$DIR" /var/www/html/wp-content/plugins/"$PLUGIN"
+	if [ ! -e /var/www/html/wp-content/plugins/"$PLUGIN_SLUG" ]; then
+		echo "Linking the $PLUGIN plugin as $PLUGIN_SLUG."
+		ln -s "$DIR" /var/www/html/wp-content/plugins/"$PLUGIN_SLUG"
 	fi
 done
-
-
 
 WP_HOST_PORT=":$HOST_PORT"
 
@@ -133,5 +148,7 @@ echo "Open http://${WP_DOMAIN}${WP_HOST_PORT}/ to see your site!"
 echo
 
 # Run apache in the foreground so the container keeps running
+echo "Running php-fpm"
+"/etc/init.d/php${PHP_VERSION}-fpm" start
 echo "Running Apache in the foreground"
 apachectl -D FOREGROUND

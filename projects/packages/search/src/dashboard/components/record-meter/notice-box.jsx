@@ -1,24 +1,19 @@
-/* eslint-disable no-console */
-import { numberFormat } from '@automattic/jetpack-components';
+import { formatNumber } from '@automattic/number-formatters';
 import { __, sprintf } from '@wordpress/i18n';
-import SimpleNotice from 'components/notice';
-import NoticeAction from 'components/notice/notice-action.jsx';
-import React from 'react';
-
-import './notice-box.scss';
+import { Notice } from '@wordpress/ui';
 
 const CLOSE_TO_LIMIT_PERCENT = 0.8;
 
 const getNotices = ( tierMaximumRecords = null ) => {
 	const recordLimit =
 		typeof tierMaximumRecords === 'number'
-			? numberFormat( tierMaximumRecords )
+			? formatNumber( tierMaximumRecords )
 			: tierMaximumRecords;
 
 	return {
 		1: {
 			id: 1,
-			header: __( 'Search was unable to index your content', 'jetpack-search-pkg' ),
+			header: __( 'We were unable to index your content', 'jetpack-search-pkg' ),
 			message: __(
 				"Jetpack's servers ran into a problem when trying to communicate with your site.",
 				'jetpack-search-pkg'
@@ -27,9 +22,9 @@ const getNotices = ( tierMaximumRecords = null ) => {
 		},
 		2: {
 			id: 2,
-			header: __( "We weren't able to locate any content for Search", 'jetpack-search-pkg' ),
+			header: __( "We're gathering your usage data", 'jetpack-search-pkg' ),
 			message: __(
-				'If you have recently set up Search, please allow a little time for indexing to complete.',
+				'If you have recently set up Jetpack Search, please allow a little time for indexing to complete.',
 				'jetpack-search-pkg'
 			),
 		},
@@ -60,17 +55,16 @@ const getNotices = ( tierMaximumRecords = null ) => {
 /**
  * Returns a notice box for displaying notices about record count and plan limits
  *
- * @param {object} props - Props
- * @param {number} props.recordCount - Current count of user's total records
- * @param {number} props.recordLimit - Max number of records allowed in user's current tier
+ * @param {object}  props                - Props
+ * @param {number}  props.recordCount    - Current count of user's total records
+ * @param {number}  props.recordLimit    - Max number of records allowed in user's current tier
  * @param {boolean} props.hasBeenIndexed - True if site has a last indexed date
- * @param {boolean} props.hasValidData - True if data is present and in valid form
- * @param {boolean} props.hasItems - True if there is at least one indexed record
- * @returns {React.Component} notice box component.
+ * @param {boolean} props.hasValidData   - True if data is present and in valid form
+ * @param {boolean} props.hasItems       - True if there is at least one indexed record
+ * @return {import('react').Component} notice box component.
  */
 export function NoticeBox( props ) {
 	const activeNoticeIds = [];
-	const NOTICES = getNotices( props.tierMaximumRecords );
 
 	const DATA_NOT_VALID = '1',
 		HAS_NOT_BEEN_INDEXED = '2',
@@ -96,28 +90,21 @@ export function NoticeBox( props ) {
 		return null;
 	}
 
+	const NOTICES = getNotices( props.tierMaximumRecords );
 	const notice = NOTICES[ activeNoticeIds[ 0 ] ];
 
-	const noticeBoxClassName = notice.isImportant
-		? 'jp-search-notice-box jp-search-notice-box__important'
-		: 'jp-search-notice-box';
-
 	return (
-		<SimpleNotice
-			isCompact={ false }
-			status={ 'is-info' }
-			className={ noticeBoxClassName }
-			icon={ 'info-outline' }
-			showDismiss={ false }
-		>
-			{ notice.header && <h3 className="dops-notice__header">{ notice.header }</h3> }
-			{ notice.message && <span className="dops-notice__body">{ notice.message }</span> }
+		<Notice.Root intent={ notice.isImportant ? 'error' : 'info' }>
+			{ notice.header && <Notice.Title>{ notice.header }</Notice.Title> }
+			{ notice.message && <Notice.Description>{ notice.message }</Notice.Description> }
 			{ notice.link && (
-				<NoticeAction href={ notice.link.url } external={ true }>
-					{ notice.link.text }
-				</NoticeAction>
+				<Notice.Actions>
+					<Notice.ActionLink href={ notice.link.url } openInNewTab>
+						{ notice.link.text }
+					</Notice.ActionLink>
+				</Notice.Actions>
 			) }
-		</SimpleNotice>
+		</Notice.Root>
 	);
 }
 

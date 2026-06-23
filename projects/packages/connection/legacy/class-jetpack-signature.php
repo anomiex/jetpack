@@ -28,6 +28,14 @@ class Jetpack_Signature {
 	public $secret;
 
 	/**
+	 * Timezone difference (in seconds).
+	 *
+	 * @access public
+	 * @var int
+	 */
+	public $time_diff;
+
+	/**
 	 * The current request URL.
 	 *
 	 * @access public
@@ -38,8 +46,8 @@ class Jetpack_Signature {
 	/**
 	 * Constructor.
 	 *
-	 * @param array $access_token Access token.
-	 * @param int   $time_diff    Timezone difference (in seconds).
+	 * @param string $access_token Access token.
+	 * @param int    $time_diff    Timezone difference (in seconds).
 	 */
 	public function __construct( $access_token, $time_diff = 0 ) {
 		$secret = explode( '.', $access_token );
@@ -66,30 +74,28 @@ class Jetpack_Signature {
 			if ( ! in_array( $scheme, array( 'http', 'https' ), true ) ) {
 				return new WP_Error( 'invalid_scheme', 'Invalid URL scheme' );
 			}
+		} elseif ( is_ssl() ) {
+			$scheme = 'https';
 		} else {
-			if ( is_ssl() ) {
-				$scheme = 'https';
-			} else {
-				$scheme = 'http';
-			}
+			$scheme = 'http';
 		}
 
 		$port = $this->get_current_request_port();
 
 		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotValidatedNotSanitized -- Sniff misses the esc_url_raw wrapper.
-		$this->current_request_url = esc_url_raw( wp_unslash( "{$scheme}://{$_SERVER['HTTP_HOST']}:{$port}" . ( isset( $_SERVER['REQUEST_URI'] ) ? $_SERVER['REQUEST_URI'] : '' ) ) );
+		$this->current_request_url = esc_url_raw( wp_unslash( "{$scheme}://{$_SERVER['HTTP_HOST']}:{$port}" . ( $_SERVER['REQUEST_URI'] ?? '' ) ) );
 
 		if ( array_key_exists( 'body', $override ) && ! empty( $override['body'] ) ) {
 			$body = $override['body'];
 		} elseif ( isset( $_SERVER['REQUEST_METHOD'] ) && 'POST' === strtoupper( $_SERVER['REQUEST_METHOD'] ) ) { // phpcs:ignore WordPress.Security.ValidatedSanitizedInput -- This is validating.
-			$body = isset( $GLOBALS['HTTP_RAW_POST_DATA'] ) ? $GLOBALS['HTTP_RAW_POST_DATA'] : null;
+			$body = $GLOBALS['HTTP_RAW_POST_DATA'] ?? null;
 
 			// Convert the $_POST to the body, if the body was empty. This is how arrays are hashed
 			// and encoded on the Jetpack side.
 			if ( defined( 'IS_WPCOM' ) && IS_WPCOM ) {
-				// phpcs:ignore WordPress.Security.NonceVerification.Missing
-				if ( empty( $body ) && is_array( $_POST ) && count( $_POST ) > 0 ) {
-					$body = $_POST; // phpcs:ignore WordPress.Security.NonceVerification.Missing
+				// phpcs:ignore WordPress.Security.NonceVerification.Missing -- Used to generate a cryptographic signature of the post data. Not actually using any of it here.
+				if ( empty( $body ) && is_array( $_POST ) && $_POST !== array() ) {
+					$body = $_POST; // phpcs:ignore WordPress.Security.NonceVerification.Missing -- We need all of $_POST in order to generate a cryptographic signature of the post data.
 				}
 			}
 		} elseif ( isset( $_SERVER['REQUEST_METHOD'] ) && 'PUT' === strtoupper( $_SERVER['REQUEST_METHOD'] ) ) { // phpcs:ignore WordPress.Security.ValidatedSanitizedInput -- This is validating.
@@ -99,7 +105,7 @@ class Jetpack_Signature {
 
 			if ( defined( 'IS_WPCOM' ) && IS_WPCOM ) {
 				$put_data = json_decode( $raw_put_data, true );
-				if ( is_array( $put_data ) && count( $put_data ) > 0 ) {
+				if ( is_array( $put_data ) && $put_data !== array() ) {
 					$body = $put_data;
 				}
 			}
@@ -121,7 +127,7 @@ class Jetpack_Signature {
 			}
 		}
 
-		$method = isset( $override['method'] ) ? $override['method'] : ( isset( $_SERVER['REQUEST_METHOD'] ) ? filter_var( wp_unslash( $_SERVER['REQUEST_METHOD'] ) ) : null );
+		$method = $override['method'] ?? ( isset( $_SERVER['REQUEST_METHOD'] ) ? filter_var( wp_unslash( $_SERVER['REQUEST_METHOD'] ) ) : null );
 		return $this->sign_request( $a['token'], $a['timestamp'], $a['nonce'], $a['body-hash'], $method, $this->current_request_url, $body, true );
 	}
 
@@ -154,15 +160,18 @@ class Jetpack_Signature {
 
 		$signature_details = compact( 'token', 'timestamp', 'nonce', 'body_hash', 'method', 'url' );
 
-		if ( 0 !== strpos( $token, "$this->token:" ) ) {
+		if ( ! str_starts_with( $token, "$this->token:" ) ) {
 			return new WP_Error( 'token_mismatch', 'Incorrect token', compact( 'signature_details' ) );
 		}
 
 		// If we got an array at this point, let's encode it, so we can see what it looks like as a string.
 		if ( is_array( $body ) ) {
-			if ( count( $body ) > 0 ) {
+			if ( $body !== array() ) {
 				// phpcs:ignore WordPress.WP.AlternativeFunctions.json_encode_json_encode
-				$body = json_encode( $body );
+				$body = json_encode(
+					$body,
+					0 // phpcs:ignore Jetpack.Functions.JsonEncodeFlags.ZeroFound -- No `json_encode()` flags because this needs to match whatever is calculating the hash on the other end.
+				);
 
 			} else {
 				$body = '';
@@ -205,17 +214,15 @@ class Jetpack_Signature {
 
 		if ( ! empty( $parsed['port'] ) ) {
 			$port = $parsed['port'];
+		} elseif ( 'http' === $parsed['scheme'] ) {
+			$port = 80;
+		} elseif ( 'https' === $parsed['scheme'] ) {
+			$port = 443;
 		} else {
-			if ( 'http' === $parsed['scheme'] ) {
-				$port = 80;
-			} elseif ( 'https' === $parsed['scheme'] ) {
-				$port = 443;
-			} else {
-				return new WP_Error( 'unknown_scheme_port', "The scheme's port is unknown", compact( 'signature_details' ) );
-			}
+			return new WP_Error( 'unknown_scheme_port', "The scheme's port is unknown", compact( 'signature_details' ) );
 		}
 
-		if ( ! ctype_digit( "$timestamp" ) || 10 < strlen( $timestamp ) ) { // If Jetpack is around in 275 years, you can blame mdawaffe for the bug.
+		if ( ! ctype_digit( "$timestamp" ) || 10 < strlen( (string) $timestamp ) ) { // If Jetpack is around in 275 years, you can blame mdawaffe for the bug.
 			return new WP_Error( 'invalid_signature', sprintf( 'The required "%s" parameter is malformed.', 'timestamp' ), compact( 'signature_details' ) );
 		}
 
@@ -240,7 +247,7 @@ class Jetpack_Signature {
 			// Normalized Query String.
 		);
 
-		$normalized_request_pieces      = array_merge( $normalized_request_pieces, $this->normalized_query_parameters( isset( $parsed['query'] ) ? $parsed['query'] : '' ) );
+		$normalized_request_pieces      = array_merge( $normalized_request_pieces, $this->normalized_query_parameters( $parsed['query'] ?? '' ) );
 		$flat_normalized_request_pieces = array();
 		foreach ( $normalized_request_pieces as $piece ) {
 			if ( is_array( $piece ) ) {
@@ -253,7 +260,7 @@ class Jetpack_Signature {
 		}
 		$normalized_request_pieces = $flat_normalized_request_pieces;
 
-		$normalized_request_string = join( "\n", $normalized_request_pieces ) . "\n";
+		$normalized_request_string = implode( "\n", $normalized_request_pieces ) . "\n";
 
 		// phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode
 		return base64_encode( hash_hmac( 'sha1', $normalized_request_string, $this->secret, true ) );

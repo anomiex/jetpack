@@ -3,6 +3,10 @@ import { SERVER_OBJECT_NAME } from './constants';
 // NOTE: This list is missing custom taxonomy names.
 //       getFilterKeys must be used to get the conclusive list of valid filter keys.
 export const FILTER_KEYS = Object.freeze( [
+	// Blog IDs
+	'blog_ids',
+	// Authors
+	'authors',
 	// Post types
 	'post_types',
 	// Built-in taxonomies
@@ -23,9 +27,9 @@ export const FILTER_KEYS = Object.freeze( [
 /**
  * Returns an array of valid filter key strings.
  *
- * @param {object[]} widgets - Array of Jetpack Search widget objects inside the overlay sidebar.
+ * @param {object[]} widgets               - Array of Jetpack Search widget objects inside the overlay sidebar.
  * @param {object[]} widgetsOutsideOverlay - Array of Jetpack Search widget objects outside the overlay sidebar.
- * @returns {string[]} filterKeys
+ * @return {string[]} filterKeys
  */
 export function getFilterKeys(
 	widgets = window[ SERVER_OBJECT_NAME ]?.widgets,
@@ -37,8 +41,13 @@ export function getFilterKeys(
 		.map( w => w.filters )
 		.filter( filters => Array.isArray( filters ) )
 		.reduce( ( filtersA, filtersB ) => filtersA.concat( filtersB ), [] )
-		.filter( filter => filter.type === 'taxonomy' )
-		.forEach( filter => keys.add( filter.taxonomy ) );
+		.forEach( filter => {
+			if ( filter.type === 'taxonomy' ) {
+				keys.add( filter.taxonomy );
+			} else if ( filter.type === 'product_attribute' && filter.attribute ) {
+				keys.add( filter.attribute );
+			}
+		} );
 
 	return [ ...keys ];
 }
@@ -46,20 +55,34 @@ export function getFilterKeys(
 /**
  * Get a list of provided static filters.
  *
- * @returns {Array} list of available static filters.
+ * @param {'sidebar'|'tabbed'|undefined} variation - the filter variation to get (tabbed or sidebar), defaults to none (returns every variation).
+ * @return {Array} list of available static filters.
  */
-export function getAvailableStaticFilters() {
+export function getAvailableStaticFilters( variation ) {
 	if ( ! window[ SERVER_OBJECT_NAME ]?.staticFilters ) {
 		return [];
 	}
 
-	return window[ SERVER_OBJECT_NAME ].staticFilters;
+	return window[ SERVER_OBJECT_NAME ].staticFilters.filter( filter => {
+		// this check makes the function backwards compatible (it didn't have variation as an argument before)
+		if ( ! variation ) {
+			// if variation is not provided, return all filters
+			return true;
+		}
+		if ( variation === 'sidebar' && ! filter.variation ) {
+			return true; // filters default variation is `sidebar`
+		}
+		if ( variation && filter.variation ) {
+			return filter.variation === variation;
+		}
+		return false;
+	} );
 }
 
 /**
  * Get static filter keys.
  *
- * @returns {Array} list of available static filters keys.
+ * @return {Array} list of available static filters keys.
  */
 export function getStaticFilterKeys() {
 	const staticFilters = getAvailableStaticFilters();
@@ -73,7 +96,7 @@ export function getStaticFilterKeys() {
  * Returns an array of filter keys selectable from within the overlay.
  *
  * @param {object[]} widgets - Array of Jetpack Search widget objects inside the overlay sidebar.
- * @returns {string[]} filterKeys
+ * @return {string[]} filterKeys
  */
 export function getSelectableFilterKeys( widgets = window[ SERVER_OBJECT_NAME ]?.widgets ) {
 	return (
@@ -87,7 +110,7 @@ export function getSelectableFilterKeys( widgets = window[ SERVER_OBJECT_NAME ]?
  * In other words, they were either selected via filters outside the search sidebar or entered manually.
  *
  * @param {object[]} widgets - Array of Jetpack Search widget objects inside the overlay sidebar.
- * @returns {string[]} filterKeys
+ * @return {string[]} filterKeys
  */
 export function getUnselectableFilterKeys( widgets = window[ SERVER_OBJECT_NAME ]?.widgets ) {
 	const selectable = getSelectableFilterKeys( widgets );
@@ -98,7 +121,7 @@ export function getUnselectableFilterKeys( widgets = window[ SERVER_OBJECT_NAME 
  * Returns an array of filter keys from a given widget.
  *
  * @param {object} widget - a Jetpack Search widget object
- * @returns {string[]} filterKeys
+ * @return {string[]} filterKeys
  */
 function extractFilterKeys( widget ) {
 	return widget.filters
@@ -110,7 +133,7 @@ function extractFilterKeys( widget ) {
  * Returns a filter key given a filter object.
  *
  * @param {object} filter - a Jetpack Search filter object
- * @returns {string} filterKeys
+ * @return {string} filterKeys
  */
 export function mapFilterToFilterKey( filter ) {
 	if ( filter.type === 'date_histogram' ) {
@@ -119,6 +142,12 @@ export function mapFilterToFilterKey( filter ) {
 		return `${ filter.taxonomy }`;
 	} else if ( filter.type === 'post_type' ) {
 		return 'post_types';
+	} else if ( filter.type === 'author' ) {
+		return 'authors';
+	} else if ( filter.type === 'blog_id' ) {
+		return 'blog_ids';
+	} else if ( filter.type === 'product_attribute' ) {
+		return filter.attribute;
 	} else if ( filter.type === 'group' ) {
 		return filter.filter_id;
 	}
@@ -130,7 +159,7 @@ export function mapFilterToFilterKey( filter ) {
  * Inverse of `mapFilterToFilterKey`.
  *
  * @param {string} filterKey - filter key string to be mapped.
- * @returns {object} filterObject
+ * @return {object} filterObject
  */
 export function mapFilterKeyToFilter( filterKey ) {
 	if ( filterKey.includes( 'month' ) ) {
@@ -149,9 +178,22 @@ export function mapFilterKeyToFilter( filterKey ) {
 		return {
 			type: 'post_type',
 		};
+	} else if ( filterKey === 'authors' ) {
+		return {
+			type: 'author',
+		};
+	} else if ( filterKey === 'blog_ids' ) {
+		return {
+			type: 'blog_id',
+		};
 	} else if ( filterKey === 'group' ) {
 		return {
 			type: 'group',
+		};
+	} else if ( filterKey.startsWith( 'pa_' ) ) {
+		return {
+			type: 'product_attribute',
+			attribute: filterKey,
 		};
 	}
 
@@ -165,7 +207,7 @@ export function mapFilterKeyToFilter( filterKey ) {
  * Returns the type of the inputted filter object.
  *
  * @param {object} filter - filter key string to be mapped.
- * @returns {string} output
+ * @return {string|undefined} output
  */
 export function mapFilterToType( filter ) {
 	if ( filter.type === 'date_histogram' ) {
@@ -174,7 +216,14 @@ export function mapFilterToType( filter ) {
 		return 'taxonomy';
 	} else if ( filter.type === 'post_type' ) {
 		return 'postType';
+	} else if ( filter.type === 'author' ) {
+		return 'author';
+	} else if ( filter.type === 'blog_id' ) {
+		return 'blogId';
+	} else if ( filter.type === 'product_attribute' ) {
+		return 'productAttribute';
 	} else if ( filter.type === 'group' ) {
 		return 'group';
 	}
+	return undefined;
 }

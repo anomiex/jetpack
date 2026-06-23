@@ -1,5 +1,5 @@
-@import '_inc/client/scss/variables/_colors';
-@import '../../scss/typography';
+@use "../../scss/variables/colors";
+@use "../../scss/typography";
 
 .jp-recommendations-back-btn {
 	display: flex;
@@ -9,22 +9,23 @@
 
 	background-color: transparent;
 	border: none;
-	color: var( --jp-gray-70 );
+	color: var(--jp-gray-70);
 	fill: currentColor;
 
-	font-size: $font-body;
+	font-size: typography.$font-body;
 
 	cursor: pointer;
 
 	&:hover,
 	&:active {
+
 		.gridicon {
 			transform: translateX(-0.25rem);
 		}
 	}
 
 	&:focus-visible {
-		outline-color: var( --jp-black );
+		outline-color: var(--jp-black);
 		outline-offset: 2px;
 	}
 

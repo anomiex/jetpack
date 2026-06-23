@@ -1,4 +1,8 @@
 <?php // phpcs:ignore WordPress.Files.FileName.InvalidClassFileName
+if ( ! defined( 'ABSPATH' ) ) {
+	exit( 0 );
+}
+
 require_once __DIR__ . '/tiled-gallery-square.php';
 
 /**
@@ -12,5 +16,3 @@ class Jetpack_Tiled_Gallery_Layout_Circle extends Jetpack_Tiled_Gallery_Layout_S
 	 */
 	protected $type = 'circle';
 }
-
-

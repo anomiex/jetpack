@@ -1,6 +1,6 @@
 <?php
 /**
- * Sniff for textdomains to some additiona functions.
+ * Sniff for textdomains to some additional functions.
  *
  * @package automattic/jetpack-codesniffer
  */
@@ -15,7 +15,7 @@ use PHP_CodeSniffer\Util\Common as Util_Common;
 use PHP_CodeSniffer\Util\Tokens;
 
 /**
- * Sniff for textdomains to some additiona functions.
+ * Sniff for textdomains to some additional functions.
  *
  * Checks that `wp_set_script_translations()` and `Assets::register_script()` are passed
  * a correct domain.
@@ -32,7 +32,7 @@ class I18nSniff implements Sniff {
 	/**
 	 * Returns the token types that this sniff is interested in.
 	 *
-	 * @return array(int)
+	 * @return int[]
 	 */
 	public function register() {
 		return array( T_STRING );
@@ -131,7 +131,7 @@ class I18nSniff implements Sniff {
 			}
 
 			// Go through the values in the array looking for 'textdomain'.
-			$idx   = isset( $tokens[ $args[3][0] ]['parenthesis_opener'] ) ? $tokens[ $args[3][0] ]['parenthesis_opener'] : $args[3][0];
+			$idx   = $tokens[ $args[3][0] ]['parenthesis_opener'] ?? $args[3][0];
 			$end   = $args[3][1];
 			$start = $phpcsFile->findNext( Tokens::$emptyTokens, $idx + 1, $end, true );
 			$toks  = array( T_OPEN_CURLY_BRACKET, T_OPEN_SQUARE_BRACKET, T_OPEN_PARENTHESIS, T_OPEN_SHORT_ARRAY, T_COMMA );
@@ -255,7 +255,6 @@ class I18nSniff implements Sniff {
 					if ( 'u' === $m[1][0] ) {
 						$codepoint = hexdec( substr( $m[1], 2, -1 ) );
 						if ( function_exists( 'mb_chr' ) ) {
-							// phpcs:ignore PHPCompatibility.FunctionUse.NewFunctions.mb_chrFound
 							return mb_chr( $codepoint, 'UTF-8' );
 						}
 						return mb_convert_encoding( pack( 'N', $codepoint ), 'UTF-8', 'UTF-32BE' );
@@ -292,5 +291,4 @@ class I18nSniff implements Sniff {
 			}
 		}
 	}
-
 }

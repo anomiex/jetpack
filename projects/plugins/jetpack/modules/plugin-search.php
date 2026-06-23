@@ -1,19 +1,22 @@
 <?php // phpcs:ignore WordPress.Files.FileName.InvalidClassFileName
 /**
- * Adds the PSH functionality to Jetpack.
+ * Plugin Search Hints, aka Feature Suggestions.
+ *
+ * @since 7.1.0
  *
  * @package automattic/jetpack
  */
 
+// phpcs:disable Universal.Files.SeparateFunctionsFromOO.Mixed -- TODO: Move classes to appropriately-named class files.
+
 use Automattic\Jetpack\Constants;
+use Automattic\Jetpack\Current_Plan as Jetpack_Plan;
 use Automattic\Jetpack\Redirect;
 use Automattic\Jetpack\Tracking;
 
-/**
- * Disable direct access and execution.
- */
+// Disable direct access and execution.
 if ( ! defined( 'ABSPATH' ) ) {
-	exit;
+	exit( 0 );
 }
 
 if (
@@ -212,7 +215,7 @@ class Jetpack_Plugin_Search {
 	 * @return bool True if $hint should be displayed.
 	 */
 	protected function should_display_hint( $hint ) {
-		$dismissed_hints = $this->get_dismissed_hints();
+		$dismissed_hints = static::get_dismissed_hints();
 		// If more than 2 hints have been dismissed, then show no more.
 		if ( 2 < count( $dismissed_hints ) ) {
 			return false;
@@ -237,7 +240,6 @@ class Jetpack_Plugin_Search {
 			array(
 				'nonce'          => wp_create_nonce( 'wp_rest' ),
 				'base_rest_url'  => rest_url( '/jetpack/v4' ),
-				'poweredBy'      => esc_html__( 'by Jetpack (installed)', 'jetpack' ),
 				'manageSettings' => esc_html__( 'Configure', 'jetpack' ),
 				'activateModule' => esc_html__( 'Activate Module', 'jetpack' ),
 				'getStarted'     => esc_html__( 'Get started', 'jetpack' ),
@@ -299,7 +301,7 @@ class Jetpack_Plugin_Search {
 	 */
 	public function get_extra_features() {
 		return array(
-			'akismet' => array(
+			'akismet'       => array(
 				'name'                => 'Akismet',
 				'search_terms'        => 'akismet, anti-spam, antispam, comments, spam, spam protection, form spam, captcha, no captcha, nocaptcha, recaptcha, phising, google',
 				'short_description'   => esc_html__( 'Keep your visitors and search engines happy by stopping comment and contact form spam with Akismet.', 'jetpack' ),
@@ -308,6 +310,16 @@ class Jetpack_Plugin_Search {
 				'sort'                => '16',
 				'learn_more_button'   => Redirect::get_url( 'plugin-hint-upgrade-akismet' ),
 				'configure_url'       => admin_url( 'admin.php?page=akismet-key-config' ),
+			),
+			'sharing-block' => array(
+				'name'                => esc_html__( 'Sharing buttons block', 'jetpack' ),
+				'search_terms'        => 'share, sharing, sharing block, sharing button, social buttons, buttons, share facebook, share twitter, social share, icons, email, facebook, twitter, x, linkedin, pinterest, social media',
+				'short_description'   => esc_html__( 'Add sharing buttons blocks anywhere on your website to help your visitors share your content.', 'jetpack' ),
+				'requires_connection' => false,
+				'module'              => 'sharing-block',
+				'sort'                => '13',
+				'learn_more_button'   => Redirect::get_url( 'jetpack-support-sharing-block' ),
+				'configure_url'       => admin_url( 'site-editor.php?path=%2Fwp_template' ),
 			),
 		);
 	}
@@ -320,29 +332,56 @@ class Jetpack_Plugin_Search {
 	 * @param object $args Search args.
 	 */
 	public function inject_jetpack_module_suggestion( $result, $action, $args ) {
+		/*
+		 * Bail if something else hooks into the Plugins' API response
+		 * and does not return results.
+		 */
+		if ( empty( $result->plugins ) || is_wp_error( $result ) ) {
+			return $result;
+		}
+
 		// Looks like a search query; it's matching time.
 		if ( ! empty( $args->search ) ) {
+			$searchable_modules = array(
+				'contact-form',
+				'monitor',
+				'photon',
+				'photon-cdn',
+				'protect',
+				'publicize',
+				'related-posts',
+				'akismet',
+				'vaultpress',
+				'videopress',
+				'search',
+			);
+
+			/*
+			 * Let's handle the Sharing feature differently.
+			 * If we're using a block-based theme, we should suggest the sharing block.
+			 * If using a classic theme, we should suggest the old sharing module.
+			 */
+			if ( wp_is_block_theme() ) {
+				$searchable_modules[] = 'sharing-block';
+			} else {
+				$searchable_modules[] = 'sharedaddy';
+			}
+
+			/*
+			 * Only surface the SEO Tools hint once the new Jetpack SEO admin page is
+			 * available. The page is gated behind the `rsm_jetpack_seo` feature flag,
+			 * so without this gate the hint's CTAs would point to a page that isn't
+			 * registered yet.
+			 */
+			if ( apply_filters( 'rsm_jetpack_seo', false ) ) {
+				$searchable_modules[] = 'seo-tools';
+			}
+
 			require_once JETPACK__PLUGIN_DIR . 'class.jetpack-admin.php';
 			$tracking             = new Tracking();
 			$jetpack_modules_list = array_intersect_key(
 				array_merge( $this->get_extra_features(), Jetpack_Admin::init()->get_modules() ),
-				array_flip(
-					array(
-						'contact-form',
-						'lazy-images',
-						'monitor',
-						'photon',
-						'photon-cdn',
-						'protect',
-						'publicize',
-						'related-posts',
-						'sharedaddy',
-						'akismet',
-						'vaultpress',
-						'videopress',
-						'search',
-					)
-				)
+				array_flip( $searchable_modules )
 			);
 			uasort( $jetpack_modules_list, array( $this, 'by_sorting_option' ) );
 
@@ -390,6 +429,7 @@ class Jetpack_Plugin_Search {
 						$jetpack_modules_list[ $matching_module ]['name']
 					),
 					'short_description'   => $jetpack_modules_list[ $matching_module ]['short_description'],
+					'author'              => esc_attr__( 'Jetpack (installed)', 'jetpack' ),
 					'requires_connection' => (bool) $jetpack_modules_list[ $matching_module ]['requires_connection'],
 					'slug'                => self::$slug,
 					'version'             => JETPACK__VERSION,
@@ -466,7 +506,7 @@ class Jetpack_Plugin_Search {
 	 * @param array $m2 Array 2 to sort.
 	 */
 	private function by_sorting_option( $m1, $m2 ) {
-		return $m1['sort'] - $m2['sort'];
+		return $m1['sort'] <=> $m2['sort'];
 	}
 
 	/**
@@ -487,12 +527,9 @@ class Jetpack_Plugin_Search {
 				$configure_url = Redirect::get_url( 'calypso-marketing-connections' );
 				break;
 			case 'seo-tools':
-				$configure_url = Redirect::get_url(
-					'calypso-marketing-traffic',
-					array(
-						'anchor' => 'seo',
-					)
-				);
+				// Jetpack SEO has its own wp-admin page (the new SEO home base);
+				// send users there rather than the legacy Traffic page.
+				$configure_url = admin_url( 'admin.php?page=jetpack-seo' );
 				break;
 			case 'google-analytics':
 				$configure_url = Redirect::get_url(
@@ -525,11 +562,20 @@ class Jetpack_Plugin_Search {
 
 		$links = array();
 
-		if ( 'akismet' === $plugin['module'] || 'vaultpress' === $plugin['module'] ) {
+		if ( 'sharing-block' === $plugin['module'] ) {
+			$links['jp_get_started'] = '<a
+				id="plugin-select-settings"
+				class="jetpack-plugin-search__primary jetpack-plugin-search__get-started button"
+				href="' . esc_url( admin_url( 'site-editor.php?path=%2Fwp_template' ) ) . '"
+				data-module="' . esc_attr( $plugin['module'] ) . '"
+				data-track="get_started"
+				>' . esc_html__( 'Add block', 'jetpack' ) . '</a>';
+		} elseif ( 'akismet' === $plugin['module'] || 'vaultpress' === $plugin['module'] ) {
 			$links['jp_get_started'] = '<a
 				id="plugin-select-settings"
 				class="jetpack-plugin-search__primary jetpack-plugin-search__get-started button"
 				href="' . esc_url( Redirect::get_url( 'plugin-hint-learn-' . $plugin['module'] ) ) . '"
+				target="_blank"
 				data-module="' . esc_attr( $plugin['module'] ) . '"
 				data-track="get_started"
 				>' . esc_html__( 'Get started', 'jetpack' ) . '</a>';
@@ -562,11 +608,24 @@ class Jetpack_Plugin_Search {
 				data-track="configure"
 				>' . esc_html__( 'Configure', 'jetpack' ) . '</a>';
 			// Module is active, doesn't have options to configure.
+		} elseif ( 'seo-tools' === $plugin['module'] && Jetpack::is_module_active( $plugin['module'] ) ) {
+			// Jetpack SEO has its own wp-admin page; send users there (same tab)
+			// rather than a jetpack.com doc redirect, which isn't registered for
+			// this module. Reuse get_configure_url() so the destination stays in
+			// one place.
+			$links['jp_get_started'] = '<a
+				id="plugin-select-settings"
+				class="jetpack-plugin-search__primary jetpack-plugin-search__get-started button"
+				href="' . esc_url( $this->get_configure_url( $plugin['module'], $plugin['configure_url'] ) ) . '"
+				data-module="' . esc_attr( $plugin['module'] ) . '"
+				data-track="get_started"
+				>' . esc_html__( 'Get started', 'jetpack' ) . '</a>';
 		} elseif ( Jetpack::is_module_active( $plugin['module'] ) ) {
 			$links['jp_get_started'] = '<a
 				id="plugin-select-settings"
 				class="jetpack-plugin-search__primary jetpack-plugin-search__get-started button"
 				href="' . esc_url( Redirect::get_url( 'plugin-hint-learn-' . $plugin['module'] ) ) . '"
+				target="_blank"
 				data-module="' . esc_attr( $plugin['module'] ) . '"
 				data-track="get_started"
 				>' . esc_html__( 'Get started', 'jetpack' ) . '</a>';
@@ -591,7 +650,6 @@ class Jetpack_Plugin_Search {
 
 		return $links;
 	}
-
 }
 
 /**

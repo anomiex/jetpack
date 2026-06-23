@@ -5,6 +5,10 @@
  * @package automattic/jetpack
  */
 
+if ( ! defined( 'ABSPATH' ) ) {
+	exit( 0 );
+}
+
 if ( defined( 'WP_CLI' ) && WP_CLI ) {
 
 	/**
@@ -58,21 +62,22 @@ if ( defined( 'WP_CLI' ) && WP_CLI ) {
 		 */
 		public function list_crons() {
 
-			$scheduler = VideoPress_Scheduler::init();
-			$crons     = $scheduler->get_crons();
+			$scheduler   = VideoPress_Scheduler::init();
+			$crons       = $scheduler->get_crons();
+			$crons_count = is_countable( $crons ) ? count( $crons ) : 0;
 
 			$schedules = wp_get_schedules();
 
-			if ( count( $crons ) === 0 ) {
+			if ( $crons_count === 0 ) {
 				WP_CLI::success( __( 'Found no available cron jobs.', 'jetpack' ) );
 
 			} else {
 				/* translators: %d is the number of crons */
-				WP_CLI::success( sprintf( _n( 'Found %d available cron job.', 'Found %d available cron jobs.', count( $crons ), 'jetpack' ), count( $crons ) ) );
+				WP_CLI::success( sprintf( _n( 'Found %d available cron job.', 'Found %d available cron jobs.', $crons_count, 'jetpack' ), $crons_count ) );
 			}
 
 			foreach ( $crons as $cron_name => $cron ) {
-				$interval  = isset( $schedules[ $cron['interval'] ]['display'] ) ? $schedules[ $cron['interval'] ]['display'] : $cron['interval'];
+				$interval  = $schedules[ $cron['interval'] ]['display'] ?? $cron['interval'];
 				$runs_next = $scheduler->check_cron( $cron_name );
 				$status    = $runs_next ? sprintf( 'Scheduled - Runs Next at %s GMT', gmdate( 'Y-m-d H:i:s', $runs_next ) ) : 'Not Scheduled';
 

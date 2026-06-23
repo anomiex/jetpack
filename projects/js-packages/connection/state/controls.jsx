@@ -1,33 +1,38 @@
 import restApi from '@automattic/jetpack-api';
 import { createRegistryControl } from '@wordpress/data';
+import { assignLocation } from './assignLocation';
 import STORE_ID from './store-id';
 
-const REGISTER_SITE = ( { registrationNonce, redirectUri } ) =>
-	restApi.registerSite( registrationNonce, redirectUri );
+const REGISTER_SITE = ( { redirectUri, from } ) => restApi.registerSite( null, redirectUri, from );
 
 const CONNECT_USER = createRegistryControl(
-	( { resolveSelect } ) => ( { from, redirectFunc, redirectUri } = {} ) => {
-		return new Promise( ( resolve, reject ) => {
-			resolveSelect( STORE_ID )
-				.getAuthorizationUrl( redirectUri )
-				.then( authorizationUrl => {
-					const redirect = redirectFunc || ( url => window.location.assign( url ) );
+	( { resolveSelect } ) =>
+		( { from, redirectFunc, redirectUri, skipPricingPage } = {} ) => {
+			return new Promise( ( resolve, reject ) => {
+				resolveSelect( STORE_ID )
+					.getAuthorizationUrl( redirectUri )
+					.then( authorizationUrl => {
+						const redirect = redirectFunc || ( url => assignLocation( url ) );
 
-					const url = new URL( authorizationUrl );
+						const url = new URL( authorizationUrl );
 
-					if ( from ) {
-						url.searchParams.set( 'from', encodeURIComponent( from ) );
-					}
+						if ( skipPricingPage ) {
+							url.searchParams.set( 'skip_pricing', 'true' );
+						}
 
-					const finalUrl = url.toString();
-					redirect( finalUrl );
-					resolve( finalUrl );
-				} )
-				.catch( error => {
-					reject( error );
-				} );
-		} );
-	}
+						if ( from ) {
+							url.searchParams.set( 'from', encodeURIComponent( from ) );
+						}
+
+						const finalUrl = url.toString();
+						redirect( finalUrl );
+						resolve( finalUrl );
+					} )
+					.catch( error => {
+						reject( error );
+					} );
+			} );
+		}
 );
 
 const FETCH_AUTHORIZATION_URL = ( { redirectUri } ) => restApi.fetchAuthorizationUrl( redirectUri );

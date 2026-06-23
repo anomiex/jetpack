@@ -1,7 +1,7 @@
 <?php
 
 // don't call the file directly
-defined( 'ABSPATH' ) or die();
+defined( 'ABSPATH' ) || die( 0 );
 
 if ( !class_exists( 'IXR_Client' ) )
 	include_once( ABSPATH . WPINC . '/class-IXR.php' );
@@ -102,7 +102,8 @@ class VaultPress_IXR_SSL_Client extends IXR_Client {
 				$this->error = new IXR_Error( -32300, "Transport error - could not open socket: $errno $errstr" );
 				return false;
 			}
-			fputs( $fp, $request );
+			// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fwrite -- This is writing a socket, not the filesystem.
+			fwrite( $fp, $request );
 
 			$contents = '';
 			$gotFirstLine = false;

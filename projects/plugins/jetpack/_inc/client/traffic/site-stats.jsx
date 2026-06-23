@@ -1,22 +1,22 @@
-import { imagePath } from 'constants/urls';
 import { getRedirectUrl } from '@automattic/jetpack-components';
+import { ToggleControl } from '@wordpress/components';
 import { createInterpolateElement } from '@wordpress/element';
 import { __, _x } from '@wordpress/i18n';
-import classNames from 'classnames';
+import clsx from 'clsx';
+import { Component } from 'react';
+import { connect } from 'react-redux';
 import Button from 'components/button';
 import Card from 'components/card';
 import FoldableCard from 'components/foldable-card';
-import CompactFormToggle from 'components/form/form-toggle/compact';
 import { FormFieldset, FormLegend } from 'components/forms';
 import ModuleOverriddenBanner from 'components/module-overridden-banner';
 import { withModuleSettingsFormHelpers } from 'components/module-settings/with-module-settings-form-helpers';
 import SettingsCard from 'components/settings-card';
 import SettingsGroup from 'components/settings-group';
+import { imagePath } from 'constants/urls';
 import analytics from 'lib/analytics';
-import { filter, includes } from 'lodash';
-import React from 'react';
 
-class SiteStatsComponent extends React.Component {
+class SiteStatsComponent extends Component {
 	constructor( props ) {
 		super( props );
 		const countRoles = props.getOptionValue( 'count_roles', 'stats' ),
@@ -26,22 +26,37 @@ class SiteStatsComponent extends React.Component {
 			count_roles: countRoles,
 			roles: roles,
 
-			count_roles_administrator: includes( countRoles, 'administrator', false ),
-			count_roles_editor: includes( countRoles, 'editor', false ),
-			count_roles_author: includes( countRoles, 'author', false ),
-			count_roles_contributor: includes( countRoles, 'contributor', false ),
-			count_roles_subscriber: includes( countRoles, 'subscriber', false ),
+			count_roles_administrator: !! countRoles?.includes( 'administrator' ),
+			count_roles_editor: !! countRoles?.includes( 'editor' ),
+			count_roles_author: !! countRoles?.includes( 'author' ),
+			count_roles_contributor: !! countRoles?.includes( 'contributor' ),
+			count_roles_subscriber: !! countRoles?.includes( 'subscriber' ),
 
 			roles_administrator: true,
-			roles_editor: includes( roles, 'editor', false ),
-			roles_author: includes( roles, 'author', false ),
-			roles_contributor: includes( roles, 'contributor', false ),
-			roles_subscriber: includes( roles, 'subscriber', false ),
+			roles_editor: !! roles?.includes( 'editor' ),
+			roles_author: !! roles?.includes( 'author' ),
+			roles_contributor: !! roles?.includes( 'contributor' ),
+			roles_subscriber: !! roles?.includes( 'subscriber' ),
+
+			wpcom_reader_views_enabled: props.getOptionValue( 'wpcom_reader_views_enabled' ),
 		};
 
-		if ( roles ) {
-			this.addCustomCountRolesState( countRoles );
-			this.addCustomRolesState( roles );
+		const defaultRoles = [ 'administrator', 'editor', 'author', 'contributor', 'subscriber' ];
+
+		if ( roles?.length > 0 ) {
+			roles.forEach( role => {
+				if ( ! defaultRoles.includes( role ) ) {
+					this.state[ `roles_${ role }` ] = true;
+				}
+			} );
+		}
+
+		if ( countRoles?.length > 0 ) {
+			countRoles.forEach( role => {
+				if ( ! defaultRoles.includes( role ) ) {
+					this.state[ `count_roles_${ role }` ] = true;
+				}
+			} );
 		}
 	}
 
@@ -55,14 +70,12 @@ class SiteStatsComponent extends React.Component {
 		let value = this.props.getOptionValue( optionSet, 'stats' ),
 			toggled = false;
 		if ( ! this.state[ `${ optionSet }_${ optionName }` ] ) {
-			if ( ! includes( value, optionName ) ) {
+			if ( ! value.includes( optionName ) ) {
 				value.push( optionName );
 				toggled = true;
 			}
-		} else if ( includes( value, optionName ) ) {
-			value = filter( value, item => {
-				return item !== optionName;
-			} );
+		} else if ( value.includes( optionName ) ) {
+			value = value.filter( item => item !== optionName );
 		}
 
 		this.setState(
@@ -104,47 +117,36 @@ class SiteStatsComponent extends React.Component {
 		return () => this.updateOptions( role, setting );
 	};
 
-	/**
-	 * Allows for custom roles 'count logged in page views' stats settings to be added to the current state.
-	 *
-	 * @param {Array} countRoles - All roles (including custom) that have 'count logged in page views' enabled.
-	 */
-	addCustomCountRolesState( countRoles ) {
-		countRoles.forEach( role => {
-			if (
-				! [ 'administrator', 'editor', 'author', 'subscriber', 'contributor' ].includes(
-					countRoles
-				)
-			) {
-				this.state[ `count_roles_${ role }` ] = includes( countRoles, role, false );
-			}
-		} );
-	}
-
-	/**
-	 * Allows for custom roles 'allow stats reports' stats settings to be added to the current state.
-	 *
-	 * @param {Array} roles - All roles (including custom) that have 'allow stats reports' enabled.
-	 */
-	addCustomRolesState( roles ) {
-		roles.forEach( role => {
-			if (
-				! [ 'administrator', 'editor', 'author', 'subscriber', 'contributor' ].includes( role )
-			) {
-				this.state[ `roles_${ role }` ] = includes( roles, role, false );
-			}
-		} );
-	}
-
 	handleStatsOptionToggle( option_slug ) {
 		return () => this.props.updateFormStateModuleOption( 'stats', option_slug );
 	}
 
+	handleOptionToggle = option_slug => () => {
+		const value = ! this.props.getOptionValue( option_slug );
+
+		this.setState(
+			{
+				[ option_slug ]: ! this.state[ option_slug ],
+			},
+			() => {
+				this.props.updateOptions( {
+					[ option_slug ]: value,
+				} );
+			}
+		);
+
+		analytics.tracks.recordEvent( 'jetpack_wpa_settings_toggle', {
+			module: 'stats',
+			setting: option_slug,
+			toggled: value ? 'on' : 'off',
+		} );
+	};
+
 	render() {
-		const stats = this.props.getModule( 'stats' ),
-			isStatsActive = this.props.getOptionValue( 'stats' ),
-			unavailableInOfflineMode = this.props.isUnavailableInOfflineMode( 'stats' ),
-			siteRoles = this.props.getSiteRoles();
+		const stats = this.props.getModule( 'stats' );
+		const isStatsActive = this.props.getOptionValue( 'stats' );
+		const unavailableInOfflineMode = this.props.isUnavailableInOfflineMode( 'stats' );
+		const siteRoles = this.props.getSiteRoles();
 
 		if ( 'inactive' === this.props.getModuleOverride( 'stats' ) ) {
 			return <ModuleOverriddenBanner moduleName={ stats.name } />;
@@ -163,7 +165,7 @@ class SiteStatsComponent extends React.Component {
 								src={ imagePath + 'stats.svg' }
 								width="60"
 								height="60"
-								alt={ __( 'Jetpack Stats Icon', 'jetpack' ) }
+								alt={ __( 'Line chart overlaid on a bar chart', 'jetpack' ) }
 								className="jp-at-a-glance__stats-icon"
 							/>
 						</div>
@@ -172,12 +174,11 @@ class SiteStatsComponent extends React.Component {
 								? __( 'Unavailable in Offline Mode', 'jetpack' )
 								: createInterpolateElement(
 										__(
-											'<a>Activate Site Stats</a> to see detailed stats, likes, followers, subscribers, and more! <a1>Learn More</a1>',
+											'Activate Jetpack Stats to see page views, likes, followers, subscribers, and more! <a>Learn More</a>',
 											'jetpack'
 										),
 										{
-											a: <a href="javascript:void(0)" onClick={ this.activateStats } />,
-											a1: (
+											a: (
 												<a
 													href={ getRedirectUrl( 'jetpack-support-wordpress-com-stats' ) }
 													target="_blank"
@@ -189,8 +190,8 @@ class SiteStatsComponent extends React.Component {
 						</div>
 						{ ! this.props.isOfflineMode && (
 							<div className="jp-at-a-glance__stats-inactive-button">
-								<Button onClick={ this.activateStats } primary={ true }>
-									{ __( 'Activate Site Stats', 'jetpack' ) }
+								<Button rna onClick={ this.activateStats } primary={ true }>
+									{ __( 'Activate Jetpack Stats', 'jetpack' ) }
 								</Button>
 							</div>
 						) }
@@ -202,7 +203,7 @@ class SiteStatsComponent extends React.Component {
 		return (
 			<SettingsCard
 				{ ...this.props }
-				header={ _x( 'Site stats', 'Settings header', 'jetpack' ) }
+				header={ _x( 'Jetpack Stats', 'Settings header', 'jetpack' ) }
 				hideButton
 				module="site-stats"
 			>
@@ -213,7 +214,7 @@ class SiteStatsComponent extends React.Component {
 						'jetpack'
 					) }
 					clickableHeader={ true }
-					className={ classNames( 'jp-foldable-settings-standalone', {
+					className={ clsx( 'jp-foldable-settings-standalone', {
 						'jp-foldable-settings-disable': unavailableInOfflineMode,
 					} ) }
 				>
@@ -228,60 +229,73 @@ class SiteStatsComponent extends React.Component {
 							link: getRedirectUrl( 'jetpack-support-wordpress-com-stats' ),
 						} }
 					>
-						<FormFieldset>
-							<CompactFormToggle
+						<FormFieldset className="jp-stats-form-fieldset">
+							<ToggleControl
+								__nextHasNoMarginBottom={ true }
 								checked={ !! this.props.getOptionValue( 'admin_bar' ) }
-								disabled={ ! isStatsActive || unavailableInOfflineMode }
-								toggling={ this.props.isSavingAnyOption( [ 'stats', 'admin_bar' ] ) }
+								disabled={
+									! isStatsActive ||
+									unavailableInOfflineMode ||
+									this.props.isSavingAnyOption( [ 'stats' ] )
+								}
 								onChange={ this.handleStatsOptionToggle( 'admin_bar' ) }
-							>
-								<span className="jp-form-toggle-explanation">
-									{ __(
-										'Include a small chart in your admin bar with a 48-hour traffic snapshot',
-										'jetpack'
-									) }
-								</span>
-							</CompactFormToggle>
+								label={ __(
+									'Include a small chart in your admin bar with a 48-hour traffic snapshot',
+									'jetpack'
+								) }
+							/>
 						</FormFieldset>
-						<FormFieldset>
+						<FormFieldset className="jp-stats-form-fieldset">
 							<FormLegend>{ __( 'Count logged in page views from', 'jetpack' ) }</FormLegend>
 							{ Object.keys( siteRoles ).map( key => (
-								<CompactFormToggle
+								<ToggleControl
+									__nextHasNoMarginBottom={ true }
 									checked={ this.state[ `count_roles_${ key }` ] }
 									disabled={
 										! isStatsActive ||
 										unavailableInOfflineMode ||
-										this.props.isSavingAnyOption( [ 'stats', 'count_roles' ] )
+										this.props.isSavingAnyOption( [ 'stats' ] )
 									}
 									onChange={ this.handleRoleToggleChange( key, 'count_roles' ) }
 									key={ `count_roles-${ key }` }
-								>
-									<span className="jp-form-toggle-explanation">{ siteRoles[ key ].name }</span>
-								</CompactFormToggle>
+									label={ siteRoles[ key ].name }
+								/>
 							) ) }
 						</FormFieldset>
-						<FormFieldset>
-							<FormLegend>{ __( 'Allow stats reports to be viewed by', 'jetpack' ) }</FormLegend>
-							<CompactFormToggle checked={ true } disabled={ true }>
-								<span className="jp-form-toggle-explanation">{ siteRoles.administrator.name }</span>
-							</CompactFormToggle>
-							{ Object.keys( siteRoles ).map(
-								key =>
-									'administrator' !== key && (
-										<CompactFormToggle
-											checked={ this.state[ `roles_${ key }` ] }
-											disabled={
-												! isStatsActive ||
-												unavailableInOfflineMode ||
-												this.props.isSavingAnyOption( [ 'stats', 'roles' ] )
-											}
-											onChange={ this.handleRoleToggleChange( key, 'roles' ) }
-											key={ `roles-${ key }` }
-										>
-											<span className="jp-form-toggle-explanation">{ siteRoles[ key ].name }</span>
-										</CompactFormToggle>
-									)
+						<FormFieldset className="jp-stats-form-fieldset">
+							<FormLegend>{ __( 'Allow Jetpack Stats to be viewed by', 'jetpack' ) }</FormLegend>
+							<ToggleControl
+								__nextHasNoMarginBottom={ true }
+								checked={ true }
+								disabled={ true }
+								label={ siteRoles.administrator.name }
+							/>
+							{ Object.keys( siteRoles ).map( key =>
+								'administrator' !== key ? (
+									<ToggleControl
+										__nextHasNoMarginBottom={ true }
+										checked={ this.state[ `roles_${ key }` ] }
+										disabled={
+											! isStatsActive ||
+											unavailableInOfflineMode ||
+											this.props.isSavingAnyOption( [ 'stats' ] )
+										}
+										onChange={ this.handleRoleToggleChange( key, 'roles' ) }
+										key={ `roles-${ key }` }
+										label={ siteRoles[ key ].name }
+									/>
+								) : null
 							) }
+						</FormFieldset>
+						<FormFieldset className="jp-stats-form-fieldset">
+							<FormLegend>{ __( 'WordPress.com Reader', 'jetpack' ) }</FormLegend>
+							<ToggleControl
+								__nextHasNoMarginBottom={ true }
+								checked={ this.state.wpcom_reader_views_enabled }
+								disabled={ ! isStatsActive || unavailableInOfflineMode }
+								onChange={ this.handleOptionToggle( 'wpcom_reader_views_enabled' ) }
+								label={ __( 'Show post views for this site.', 'jetpack' ) }
+							/>
 						</FormFieldset>
 					</SettingsGroup>
 				</FoldableCard>
@@ -290,4 +304,4 @@ class SiteStatsComponent extends React.Component {
 	}
 }
 
-export const SiteStats = withModuleSettingsFormHelpers( SiteStatsComponent );
+export const SiteStats = connect()( withModuleSettingsFormHelpers( SiteStatsComponent ) );
