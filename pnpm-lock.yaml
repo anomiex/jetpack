@@ -19,12 +19,6 @@ packages:
     engines: {node: '>=18'}
     hasBin: true
 
-ignoredOptionalDependencies:
-  - '@oxc-parser/binding-wasm32-wasi'
-  - '@rolldown/binding-wasm32-wasi'
-  - sass-embedded-all-unknown
-  - sass-embedded-unknown-all
-
 snapshots:
 
   husky@9.1.7: {}
