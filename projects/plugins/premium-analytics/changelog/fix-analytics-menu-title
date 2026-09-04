@@ -1,4 +1,0 @@
-Significance: patch
-Type: fixed
-
-Use the package's own translated admin menu label instead of passing a hardcoded English one.

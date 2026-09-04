@@ -1,3 +1,0 @@
-/dist/**           production-include
-/test.sh           production-exclude
-/tsdown.config.js  production-exclude

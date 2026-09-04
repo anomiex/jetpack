@@ -1,2 +1,0 @@
-/dist/**           production-include
-/tsdown.config.js  production-exclude
