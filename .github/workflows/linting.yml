@@ -1,0 +1,40 @@
+# This workflow holds jobs for linting, currently PHP and JavaScript.
+#
+# The jobs are all set up to only run if appropriate files have changed; the
+# `changed_files` job is used to determine whether files have changed in
+# various categories so the rest of the jobs can know whether to run or not.
+
+name: Linting
+
+on:
+  pull_request:
+  push:
+    branches:
+      - trunk
+concurrency:
+  group: linting-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  COMPOSER_ROOT_VERSION: "dev-trunk"
+
+permissions:
+  # actions/checkout
+  contents: read
+
+jobs:
+
+  ### Checks against project structure, e.g. that composer.json exists.
+  # Local equivalent: `./.github/files/lint-project-structure.sh`
+  project_structure:
+    name: Project structure
+    runs-on: ubuntu-latest
+    timeout-minutes: 15  # 2026-09-04: Temporary, pnpm/action-setup is taking up to 7 minutes.
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Setup tools
+        uses: ./.github/actions/tool-setup
+
+      - run: pnpm install
+      - run: .github/files/lint-project-structure.sh
