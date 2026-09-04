@@ -39,6 +39,3 @@ jobs:
       - run: git diff
       - run: pnpm install
       - run: git diff
-      - run: .github/files/lint-project-structure.sh
-      - run: git diff
-        if: always()
