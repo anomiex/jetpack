@@ -45,10 +45,15 @@ jobs:
               PATHS="${TAG#pr-update-to-}"
             fi
           else
+            git -c core.quotepath=off diff --name-only "${BASE}...${REF}" projects/*/*/
+            echo "---"
+            git -c core.quotepath=off diff --name-only "${BASE}...${REF}" projects/*/*/ | sed -nE 's!^(projects/[^/]+/[^/]+)/.*!pr-update-to-\1!p' | sort -u
+            echo "---"
             TMP="$(git -c core.quotepath=off diff --name-only "${BASE}...${REF}" projects/*/*/ | sed -nE 's!^(projects/[^/]+/[^/]+)/.*!pr-update-to-\1!p' | sort -u)"
             mapfile -t TAGS <<<"$TMP"
             TAGS+=( pr-update-to )
           fi
+          echo "pr-tags=${TAGS[*]}"
           echo "pr-tags=${TAGS[*]}" >> "$GITHUB_OUTPUT"
           echo "push-tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "push-paths=$PATHS" >> "$GITHUB_OUTPUT"
