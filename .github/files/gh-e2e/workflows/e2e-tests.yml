@@ -9,7 +9,7 @@ permissions: {}
 jobs:
   run-tests:
     name: "Trigger e2e tests in Jetpack monorepo"
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
 
     steps:
       - name: Create a repository dispatch

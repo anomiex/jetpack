@@ -25,7 +25,7 @@ $default_matrix_vars = array(
 	'name'                => null,
 
 	// {string} Runner name as found in https://github.com/actions/runner-images/.
-	'runner'              => 'ubuntu-latest',
+	'runner'              => 'ubuntu-26.04',
 
 	// {string} Composer script for the job. Required.
 	'script'              => null,

@@ -24,7 +24,7 @@ env:
 jobs:
   prepare:
     name: Prepare build matrix
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 5  # 2026-04-07: Should take about a minute.
     permissions:
       # actions/checkout
@@ -107,7 +107,7 @@ jobs:
   # Have to manually matrix with yaml anchors, because `update_wpcom_mirrors` needs to depend on only `build_wpcom` and that's not possible with normal matrixing.
   build_all:
     name: Build all projects
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     needs: prepare
     if: ${{ fromJson( needs.prepare.outputs.build_matrix ).all }}
     env:
@@ -185,7 +185,7 @@ jobs:
 
   build_wpcom:
     name: Build wpcom projects
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     needs: prepare
     if: ${{ fromJson( needs.prepare.outputs.build_matrix ).wpcom }}
     env:
@@ -198,7 +198,7 @@ jobs:
 
   build_nonwpcom:
     name: Build non-wpcom projects
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     needs: prepare
     if: ${{ fromJson( needs.prepare.outputs.build_matrix ).nonwpcom }}
     env:
@@ -211,7 +211,7 @@ jobs:
 
   merge_artifacts:
     name: Merge build artifacts
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 10  # 2026-04-07: Should take a minute or two.
     needs: [ prepare, build_all, build_wpcom, build_nonwpcom ]
     permissions:
@@ -416,7 +416,7 @@ jobs:
   # So we poll for the previous commit's Build run, and only let our `update_wpcom_mirrors` get queued when that run's `update_wpcom_mirrors` is already queued.
   await_update_wpcom_mirrors:
     name: Wait for previous commit wpcom-mirrors push
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     needs: [ build_wpcom ]
     if: github.event_name == 'push' && github.repository == 'Automattic/jetpack'
     # No timeout, might take arbitrary amounts of time.
@@ -503,7 +503,7 @@ jobs:
 
   update_wpcom_mirrors:
     name: Push wpcom plugins to mirror repos
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     needs: [ await_update_wpcom_mirrors ]
     if: github.event_name == 'push' && github.repository == 'Automattic/jetpack'
     concurrency:
@@ -540,7 +540,7 @@ jobs:
   # Ditto for `update_all_mirrors`.
   await_update_all_mirrors:
     name: Wait for previous commit all-mirrors push
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     needs: [ merge_artifacts ]
     # Have to check success manually, GitHub's default sees that merge_artifacts depends on a build job that skipped and skips otherwise. 🙄
     if: >
@@ -561,7 +561,7 @@ jobs:
 
   update_all_mirrors:
     name: Push to mirror repos
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     needs: [ prepare, merge_artifacts, await_update_all_mirrors ]
     concurrency:
       group: build-push_all

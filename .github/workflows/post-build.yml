@@ -35,7 +35,7 @@ permissions:
 jobs:
   setup:
     name: Setup
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 2  # 2025-11-20: Takes a few seconds.
     outputs:
       upgrade_check: ${{ steps.upgrade_check.outputs.id }}
@@ -78,7 +78,7 @@ jobs:
 
   build_failed:
     name: Handle build failure
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     needs: setup
     if: github.event.workflow_run.conclusion != 'success'
     timeout-minutes: 2  # 2025-11-20: Seems like it should be fast.
@@ -116,7 +116,7 @@ jobs:
 
   find_artifact:
     name: Find artifact
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     needs: setup
     if: github.event.workflow_run.conclusion == 'success'
     timeout-minutes: 2  # 2025-11-20: Takes a few seconds.
@@ -203,7 +203,7 @@ jobs:
 
   no_plugins:
     name: Handle no-plugins
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     needs: [ setup, find_artifact ]
     if: needs.find_artifact.outputs.any_plugins == 'false'
     timeout-minutes: 2  # 2025-11-20: Takes a few seconds.
@@ -241,7 +241,7 @@ jobs:
 
   prepare_upgrade_test:
     name: Prepare plugin upgrades matrix
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     needs: [ setup, find_artifact ]
     if: needs.find_artifact.outputs.any_plugins == 'true'
     outputs:
@@ -294,7 +294,7 @@ jobs:
 
   upgrade_test:
     name: Test upgrades for ${{ matrix.slug }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     needs: [ setup, find_artifact, prepare_upgrade_test ]
     if: needs.find_artifact.outputs.any_plugins == 'true'
     timeout-minutes: 15  # 2025-11-20: Successful runs seem to take about 2 minutes, but give some extra time for the downloads.
@@ -369,7 +369,7 @@ jobs:
 
   post_upgrade_test:
     name: Finalize plugin test
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     needs: [ setup, find_artifact, upgrade_test ]
     if: always() && needs.find_artifact.outputs.any_plugins == 'true'
     timeout-minutes: 5  # 2025-11-20: Takes a few seconds.
@@ -399,7 +399,7 @@ jobs:
 
   wpcom_filename_test:
     name: Test wpcom filename restrictions
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     needs: [ setup, find_artifact ]
     if: needs.find_artifact.outputs.any_plugins == 'true'
     timeout-minutes: 15  # 2025-11-20: Less than a minute, but leave time for the downloads.
