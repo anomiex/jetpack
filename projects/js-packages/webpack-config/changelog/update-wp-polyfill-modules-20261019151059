@@ -1,0 +1,4 @@
+Significance: patch
+Type: changed
+
+Babel preset: Update the list of polyfills that WordPress includes in `wp-polyfill`.

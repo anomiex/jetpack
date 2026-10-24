@@ -14,7 +14,6 @@
 		"web.url-search-params.has",
 		"web.url-search-params.size",
 		"web.url.can-parse",
-		"web.url.parse",
-		"bogus"
+		"web.url.parse"
 	]
 }
