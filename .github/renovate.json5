@@ -160,6 +160,7 @@
 		// Review updates that could shift performance measurements without delaying other projects.
 		{
 			matchFileNames: [ 'tools/performance/**' ],
+			matchUpdateTypes: [ '!lockFileMaintenance', '!lockfileUpdate' ],
 			groupName: 'Performance tool dependencies',
 			dependencyDashboardApproval: true,
 		},
