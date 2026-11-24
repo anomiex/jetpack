@@ -802,11 +802,11 @@ importers:
         specifier: 1.0.1
         version: 1.0.1
       playwright:
-        specifier: 1.65.0
-        version: 1.65.0
+        specifier: 1.65.1
+        version: 1.65.1
       playwright-core:
         specifier: ^1.45.1
-        version: 1.65.0
+        version: 1.65.1
       process:
         specifier: 0.11.10
         version: 0.11.10
@@ -1641,7 +1641,7 @@ importers:
         version: 6.0.1(vite@8.1.6(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.97.3)(terser@5.51.2)(yaml@2.8.3))
       '@vitest/browser-playwright':
         specifier: 4.1.12
-        version: 4.1.12(playwright@1.65.0)(vite@8.1.6(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.97.3)(terser@5.51.2)(yaml@2.8.3))(vitest@4.1.12)
+        version: 4.1.12(playwright@1.65.1)(vite@8.1.6(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.97.3)(terser@5.51.2)(yaml@2.8.3))(vitest@4.1.12)
       '@wordpress/base-styles':
         specifier: 15.0.0
         version: 15.0.0
@@ -1670,8 +1670,8 @@ importers:
         specifier: 4.0.0
         version: 4.0.0(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       playwright:
-        specifier: 1.65.0
-        version: 1.65.0
+        specifier: 1.65.1
+        version: 1.65.1
       react:
         specifier: 19.3.0
         version: 19.3.0
@@ -3384,8 +3384,8 @@ importers:
         specifier: 1.8.1
         version: 1.8.1
       '@playwright/test':
-        specifier: 1.65.0
-        version: 1.65.0
+        specifier: 1.65.1
+        version: 1.65.1
       '@tsconfig/strictest':
         specifier: 2.0.5
         version: 2.0.5
@@ -6094,8 +6094,8 @@ importers:
         specifier: workspace:*
         version: link:../../../../../tools/e2e-commons
       '@playwright/test':
-        specifier: 1.65.0
-        version: 1.65.0
+        specifier: 1.65.1
+        version: 1.65.1
       config:
         specifier: 4.4.1
         version: 4.4.1
@@ -6109,8 +6109,8 @@ importers:
         specifier: workspace:*
         version: link:../../../../../tools/e2e-commons
       '@playwright/test':
-        specifier: 1.65.0
-        version: 1.65.0
+        specifier: 1.65.1
+        version: 1.65.1
       '@types/node':
         specifier: ^24.12.0
         version: 24.19.2
@@ -6326,8 +6326,8 @@ importers:
         specifier: workspace:*
         version: link:../../../../../tools/e2e-commons
       '@playwright/test':
-        specifier: 1.65.0
-        version: 1.65.0
+        specifier: 1.65.1
+        version: 1.65.1
       '@types/node':
         specifier: ^24.12.0
         version: 24.19.2
@@ -6733,8 +6733,8 @@ importers:
         specifier: workspace:*
         version: link:../../../../../tools/e2e-commons
       '@playwright/test':
-        specifier: 1.65.0
-        version: 1.65.0
+        specifier: 1.65.1
+        version: 1.65.1
       '@types/node':
         specifier: ^24.12.0
         version: 24.19.2
@@ -6811,8 +6811,8 @@ importers:
         specifier: workspace:*
         version: link:../../../../../tools/e2e-commons
       '@playwright/test':
-        specifier: 1.65.0
-        version: 1.65.0
+        specifier: 1.65.1
+        version: 1.65.1
       config:
         specifier: 4.4.1
         version: 4.4.1
@@ -6826,8 +6826,8 @@ importers:
         specifier: workspace:*
         version: link:../../../../../tools/e2e-commons
       '@playwright/test':
-        specifier: 1.65.0
-        version: 1.65.0
+        specifier: 1.65.1
+        version: 1.65.1
       '@types/node':
         specifier: ^24.12.0
         version: 24.19.2
@@ -6971,8 +6971,8 @@ importers:
         specifier: workspace:*
         version: link:../../../../../tools/e2e-commons
       '@playwright/test':
-        specifier: 1.65.0
-        version: 1.65.0
+        specifier: 1.65.1
+        version: 1.65.1
       '@types/node':
         specifier: ^24.12.0
         version: 24.19.2
@@ -6994,8 +6994,8 @@ importers:
         specifier: workspace:*
         version: link:../../../../../tools/e2e-commons
       '@playwright/test':
-        specifier: 1.65.0
-        version: 1.65.0
+        specifier: 1.65.1
+        version: 1.65.1
       '@types/node':
         specifier: ^24.12.0
         version: 24.19.2
@@ -7021,8 +7021,8 @@ importers:
         specifier: workspace:*
         version: link:../../../../../tools/e2e-commons
       '@playwright/test':
-        specifier: 1.65.0
-        version: 1.65.0
+        specifier: 1.65.1
+        version: 1.65.1
       '@types/node':
         specifier: ^24.12.0
         version: 24.19.2
@@ -7115,8 +7115,8 @@ importers:
         specifier: workspace:*
         version: link:../../../../../tools/e2e-commons
       '@playwright/test':
-        specifier: 1.65.0
-        version: 1.65.0
+        specifier: 1.65.1
+        version: 1.65.1
       '@types/node':
         specifier: ^24.12.0
         version: 24.19.2
@@ -7197,8 +7197,8 @@ importers:
         specifier: workspace:*
         version: link:../../../../../tools/e2e-commons
       '@playwright/test':
-        specifier: 1.65.0
-        version: 1.65.0
+        specifier: 1.65.1
+        version: 1.65.1
       '@types/node':
         specifier: ^24.12.0
         version: 24.19.2
@@ -7303,8 +7303,8 @@ importers:
   tools/e2e-commons:
     devDependencies:
       '@playwright/test':
-        specifier: 1.65.0
-        version: 1.65.0
+        specifier: 1.65.1
+        version: 1.65.1
       '@slack/web-api':
         specifier: 7.15.1
         version: 7.15.1(debug@4.4.3(supports-color@10.2.2))(supports-color@10.2.2)
@@ -7319,7 +7319,7 @@ importers:
         version: 7.0.0-dev.20260707.2
       '@wordpress/e2e-test-utils-playwright':
         specifier: 3.2.0
-        version: 3.2.0(@playwright/test@1.65.0)(@types/node@24.19.2)
+        version: 3.2.0(@playwright/test@1.65.1)(@types/node@24.19.2)
       axios:
         specifier: 1.21.0
         version: 1.21.0(debug@4.4.3(supports-color@10.2.2))(supports-color@10.2.2)
@@ -7564,7 +7564,7 @@ importers:
     dependencies:
       playwright:
         specifier: ^1.48.0
-        version: 1.65.0
+        version: 1.65.1
 
 packages:
 
@@ -9903,8 +9903,8 @@ packages:
     resolution: {integrity: sha512-SEeaJLb3qBNF/OaXnaR1NmmBbFYk1zC0ZH/52fATcRPLFg/p791YrcyFFy44Bo9sLaGuSuLp5Q6axbb/O+v/RA==}
     engines: {node: ^14.18.0 || >=16.0.0}
 
-  '@playwright/test@1.65.0':
-    resolution: {integrity: sha512-iGURLGuKDLakSEl7Pgfv8h7f+XLT+V861Wfhz0zlEl5nyFuKUopdkFBPKqTllTUp06aOwPuH8iuUEb3yp3MpbQ==}
+  '@playwright/test@1.65.1':
+    resolution: {integrity: sha512-y+NCIRm2LvY4slUVWvGh1nujJ8RF/hEisIsq2mtUPgdQC4L701bq5hZGMhrpeXjACvwvO9tj5dJqhvM6TP9lbw==}
     engines: {node: '>=20'}
     hasBin: true
 
@@ -16134,11 +16134,21 @@ packages:
     engines: {node: '>=20'}
     hasBin: true
 
+  playwright-core@1.65.1:
+    resolution: {integrity: sha512-hqPpz7blSMPxWVdoeE1yiBSzXsKiVOd2k+kjCvmUywD2GPO2Dd9HfcWnq9NN0GHbNZDFgZ9JfBFr+X5/BLo0qw==}
+    engines: {node: '>=20'}
+    hasBin: true
+
   playwright-ctrf-json-reporter@0.0.26:
     resolution: {integrity: sha512-3BtV0R5Vstwu02ARwAlegdCwMhBJC3GYm+0CVBrHOryQACk+TraqD+ZZxLMPhUnlddGFwkHcU57KxPiZb6/k1A==}
 
   playwright@1.65.0:
     resolution: {integrity: sha512-F3AMWcR44qMBt4kq+6Kb6mX7bjGXshktKFOPULd7reED6ZJWevjbNRqysP7q+AATE9kdPEZBibex1BYsvpVoeA==}
+    engines: {node: '>=20'}
+    hasBin: true
+
+  playwright@1.65.1:
+    resolution: {integrity: sha512-vJ1FuoOrNwOKHUIVEvSt3jT1L+wjjDpwhwIstKtfvTh8XIG4FG4bIFuvNdMxi81LGfAhUgUZleVFaOLY4RIUUw==}
     engines: {node: '>=20'}
     hasBin: true
 
@@ -21218,9 +21228,9 @@ snapshots:
 
   '@pkgr/core@0.3.6': {}
 
-  '@playwright/test@1.65.0':
+  '@playwright/test@1.65.1':
     dependencies:
-      playwright: 1.65.0
+      playwright: 1.65.1
 
   '@pmmmwh/react-refresh-webpack-plugin@0.6.3(react-refresh@0.17.0)(supports-color@10.2.2)(type-fest@4.41.0)(webpack-cli@7.2.1)(webpack-dev-server@6.0.0)(webpack@5.112.2)':
     dependencies:
@@ -21652,7 +21662,7 @@ snapshots:
       storybook: 10.6.3(@types/react@19.3.0)(prettier@3.9.10)(react@19.3.0)
     optionalDependencies:
       '@vitest/browser': 4.1.12(vite@8.1.6(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.97.3)(terser@5.51.2)(yaml@2.8.3))(vitest@4.1.12)
-      '@vitest/browser-playwright': 4.1.12(playwright@1.65.0)(vite@8.1.6(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.97.3)(terser@5.51.2)(yaml@2.8.3))(vitest@4.1.12)
+      '@vitest/browser-playwright': 4.1.12(playwright@1.65.1)(vite@8.1.6(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.97.3)(terser@5.51.2)(yaml@2.8.3))(vitest@4.1.12)
       vitest: 4.1.12(@types/node@24.19.2)(@vitest/browser-playwright@4.1.12)(jsdom@31.0.0(@noble/hashes@1.8.0))(vite@8.1.6(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.97.3)(terser@5.51.2)(yaml@2.8.3))
     transitivePeerDependencies:
       - react
@@ -22575,11 +22585,11 @@ snapshots:
       '@rolldown/pluginutils': 1.0.0-rc.7
       vite: 8.1.6(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.97.3)(terser@5.51.2)(yaml@2.8.3)
 
-  '@vitest/browser-playwright@4.1.12(playwright@1.65.0)(vite@8.1.6(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.97.3)(terser@5.51.2)(yaml@2.8.3))(vitest@4.1.12)':
+  '@vitest/browser-playwright@4.1.12(playwright@1.65.1)(vite@8.1.6(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.97.3)(terser@5.51.2)(yaml@2.8.3))(vitest@4.1.12)':
     dependencies:
       '@vitest/browser': 4.1.12(vite@8.1.6(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.97.3)(terser@5.51.2)(yaml@2.8.3))(vitest@4.1.12)
       '@vitest/mocker': 4.1.12(vite@8.1.6(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.97.3)(terser@5.51.2)(yaml@2.8.3))
-      playwright: 1.65.0
+      playwright: 1.65.1
       tinyrainbow: 3.2.0
       vitest: 4.1.12(@types/node@24.19.2)(@vitest/browser-playwright@4.1.12)(jsdom@31.0.0(@noble/hashes@1.8.0))(vite@8.1.6(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.97.3)(terser@5.51.2)(yaml@2.8.3))
     transitivePeerDependencies:
@@ -23301,9 +23311,9 @@ snapshots:
     dependencies:
       '@wordpress/deprecated': 5.1.0
 
-  '@wordpress/e2e-test-utils-playwright@3.2.0(@playwright/test@1.65.0)(@types/node@24.19.2)':
+  '@wordpress/e2e-test-utils-playwright@3.2.0(@playwright/test@1.65.1)(@types/node@24.19.2)':
     dependencies:
-      '@playwright/test': 1.65.0
+      '@playwright/test': 1.65.1
       change-case: 4.1.2
       get-port: 5.1.1
       lighthouse: link:tools/e2e-commons/no-lighthouse
@@ -28757,11 +28767,17 @@ snapshots:
 
   playwright-core@1.65.0: {}
 
+  playwright-core@1.65.1: {}
+
   playwright-ctrf-json-reporter@0.0.26: {}
 
   playwright@1.65.0:
     dependencies:
       playwright-core: 1.65.0
+
+  playwright@1.65.1:
+    dependencies:
+      playwright-core: 1.65.1
 
   pluralize@8.0.0: {}
 
@@ -30976,7 +30992,7 @@ snapshots:
       why-is-node-running: 2.3.0
     optionalDependencies:
       '@types/node': 24.19.2
-      '@vitest/browser-playwright': 4.1.12(playwright@1.65.0)(vite@8.1.6(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.97.3)(terser@5.51.2)(yaml@2.8.3))(vitest@4.1.12)
+      '@vitest/browser-playwright': 4.1.12(playwright@1.65.1)(vite@8.1.6(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.97.3)(terser@5.51.2)(yaml@2.8.3))(vitest@4.1.12)
       jsdom: 31.0.0(@noble/hashes@1.8.0)
     transitivePeerDependencies:
       - msw
